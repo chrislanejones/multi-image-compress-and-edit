@@ -6,11 +6,15 @@ import path from 'path'
 export default defineConfig({
   plugins: [
     react(),
-    TanStackRouterVite(),
+    TanStackRouterVite({
+      routesDirectory: './app/routes',
+      generatedRouteTree: './app/routeTree.gen.ts',
+    }),
   ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './'),
     },
   },
+  root: '.',
 })

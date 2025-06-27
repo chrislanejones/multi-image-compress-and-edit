@@ -1,10 +1,11 @@
 {
   "name": "imagehorse",
-  "version": "0.0.0",
   "private": true,
+  "version": "0.0.0",
+  "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build", 
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
@@ -28,6 +29,5 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.8.3"
-  },
-  "type": "module"
+  }
 }
