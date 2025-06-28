@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import path from 'path'
 
 export default defineConfig({
   plugins: [
@@ -8,15 +9,24 @@ export default defineConfig({
       routesDirectory: './app/routes',
       generatedRouteTree: './app/routeTree.gen.ts',
     }),
-    react(),
+    react()
   ],
   resolve: {
     alias: {
-      '@': '/app/components',
-      '~': '/app',
+      '@': path.resolve(__dirname, './app'),
+      '~': path.resolve(__dirname, './app'),
     },
   },
-  css: {
-    postcss: './postcss.config.js',
+  root: '.',
+  publicDir: 'public',
+  build: {
+    outDir: 'dist',
   },
+  server: {
+    port: 5173,
+    host: true,
+  },
+  optimizeDeps: {
+    exclude: ['@tanstack/router-cli']
+  }
 })

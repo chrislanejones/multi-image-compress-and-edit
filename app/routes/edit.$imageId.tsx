@@ -1,12 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { ImageEditor } from '../components/editor/image-editor'
+import EditPageComponent from '@/components/edit-page'
 
 type EditorSearch = {
   state?: 'editImage' | 'bulkImageEdit' | 'aiEditor'
 }
 
 export const Route = createFileRoute('/edit/$imageId')({
-  component: ImageEditor,
+  component: EditPageComponent,
   validateSearch: (search: Record<string, unknown>): EditorSearch => ({
     state: (search.state as EditorSearch['state']) || 'editImage',
   }),

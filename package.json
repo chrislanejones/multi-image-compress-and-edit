@@ -1,49 +1,43 @@
 {
-  "name": "imagehorse",
+  "name": "multi-image-compress-and-edit",
   "private": true,
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "routes:gen": "bunx tsr generate",
-    "routes:watch": "bunx tsr watch",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "lint:fix": "eslint . --ext ts,tsx --fix",
-    "type-check": "tsc --noEmit"
+    "dev": "bunx --bun vite",
+    "build": "bunx --bun vite build",
+    "preview": "bunx --bun vite preview",
+    "generate-routes": "bunx @tanstack/router-cli generate",
+    "lint": "bunx eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
-    "@radix-ui/react-slot": "^1.0.2",
+    "@radix-ui/react-select": "^2.0.0",
+    "@radix-ui/react-slider": "^1.1.2",
     "@tanstack/react-router": "1.122.0",
-    "class-variance-authority": "^0.7.0",
+    "@tanstack/router-plugin": "^1.58.4",
     "clsx": "^2.0.0",
-    "emoji-picker-react": "^4.5.16",
-    "jszip": "^3.10.1",
-    "lucide-react": "^0.263.1",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-image-crop": "^11.0.5",
-    "recharts": "^2.8.0",
+    "lucide-react": "^0.294.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
     "tailwind-merge": "^2.0.0"
   },
   "devDependencies": {
-    "@tanstack/react-router-devtools": "^1.122.0",
-    "@tanstack/router-plugin": "^1.122.0",
-    "@types/bun": "latest",
-    "@types/react": "19.1.8",
-    "@types/react-dom": "19.1.6",
-    "@typescript-eslint/eslint-plugin": "^7.0.0",
-    "@typescript-eslint/parser": "^7.0.0",
+    "@tanstack/router-cli": "^1.58.3",
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
-    "eslint": "^8.57.0",
-    "eslint-plugin-react": "^7.34.0",
+    "eslint": "^8.55.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "postcss": "^8.4.32",
-    "tailwindcss": "^3.4.0",
-    "tailwindcss-animate": "1.0.7",
-    "typescript": "^5.6.2",
-    "vite": "^5.4.6"
-  }
+    "tailwindcss": "^3.3.6",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.8"
+  },
+  "trustedDependencies": [
+    "@tanstack/router-cli"
+  ]
 }

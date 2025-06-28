@@ -1,17 +1,19 @@
 import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/')({
-  component: HomePage,
-})
+import PhotoUpload from '@/components/photo-upload'
 
 function HomePage() {
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">ImageHorse</h1>
-      <div className="space-y-4">
-        <p>Welcome to ImageHorse - Your multi-image compress and edit tool!</p>
-        {/* Add your page content here */}
+    <div className="container mx-auto px-4 py-8 min-h-screen">
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <h1 className="text-3xl font-bold mb-6 capitalize">Image Horse</h1>
+        <div className="w-full max-w-md">
+          <PhotoUpload />
+        </div>
       </div>
     </div>
   )
 }
+
+export const Route = createFileRoute('/')({
+  component: HomePage,
+})

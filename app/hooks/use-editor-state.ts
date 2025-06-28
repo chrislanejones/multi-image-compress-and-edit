@@ -1,36 +1,50 @@
-import { useState, useCallback } from 'react';
+"use client";
+
+import { useCallback } from 'react';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
-import type { EditorState } from '../utils/navigation';
+import type { EditorState } from '../types';
 
 export function useEditorState() {
   const navigate = useNavigate();
-  const params = useParams();
-  const search = useSearch();
+  const params = useParams({ strict: false });
+  const search = useSearch({ strict: false });
 
-  // Get current state from URL
   const getCurrentState = useCallback((): EditorState => {
     const pathname = window.location.pathname;
     
     if (pathname === '/') return 'resizeAndOptimize';
-    if (pathname === '/gallery') return search.state || 'resizeAndOptimize';
-    if (pathname.includes('/edit/') && pathname.includes('/tool/')) {
-      const toolType = pathname.split('/tool/')[1];
-      return toolType as EditorState;
-    }
-    if (pathname.includes('/edit/')) {
-      return search.state || 'editImage';
-    }
-    
-    return 'resizeAndOptimize';
-  }, [search]);
 
-  // Navigate to state
-  const navigateToState = useCallback((state: EditorState, imageId?: string) => {
-    const currentImageId = imageId || params.imageId;
+    if (pathname.startsWith('/gallery')) {
+      return (search as any)?.state || 'resizeAndOptimize';
+    }
+
+    if (pathname.startsWith('/edit/')) {
+      if (pathname.includes('/tool/')) {
+        const toolTypeMatch = pathname.match(/\/tool\/([^/]+)/);
+        if (toolTypeMatch && toolTypeMatch[1]) {
+          const tool = toolTypeMatch[1] as EditorState;
+          if (['crop', 'blur', 'paint', 'text', 'bulkCrop', 'bulkTextEditor', 'aiEditor'].includes(tool)) {
+            return tool;
+          }
+        }
+        return 'editImage';
+      } else {
+        return (search as any)?.state || 'editImage';
+      }
+    }
     
+    return 'resizeAndOptimize'; 
+  }, [search, params]);
+
+  const navigateToState = useCallback((state: EditorState, imageId?: string) => {
+    const currentImageId = imageId || (params as any)?.imageId; 
+
     switch (state) {
       case 'resizeAndOptimize':
-        navigate({ to: '/gallery', search: { state } });
+        navigate({
+          to: '/gallery',
+          search: { state: 'resizeAndOptimize' },
+        });
         break;
         
       case 'editImage':
@@ -40,23 +54,14 @@ export function useEditorState() {
           navigate({ 
             to: '/edit/$imageId', 
             params: { imageId: currentImageId },
-            search: { state }
+            search: { state },
           });
         }
         break;
         
-      case 'crop':
-      case 'blur':
-      case 'paint':
-      case 'text':
-      case 'bulkCrop':
-      case 'bulkTextEditor':
-        if (currentImageId) {
-          navigate({
-            to: '/edit/$imageId/tool/$toolType',
-            params: { imageId: currentImageId, toolType: state }
-          });
-        }
+      default:
+        console.warn(`Navigating to unknown editor state: ${state}`);
+        navigate({ to: '/gallery' });
         break;
     }
   }, [navigate, params]);
@@ -64,6 +69,6 @@ export function useEditorState() {
   return {
     getCurrentState,
     navigateToState,
-    currentState: getCurrentState()
+    currentState: (search as any)?.state || 'resizeAndOptimize'
   };
 }
