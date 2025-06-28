@@ -1,3 +1,9 @@
+#!/bin/bash
+
+echo "🔧 Fixing package.json - removing invalid shadui dependency"
+
+# Create corrected package.json without shadui
+cat > package.json << 'EOF'
 {
   "name": "imagehorse",
   "version": "0.1.0",
@@ -29,14 +35,25 @@
     "@types/react-dom": "^19.1.6",
     "@typescript-eslint/eslint-plugin": "^8.15.0",
     "@typescript-eslint/parser": "^8.15.0",
-    "autoprefixer": "^10.4.21",
+    "autoprefixer": "^10.4.20",
     "eslint": "^8.57.1",
     "eslint-config-next": "15.0.3",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
-    "postcss": "^8",
+    "postcss": "^8.4.49",
     "prettier": "^3.3.3",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "typescript": "^5.8.3"
   }
 }
+EOF
+
+echo "✅ Fixed package.json - removed invalid 'shadui' dependency"
+echo ""
+echo "📦 Now run:"
+echo "1. bun install"
+echo "2. bun run dev"
+echo ""
+echo "Note: shadcn/ui components are already created in components/ui/ directory"
+echo "They don't need to be installed as a package."
+EOF
