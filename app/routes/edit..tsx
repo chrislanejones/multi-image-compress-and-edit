@@ -5,7 +5,7 @@ type EditorSearch = {
   state?: 'editImage' | 'bulkImageEdit' | 'aiEditor'
 }
 
-export const Route = createFileRoute('/edit/$imageId')({
+export const Route = createFileRoute('/edit/')({
   component: ImageEditor,
   validateSearch: (search: Record<string, unknown>): EditorSearch => ({
     state: (search.state as EditorSearch['state']) || 'editImage',

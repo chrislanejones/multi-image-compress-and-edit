@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+;
 import { useImageContext } from '../../context/ImageContext';
-import ImageEditor from '@/components/image-editor';
+import ImageEditor from '~/components/image-editor';
 
 export default function EditPage() {
-  const router = useRouter();
+  const router = // // useRouter();
   const params = useParams();
   const imageId = params.imageId as string;
   

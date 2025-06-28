@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+;
 import Image from 'next/image';
 import { X, Upload } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Button } from '~/components/ui/button';
+import { Card } from '~/components/ui/card';
 import { useImageContext } from '../context/ImageContext';
 
 const IMAGES_PER_PAGE = 10;
 
 export default function GalleryPage() {
-  const router = useRouter();
+  const router = // // useRouter();
   const {
     images,
     selectedImage,

@@ -1,12 +1,22 @@
-// For TanStack Start, most configuration should be in app.config.ts
-// This file is mainly for any additional Vite-specific settings not covered by Start
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 
 export default defineConfig({
+  plugins: [
+    TanStackRouterVite({
+      routesDirectory: './app/routes',
+      generatedRouteTree: './app/routeTree.gen.ts',
+    }),
+    react(),
+  ],
   resolve: {
     alias: {
-      '@': '/components',
+      '@': '/app/components',
       '~': '/app',
     },
   },
-});
+  css: {
+    postcss: './postcss.config.js',
+  },
+})

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from '~/components/ui/button';
 import { ImageFile, EditorState } from '@/types/index';
 
 interface BulkImageEditorProps {

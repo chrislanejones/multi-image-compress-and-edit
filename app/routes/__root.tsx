@@ -1,47 +1,26 @@
-import { createRootRoute, Outlet } from '@tanstack/react-router'
-import { Meta, Scripts } from '@tanstack/start'
-import type { ReactNode } from 'react'
-import { ImageProvider } from '~/context/image-context'
+import { createRootRoute, Link, Outlet } from '@tanstack/react-router'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import '../globals.css'
 
 export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      {
-        charSet: 'utf-8',
-      },
-      {
-        name: 'viewport',
-        content: 'width=device-width, initial-scale=1',
-      },
-      {
-        title: 'ImageHorse - Multi Image Editor',
-      },
-    ],
-  }),
-  component: RootComponent,
+  component: () => (
+    <>
+      <div className="min-h-screen bg-background text-foreground">
+        <nav className="p-4 border-b border-border">
+          <div className="container mx-auto flex gap-4">
+            <Link to="/" className="[&.active]:font-bold hover:text-primary">
+              Home
+            </Link>
+            <Link to="/bulk-editor" className="[&.active]:font-bold hover:text-primary">
+              Bulk Editor
+            </Link>
+          </div>
+        </nav>
+        <main>
+          <Outlet />
+        </main>
+      </div>
+      <TanStackRouterDevtools />
+    </>
+  ),
 })
-
-function RootComponent() {
-  return (
-    <RootDocument>
-      <ImageProvider>
-        <Outlet />
-      </ImageProvider>
-    </RootDocument>
-  )
-}
-
-function RootDocument({ children }: { children: ReactNode }) {
-  return (
-    <html lang="en">
-      <head>
-        <Meta />
-      </head>
-      <body className="min-h-screen bg-background font-sans antialiased">
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  )
-}
