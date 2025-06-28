@@ -1,0 +1,18 @@
+[install]
+# Use exact versions for reproducible installs
+exact = true
+
+# Speed up installs
+registry = "https://registry.npmjs.org/"
+cache = true
+
+[install.scopes]
+# Configure any scoped packages if needed
+
+[run]
+# Bun runtime configuration
+silent = false
+
+[test]
+# Test configuration
+root = "./tests"

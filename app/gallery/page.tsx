@@ -1,170 +1,154 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useImageContext } from '../context/ImageContext';
-import { ImageFile } from '@/types/types';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { X, ArrowLeft, Edit, Download, Trash2 } from 'lucide-react';
+import { X, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { useImageContext } from '../context/ImageContext';
+
+const IMAGES_PER_PAGE = 10;
 
 export default function GalleryPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { images, selectedImage, selectImage, removeImage, removeAllImages } = useImageContext();
+  const {
+    images,
+    selectedImage,
+    currentPage,
+    totalPages,
+    removeImage,
+    removeAllImages,
+    selectImage,
+    setCurrentPage,
+  } = useImageContext();
 
-  const selectedId = searchParams.get('selected');
-  const selectedImageFromUrl = images.find(img => img.id === selectedId);
-  const currentSelectedImage = selectedImageFromUrl || selectedImage || images[0];
-
-  React.useEffect(() => {
-    if (selectedImageFromUrl && selectedImageFromUrl !== selectedImage) {
-      selectImage(selectedImageFromUrl);
+  useEffect(() => {
+    if (images.length === 0) {
+      router.push('/');
     }
-  }, [selectedImageFromUrl, selectedImage, selectImage]);
+  }, [images.length, router]);
 
-  const handleSelectImage = (image: ImageFile) => {
+  const getCurrentPageImages = () => {
+    const startIndex = (currentPage - 1) * IMAGES_PER_PAGE;
+    const endIndex = startIndex + IMAGES_PER_PAGE;
+    return images.slice(startIndex, endIndex);
+  };
+
+  const currentImages = getCurrentPageImages();
+
+  const handleImageSelect = (image: typeof images[0]) => {
     selectImage(image);
-    router.push(`/gallery?selected=${image.id}`);
+    router.push(`/edit/${image.id}`);
+  };
+
+  const handleUploadMore = () => {
+    router.push('/');
+  };
+
+  const handlePageChange = (page: number) => {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
   };
 
   if (images.length === 0) {
-    router.push('/');
     return null;
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button onClick={() => router.push('/')} variant="ghost" size="icon">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <h1 className="text-2xl font-bold">Gallery</h1>
-              <span className="text-muted-foreground">({images.length} images)</span>
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={() => router.push('/')} variant="outline">
-                Upload More
-              </Button>
-              <Button onClick={removeAllImages} variant="destructive" size="sm">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Remove All
-              </Button>
-            </div>
-          </div>
+    <div className="container mx-auto px-4 py-8 min-h-screen">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Image Gallery</h1>
+        <div className="flex gap-2">
+          <Button onClick={handleUploadMore}>
+            <Upload className="mr-2 h-4 w-4" />
+            Upload More
+          </Button>
+          <Button variant="destructive" onClick={removeAllImages}>
+            <X className="mr-2 h-4 w-4" />
+            Remove All
+          </Button>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-6">
-        {/* Image thumbnails strip */}
-        <div className="mb-6">
-          <h3 className="text-sm font-medium mb-3">All Images</h3>
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {images.map(image => (
-              <div
-                key={image.id}
-                className={`relative group flex-shrink-0 w-20 h-20 cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
-                  currentSelectedImage?.id === image.id
-                    ? 'border-primary shadow-md scale-105'
-                    : 'border-transparent hover:border-primary/50'
-                }`}
-                onClick={() => handleSelectImage(image)}
+      {selectedImage && (
+        <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+          <p className="text-sm text-blue-700 dark:text-blue-300">
+            Selected: {selectedImage.file.name}
+          </p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {currentImages.map((image) => (
+          <Card
+            key={image.id}
+            className={`group relative overflow-hidden cursor-pointer transition-all ${
+              selectedImage?.id === image.id 
+                ? 'ring-2 ring-blue-500' 
+                : 'hover:shadow-lg'
+            }`}
+            onClick={() => handleImageSelect(image)}
+          >
+            <div className="relative aspect-square w-full">
+              <img
+                src={image.url}
+                alt={image.file.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="p-2 text-center text-sm text-gray-600 dark:text-gray-400 truncate">
+              {image.file.name}
+            </div>
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                variant="destructive"
+                size="icon"
+                className="h-8 w-8"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeImage(image.id);
+                }}
               >
-                <Image src={image.url} alt="Thumbnail" fill className="object-cover" />
-                <button
-                  onClick={e => {
-                    e.stopPropagation();
-                    removeImage(image.id);
-                  }}
-                  className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                  aria-label="Remove image"
-                >
-                  <X size={10} />
-                </button>
-              </div>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-8 gap-2">
+          <Button
+            variant="outline"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </Button>
+          
+          <div className="flex items-center gap-2">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <Button
+                key={page}
+                variant={page === currentPage ? "default" : "outline"}
+                onClick={() => handlePageChange(page)}
+                className="h-10 w-10"
+              >
+                {page}
+              </Button>
             ))}
           </div>
+
+          <Button
+            variant="outline"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </Button>
         </div>
-
-        {/* Main image display */}
-        {currentSelectedImage && (
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            {/* Image display */}
-            <div className="lg:col-span-4">
-              <div className="relative bg-muted/20 rounded-lg p-8 min-h-[500px] flex items-center justify-center">
-                <Image
-                  src={currentSelectedImage.url}
-                  alt={currentSelectedImage.file.name}
-                  width={800}
-                  height={600}
-                  className="max-w-full max-h-[600px] object-contain rounded shadow-lg"
-                />
-              </div>
-            </div>
-
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Image info */}
-              <div className="p-4 bg-muted/50 rounded-lg">
-                <h3 className="font-semibold mb-2 truncate">{currentSelectedImage.file.name}</h3>
-                <div className="text-sm text-muted-foreground space-y-1">
-                  <p>Type: {currentSelectedImage.file.type}</p>
-                  <p>Size: {(currentSelectedImage.file.size / 1024 / 1024).toFixed(2)} MB</p>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="space-y-2">
-                <h4 className="font-medium">Actions</h4>
-                <Button
-                  className="w-full"
-                  onClick={() => router.push(`/edit/${currentSelectedImage.id}`)}
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Image
-                </Button>
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={() => {
-                    const a = document.createElement('a');
-                    a.href = currentSelectedImage.url;
-                    a.download = currentSelectedImage.file.name || 'image.png';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                  }}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download
-                </Button>
-                <Button
-                  className="w-full"
-                  variant="destructive"
-                  onClick={() => {
-                    removeImage(currentSelectedImage.id);
-                    if (images.length > 1) {
-                      const nextImage = images.find(img => img.id !== currentSelectedImage.id);
-                      if (nextImage) {
-                        router.push(`/gallery?selected=${nextImage.id}`);
-                      }
-                    } else {
-                      router.push('/');
-                    }
-                  }}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Remove
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }

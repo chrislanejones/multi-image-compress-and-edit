@@ -1,17 +1,17 @@
-import React from 'react'
-import { Button } from '@'
-import { ImageFile, EditorState } from '@/types/types'
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { ImageFile, EditorState } from '@/types/index';
 
 interface BulkImageEditorProps {
-  editorState: EditorState
-  images: ImageFile[]
-  selectedImageId: string
-  onStateChange: (state: EditorState) => void
-  onSelectImage: (imageId: string) => void
-  onNavigateImage: () => void
-  onClose: () => void
-  onRemoveAll: () => void
-  onUploadNew: () => void
+  editorState: EditorState;
+  images: ImageFile[];
+  selectedImageId: string;
+  onStateChange: (state: EditorState) => void;
+  onSelectImage: (imageId: string) => void;
+  onNavigateImage: () => void;
+  onClose: () => void;
+  onRemoveAll: () => void;
+  onUploadNew: () => void;
 }
 
 const BulkImageEditor: React.FC<BulkImageEditorProps> = ({
@@ -25,7 +25,7 @@ const BulkImageEditor: React.FC<BulkImageEditorProps> = ({
   onRemoveAll,
   onUploadNew,
 }) => {
-  const selectedImage = images.find(img => img.id === selectedImageId)
+  const selectedImage = images.find(img => img.id === selectedImageId);
 
   return (
     <div className="w-full h-full flex flex-col">
@@ -43,24 +43,22 @@ const BulkImageEditor: React.FC<BulkImageEditorProps> = ({
           </Button>
         </div>
       </div>
-      
+
       <div className="flex-1 flex items-center justify-center p-4">
         {selectedImage && (
-          <img 
-            src={selectedImage.url} 
+          <img
+            src={selectedImage.url}
             alt={selectedImage.file.name}
             className="max-w-full max-h-full object-contain"
           />
         )}
       </div>
-      
+
       <div className="p-4 border-t">
-        <p className="text-sm text-gray-600">
-          {images.length} images selected
-        </p>
+        <p className="text-sm text-gray-600">{images.length} images selected</p>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default BulkImageEditor
+export default BulkImageEditor;
