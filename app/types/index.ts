@@ -46,6 +46,27 @@ export interface ImageDataItem {
   height?: number
 }
 
+// Gallery Component Types
+export interface OptimizedImageProps {
+  image: ImageFile
+  isSelected: boolean
+  onClick: () => void
+  onRemove: (imageId: string, e?: React.MouseEvent) => void
+}
+
+export interface ResizeSettings {
+  width: number
+  height: number
+  quality: number
+  format: string
+}
+
+export interface GalleryData {
+  totalGalleryPages: number
+  currentImages: ImageFile[]
+  currentSelectedImage: ImageFile | null
+}
+
 // Tool-specific Types
 export interface PaintStroke {
   points: { x: number; y: number }[]

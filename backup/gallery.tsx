@@ -36,7 +36,123 @@ import {
   SelectValue,
 } from './ui/select'
 import { Slider } from './ui/slider'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import type {
+  ImageFile,
+  OptimizedImageProps,
+  ResizeSettings,
+  GalleryData,
+} from '../types'
+
+// Optimized Image Component with lazy loading and thumbnail generation
+const OptimizedImage = ({
+  image,
+  isSelected,
+  onClick,
+  onRemove,
+}: OptimizedImageProps) => {
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
+  const [isLoaded, setIsLoaded] = useState(false)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+
+  // Generate thumbnail only when needed
+  useEffect(() => {
+    let isCancelled = false
+
+    const generateThumbnail = async () => {
+      try {
+        const img = new Image()
+        img.onload = () => {
+          if (isCancelled) return
+
+          const canvas = canvasRef.current || document.createElement('canvas')
+          const ctx = canvas.getContext('2d')
+
+          if (!ctx) return
+
+          // Small thumbnail size for performance
+          const maxSize = 150
+          const ratio = Math.min(maxSize / img.width, maxSize / img.height)
+          canvas.width = img.width * ratio
+          canvas.height = img.height * ratio
+
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+
+          canvas.toBlob(
+            (blob) => {
+              if (isCancelled || !blob) return
+              const url = URL.createObjectURL(blob)
+              setThumbnailUrl(url)
+              setIsLoaded(true)
+            },
+            'image/jpeg',
+            0.7
+          )
+        }
+
+        img.onerror = () => {
+          if (!isCancelled) {
+            setThumbnailUrl(image.url) // Fallback to original
+            setIsLoaded(true)
+          }
+        }
+
+        img.src = image.url
+      } catch (error) {
+        if (!isCancelled) {
+          setThumbnailUrl(image.url) // Fallback to original
+          setIsLoaded(true)
+        }
+      }
+    }
+
+    generateThumbnail()
+
+    return () => {
+      isCancelled = true
+      if (thumbnailUrl && thumbnailUrl !== image.url) {
+        URL.revokeObjectURL(thumbnailUrl)
+      }
+    }
+  }, [image.url])
+
+  return (
+    <div
+      className={`relative aspect-square cursor-pointer rounded-lg overflow-hidden group border-2 transition-all ${
+        isSelected
+          ? 'border-primary ring-2 ring-primary/50'
+          : 'border-border hover:border-primary/50'
+      }`}
+      onClick={onClick}
+    >
+      {isLoaded ? (
+        <img
+          src={thumbnailUrl || image.url}
+          alt={image.file.name}
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
+      ) : (
+        <div className="w-full h-full bg-muted animate-pulse flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button
+          variant="destructive"
+          size="sm"
+          className="h-6 w-6 p-0"
+          onClick={(e) => {
+            e.stopPropagation()
+            onRemove(image.id, e)
+          }}
+        >
+          <X className="h-3 w-3" />
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 export default function GalleryComponent() {
   const navigate = useNavigate()
@@ -51,106 +167,157 @@ export default function GalleryComponent() {
     setCurrentPage,
   } = useImageContext()
 
-  const [selectedImageId, setSelectedImageId] = useState(images[0]?.id || null)
+  const [selectedImageId, setSelectedImageId] = useState<string | null>(
+    () => images[0]?.id || null
+  )
   const [currentGalleryPage, setCurrentGalleryPage] = useState(0)
   const [theme, setTheme] = useState('system')
   const [zoom, setZoom] = useState(100)
 
-  // Resize & Optimize settings
-  const [width, setWidth] = useState(400)
-  const [height, setHeight] = useState(300)
-  const [quality, setQuality] = useState(85)
-  const [format, setFormat] = useState('jpeg')
+  // Resize & Optimize settings - memoized to prevent re-renders
+  const [resizeSettings, setResizeSettings] = useState<ResizeSettings>({
+    width: 400,
+    height: 300,
+    quality: 85,
+    format: 'jpeg',
+  })
 
   const imagesPerPage = 10
-  const totalGalleryPages = Math.ceil(images.length / imagesPerPage)
-  const currentImages = images.slice(
-    currentGalleryPage * imagesPerPage,
-    (currentGalleryPage + 1) * imagesPerPage
-  )
-  const currentSelectedImage = images.find((img) => img.id === selectedImageId)
 
+  // Memoized calculations to prevent expensive re-computations
+  const galleryData = useMemo((): GalleryData => {
+    const totalGalleryPages = Math.ceil(images.length / imagesPerPage)
+    const currentImages = images.slice(
+      currentGalleryPage * imagesPerPage,
+      (currentGalleryPage + 1) * imagesPerPage
+    )
+    const currentSelectedImage =
+      images.find((img) => img.id === selectedImageId) || null
+
+    return {
+      totalGalleryPages,
+      currentImages,
+      currentSelectedImage,
+    }
+  }, [images, currentGalleryPage, selectedImageId, imagesPerPage])
+
+  // Memoized handlers to prevent re-renders
+  const handleSelectImage = useCallback(
+    (image: ImageFile) => {
+      setSelectedImageId(image.id)
+      selectImage(image)
+    },
+    [selectImage]
+  )
+
+  const handleRemoveImage = useCallback(
+    (imageId: string, e?: React.MouseEvent) => {
+      e?.stopPropagation()
+      removeImage(imageId)
+      // Update selected image if the removed one was selected
+      if (selectedImageId === imageId && images.length > 1) {
+        const remainingImages = images.filter((img) => img.id !== imageId)
+        if (remainingImages.length > 0) {
+          setSelectedImageId(remainingImages[0].id)
+        }
+      }
+    },
+    [removeImage, selectedImageId, images]
+  )
+
+  const handleNavigation = useCallback(
+    (direction: 'prev' | 'next') => {
+      if (!selectedImageId || images.length === 0) return
+
+      const currentIndex = images.findIndex((img) => img.id === selectedImageId)
+      let newIndex
+
+      switch (direction) {
+        case 'prev':
+          newIndex = currentIndex > 0 ? currentIndex - 1 : images.length - 1
+          break
+        case 'next':
+          newIndex = currentIndex < images.length - 1 ? currentIndex + 1 : 0
+          break
+        default:
+          return
+      }
+
+      setSelectedImageId(images[newIndex].id)
+    },
+    [selectedImageId, images]
+  )
+
+  const handlePageNavigation = useCallback(
+    (direction: 'prev' | 'next') => {
+      const { totalGalleryPages } = galleryData
+
+      if (direction === 'prev' && currentGalleryPage > 0) {
+        const newPage = currentGalleryPage - 1
+        setCurrentGalleryPage(newPage)
+        const newPageImages = images.slice(
+          newPage * imagesPerPage,
+          (newPage + 1) * imagesPerPage
+        )
+        if (newPageImages.length > 0) {
+          setSelectedImageId(newPageImages[0].id)
+        }
+      } else if (
+        direction === 'next' &&
+        currentGalleryPage < totalGalleryPages - 1
+      ) {
+        const newPage = currentGalleryPage + 1
+        setCurrentGalleryPage(newPage)
+        const newPageImages = images.slice(
+          newPage * imagesPerPage,
+          (newPage + 1) * imagesPerPage
+        )
+        if (newPageImages.length > 0) {
+          setSelectedImageId(newPageImages[0].id)
+        }
+      }
+    },
+    [currentGalleryPage, galleryData.totalGalleryPages, images, imagesPerPage]
+  )
+
+  const handleZoomChange = useCallback((direction: 'in' | 'out') => {
+    setZoom((prev) => {
+      if (direction === 'in') {
+        return Math.min(400, prev + 25)
+      } else {
+        return Math.max(25, prev - 25)
+      }
+    })
+  }, [])
+
+  const handleResizeSettingChange = useCallback(
+    (key: keyof typeof resizeSettings, value: any) => {
+      setResizeSettings((prev) => ({ ...prev, [key]: value }))
+    },
+    []
+  )
+
+  // Set initial selected image when images load
   useEffect(() => {
     if (images.length > 0 && !selectedImageId) {
       setSelectedImageId(images[0].id)
     }
   }, [images, selectedImageId])
 
-  const handleBackToUpload = () => {
-    navigate({ to: '/' })
-  }
-
-  const handleSelectImage = (image: any) => {
-    setSelectedImageId(image.id)
-    selectImage(image)
-  }
-
-  const handleRemoveImage = (imageId: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    removeImage(imageId)
-    // Update selected image if the removed one was selected
-    if (selectedImageId === imageId && images.length > 1) {
-      const remainingImages = images.filter((img) => img.id !== imageId)
-      if (remainingImages.length > 0) {
-        setSelectedImageId(remainingImages[0].id)
-      }
-    }
-  }
-
-  const handlePrevImage = () => {
-    if (!selectedImageId) return
-    const currentIndex = images.findIndex((img) => img.id === selectedImageId)
-    const prevIndex = currentIndex > 0 ? currentIndex - 1 : images.length - 1
-    setSelectedImageId(images[prevIndex].id)
-  }
-
-  const handleNextImage = () => {
-    if (!selectedImageId) return
-    const currentIndex = images.findIndex((img) => img.id === selectedImageId)
-    const nextIndex = currentIndex < images.length - 1 ? currentIndex + 1 : 0
-    setSelectedImageId(images[nextIndex].id)
-  }
-
-  const handlePrevPage = () => {
-    if (currentGalleryPage > 0) {
-      setCurrentGalleryPage(currentGalleryPage - 1)
-      const newPageImages = images.slice(
-        (currentGalleryPage - 1) * imagesPerPage,
-        currentGalleryPage * imagesPerPage
-      )
-      if (newPageImages.length > 0) {
-        setSelectedImageId(newPageImages[0].id)
-      }
-    }
-  }
-
-  const handleNextPage = () => {
-    if (currentGalleryPage < totalGalleryPages - 1) {
-      setCurrentGalleryPage(currentGalleryPage + 1)
-      const newPageImages = images.slice(
-        (currentGalleryPage + 1) * imagesPerPage,
-        (currentGalleryPage + 2) * imagesPerPage
-      )
-      if (newPageImages.length > 0) {
-        setSelectedImageId(newPageImages[0].id)
-      }
-    }
-  }
-
-  const formatFileSize = (bytes: number) => {
+  const formatFileSize = useCallback((bytes: number) => {
     if (bytes === 0) return '0 Bytes'
     const k = 1024
     const sizes = ['Bytes', 'KB', 'MB', 'GB']
     const i = Math.floor(Math.log(bytes) / Math.log(k))
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-  }
+  }, [])
 
   if (images.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8 min-h-screen">
         <div className="text-center py-20">
           <p className="text-gray-600 mb-4">No images uploaded yet.</p>
-          <Button onClick={handleBackToUpload}>
+          <Button onClick={() => navigate({ to: '/' })}>
             <Upload className="mr-2 h-4 w-4" />
             Upload Images
           </Button>
@@ -159,37 +326,21 @@ export default function GalleryComponent() {
     )
   }
 
+  const { totalGalleryPages, currentImages, currentSelectedImage } = galleryData
+
   return (
     <div className="min-h-screen bg-background text-foreground p-4">
       {/* Gallery Grid - Top Section */}
       <div className="mb-6">
         <div className="grid grid-cols-10 gap-2 mb-4">
           {currentImages.map((image) => (
-            <div
+            <OptimizedImage
               key={image.id}
-              className={`relative aspect-square cursor-pointer rounded-lg overflow-hidden group border-2 transition-all ${
-                selectedImageId === image.id
-                  ? 'border-primary ring-2 ring-primary/50'
-                  : 'border-border hover:border-primary/50'
-              }`}
+              image={image}
+              isSelected={selectedImageId === image.id}
               onClick={() => handleSelectImage(image)}
-            >
-              <img
-                src={image.url}
-                alt={image.file.name}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="h-6 w-6 p-0"
-                  onClick={(e) => handleRemoveImage(image.id, e)}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
+              onRemove={handleRemoveImage}
+            />
           ))}
         </div>
 
@@ -200,7 +351,7 @@ export default function GalleryComponent() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setZoom(Math.max(25, zoom - 25))}
+              onClick={() => handleZoomChange('out')}
             >
               <Minus className="h-4 w-4" />
             </Button>
@@ -208,7 +359,7 @@ export default function GalleryComponent() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setZoom(Math.min(400, zoom + 25))}
+              onClick={() => handleZoomChange('in')}
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -233,22 +384,30 @@ export default function GalleryComponent() {
             <Button
               variant="outline"
               size="sm"
-              onClick={handlePrevPage}
+              onClick={() => handlePageNavigation('prev')}
               disabled={currentGalleryPage === 0}
             >
               <ChevronsLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={handlePrevImage}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleNavigation('prev')}
+            >
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="text-sm px-2">Switch Photos</span>
-            <Button variant="outline" size="sm" onClick={handleNextImage}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleNavigation('next')}
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={handleNextPage}
+              onClick={() => handlePageNavigation('next')}
               disabled={currentGalleryPage === totalGalleryPages - 1}
             >
               <ChevronsRight className="h-4 w-4" />
@@ -257,7 +416,11 @@ export default function GalleryComponent() {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-1">
-            <Button variant="outline" size="sm" onClick={handleBackToUpload}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate({ to: '/' })}
+            >
               <ArrowLeft className="h-4 w-4 mr-1" />
               Back to Upload
             </Button>
@@ -320,6 +483,7 @@ export default function GalleryComponent() {
                     alt={currentSelectedImage.file.name}
                     className="max-w-full max-h-full object-contain rounded"
                     style={{ transform: `scale(${zoom / 100})` }}
+                    loading="lazy"
                   />
                 </div>
               </CardContent>
@@ -349,8 +513,13 @@ export default function GalleryComponent() {
                     </label>
                     <input
                       type="number"
-                      value={width}
-                      onChange={(e) => setWidth(Number(e.target.value))}
+                      value={resizeSettings.width}
+                      onChange={(e) =>
+                        handleResizeSettingChange(
+                          'width',
+                          Number(e.target.value)
+                        )
+                      }
                       className="w-full px-2 py-1 text-sm border rounded"
                       disabled
                     />
@@ -361,8 +530,13 @@ export default function GalleryComponent() {
                     </label>
                     <input
                       type="number"
-                      value={height}
-                      onChange={(e) => setHeight(Number(e.target.value))}
+                      value={resizeSettings.height}
+                      onChange={(e) =>
+                        handleResizeSettingChange(
+                          'height',
+                          Number(e.target.value)
+                        )
+                      }
                       className="w-full px-2 py-1 text-sm border rounded"
                       disabled
                     />
@@ -373,7 +547,13 @@ export default function GalleryComponent() {
               {/* Format */}
               <div>
                 <label className="text-sm font-medium mb-2 block">Format</label>
-                <Select value={format} onValueChange={setFormat} disabled>
+                <Select
+                  value={resizeSettings.format}
+                  onValueChange={(value) =>
+                    handleResizeSettingChange('format', value)
+                  }
+                  disabled
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -388,11 +568,13 @@ export default function GalleryComponent() {
               {/* Quality */}
               <div>
                 <label className="text-sm font-medium mb-2 block">
-                  Quality: {quality}%
+                  Quality: {resizeSettings.quality}%
                 </label>
                 <Slider
-                  value={[quality]}
-                  onValueChange={(value) => setQuality(value[0])}
+                  value={[resizeSettings.quality]}
+                  onValueChange={(value) =>
+                    handleResizeSettingChange('quality', value[0])
+                  }
                   max={100}
                   min={1}
                   step={1}

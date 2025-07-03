@@ -15,6 +15,7 @@
     "@radix-ui/react-slider": "^1.1.2",
     "@tanstack/react-router": "1.122.0",
     "@tanstack/router-plugin": "^1.58.4",
+    "browser-image-compression": "2.0.2",
     "clsx": "^2.0.0",
     "lucide-react": "^0.294.0",
     "react": "19.1.0",
