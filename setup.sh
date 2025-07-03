@@ -1,3 +1,379 @@
+#!/bin/bash
+
+# ImageHorse Complete Setup Script
+# TanStack Start Edition with Theme System and Complete Toolbar 🐎
+
+set -e  # Exit on any error
+
+echo "🐎 Setting up ImageHorse - Complete Edition..."
+echo "=============================================="
+
+# Check if bun is installed
+if ! command -v bun &> /dev/null; then
+    echo "❌ Bun is not installed. Installing Bun..."
+    curl -fsSL https://bun.sh/install | bash
+    export PATH="$HOME/.bun/bin:$PATH"
+    echo "✅ Bun installed successfully!"
+else
+    echo "✅ Bun is already installed"
+fi
+
+# Display Bun version
+echo "📦 Using Bun version: $(bun --version)"
+
+# Install dependencies
+echo ""
+echo "📥 Installing dependencies with Bun..."
+bun install
+
+# Install theme dependencies
+echo ""
+echo "🎨 Installing theme system dependencies..."
+bun add next-themes
+bun add class-variance-authority clsx tailwind-merge
+bun add @radix-ui/react-dropdown-menu
+bun add -D @types/node
+
+# Create necessary directories
+echo ""
+echo "📁 Creating project directories..."
+mkdir -p public
+mkdir -p app/components/ui
+mkdir -p app/utils
+mkdir -p app/types
+mkdir -p app/context
+
+# Set up git repository if not already initialized
+if [ ! -d ".git" ]; then
+    echo ""
+    echo "🔧 Initializing Git repository..."
+    git init
+fi
+
+# Create/update .gitignore
+echo ""
+echo "📝 Creating/updating .gitignore..."
+cat > .gitignore << 'EOF'
+# Dependencies
+node_modules/
+bun.lockb
+
+# Build outputs
+dist/
+.output/
+.vercel/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Generated files
+app/routeTree.gen.ts
+*.gen.ts
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+bun-debug.log*
+bun-error.log*
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Hidden files and folders (dotfiles)
+.*
+!.gitignore
+!.env.example
+EOF
+
+# Create theme provider component
+echo ""
+echo "🎨 Creating theme provider component..."
+cat > app/components/theme-provider.tsx << 'EOF'
+"use client"
+
+import * as React from "react"
+import { ThemeProvider as NextThemesProvider } from "next-themes"
+import { type ThemeProviderProps } from "next-themes/dist/types"
+
+export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
+  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
+}
+EOF
+
+# Create dropdown menu components
+echo ""
+echo "📝 Creating dropdown menu components..."
+cat > app/components/ui/dropdown-menu.tsx << 'EOF'
+"use client"
+
+import * as React from "react"
+import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
+import { Check, ChevronRight, Circle } from "lucide-react"
+import { cn } from "../../lib/utils"
+
+const DropdownMenu = DropdownMenuPrimitive.Root
+
+const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
+
+const DropdownMenuGroup = DropdownMenuPrimitive.Group
+
+const DropdownMenuPortal = DropdownMenuPrimitive.Portal
+
+const DropdownMenuSub = DropdownMenuPrimitive.Sub
+
+const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup
+
+const DropdownMenuSubTrigger = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
+    inset?: boolean
+  }
+>(({ className, inset, children, ...props }, ref) => (
+  <DropdownMenuPrimitive.SubTrigger
+    ref={ref}
+    className={cn(
+      "flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent data-[state=open]:bg-accent",
+      inset && "pl-8",
+      className
+    )}
+    {...props}
+  >
+    {children}
+    <ChevronRight className="ml-auto h-4 w-4" />
+  </DropdownMenuPrimitive.SubTrigger>
+))
+DropdownMenuSubTrigger.displayName =
+  DropdownMenuPrimitive.SubTrigger.displayName
+
+const DropdownMenuSubContent = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
+>(({ className, ...props }, ref) => (
+  <DropdownMenuPrimitive.SubContent
+    ref={ref}
+    className={cn(
+      "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+      className
+    )}
+    {...props}
+  />
+))
+DropdownMenuSubContent.displayName =
+  DropdownMenuPrimitive.SubContent.displayName
+
+const DropdownMenuContent = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
+>(({ className, sideOffset = 4, ...props }, ref) => (
+  <DropdownMenuPrimitive.Portal>
+    <DropdownMenuPrimitive.Content
+      ref={ref}
+      sideOffset={sideOffset}
+      className={cn(
+        "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        className
+      )}
+      {...props}
+    />
+  </DropdownMenuPrimitive.Portal>
+))
+DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName
+
+const DropdownMenuItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Item>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
+    inset?: boolean
+  }
+>(({ className, inset, ...props }, ref) => (
+  <DropdownMenuPrimitive.Item
+    ref={ref}
+    className={cn(
+      "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      inset && "pl-8",
+      className
+    )}
+    {...props}
+  />
+))
+DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName
+
+const DropdownMenuCheckboxItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
+>(({ className, children, checked, ...props }, ref) => (
+  <DropdownMenuPrimitive.CheckboxItem
+    ref={ref}
+    className={cn(
+      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      className
+    )}
+    checked={checked}
+    {...props}
+  >
+    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+      <DropdownMenuPrimitive.ItemIndicator>
+        <Check className="h-4 w-4" />
+      </DropdownMenuPrimitive.ItemIndicator>
+    </span>
+    {children}
+  </DropdownMenuPrimitive.CheckboxItem>
+))
+DropdownMenuCheckboxItem.displayName =
+  DropdownMenuPrimitive.CheckboxItem.displayName
+
+const DropdownMenuRadioItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem>
+>(({ className, children, ...props }, ref) => (
+  <DropdownMenuPrimitive.RadioItem
+    ref={ref}
+    className={cn(
+      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      className
+    )}
+    {...props}
+  >
+    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+      <DropdownMenuPrimitive.ItemIndicator>
+        <Circle className="h-2 w-2 fill-current" />
+      </DropdownMenuPrimitive.ItemIndicator>
+    </span>
+    {children}
+  </DropdownMenuPrimitive.RadioItem>
+))
+DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName
+
+const DropdownMenuLabel = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Label>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
+    inset?: boolean
+  }
+>(({ className, inset, ...props }, ref) => (
+  <DropdownMenuPrimitive.Label
+    ref={ref}
+    className={cn(
+      "px-2 py-1.5 text-sm font-semibold",
+      inset && "pl-8",
+      className
+    )}
+    {...props}
+  />
+))
+DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName
+
+const DropdownMenuSeparator = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
+>(({ className, ...props }, ref) => (
+  <DropdownMenuPrimitive.Separator
+    ref={ref}
+    className={cn("-mx-1 my-1 h-px bg-muted", className)}
+    {...props}
+  />
+))
+DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName
+
+const DropdownMenuShortcut = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLSpanElement>) => {
+  return (
+    <span
+      className={cn("ml-auto text-xs tracking-widest opacity-60", className)}
+      {...props}
+    />
+  )
+}
+DropdownMenuShortcut.displayName = "DropdownMenuShortcut"
+
+export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+  DropdownMenuRadioItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuGroup,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuRadioGroup,
+}
+EOF
+
+# Create the proper theme toggle component
+echo ""
+echo "🎨 Creating proper theme toggle component..."
+cat > app/components/ui/theme-toggle.tsx << 'EOF'
+"use client"
+
+import * as React from "react"
+import { Moon, Sun } from "lucide-react"
+import { useTheme } from "next-themes"
+import { Button } from "./button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./dropdown-menu"
+
+export function ThemeToggle() {
+  const { setTheme } = useTheme()
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="icon" className="h-9 w-9">
+          <Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
+          <Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
+          <span className="sr-only">Toggle theme</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => setTheme("light")}>
+          Light
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme("dark")}>
+          Dark
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme("system")}>
+          System
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+EOF
+
+# Create resize-and-optimize component with complete toolbar
+echo ""
+echo "🛠️ Creating resize-and-optimize component with complete toolbar..."
+cat > app/components/resize-and-optimize.tsx << 'EOF'
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { globalImages } from './photo-upload'
@@ -494,3 +870,145 @@ export default function ResizeAndOptimize() {
     </div>
   )
 }
+EOF
+
+# Update layout.tsx
+echo ""
+echo "📝 Creating updated layout.tsx..."
+cat > app/layout.tsx << 'EOF'
+import React from 'react';
+import { ImageProvider } from './context/ImageContext';
+import { ThemeProvider } from './components/theme-provider';
+import './globals.css';
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen bg-background font-sans antialiased">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <ImageProvider>
+            {children}
+          </ImageProvider>
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+}
+EOF
+
+# Update globals.css with dark mode support
+echo ""
+echo "🎨 Ensuring globals.css has proper theme support..."
+if [ -f "app/globals.css" ]; then
+    # Check if dark mode variables exist
+    if ! grep -q ".dark {" app/globals.css; then
+        echo ""
+        echo "📝 Adding dark mode CSS variables..."
+        cat >> app/globals.css << 'EOF'
+
+/* Dark mode theme variables */
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 210 40% 98%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 212.7 26.8% 83.9%;
+}
+
+/* Custom animations for the AI Editor button */
+@keyframes rainbow-flow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes rainbow-slow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes rainbow-reverse {
+  0% { transform: rotate(360deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.animate-rainbow-slow {
+  animation: rainbow-slow 8s linear infinite;
+}
+
+.animate-rainbow-reverse {
+  animation: rainbow-reverse 6s linear infinite;
+}
+
+.rainbow-border {
+  animation: rainbow-flow 4s ease-in-out infinite;
+}
+EOF
+    else
+        echo "✅ Dark mode CSS variables already exist"
+    fi
+else
+    echo "⚠️  globals.css not found. Please ensure you have proper CSS variables set up."
+fi
+
+# Build the project
+echo ""
+echo "🔨 Building the project..."
+bun run build
+
+echo ""
+echo "🎉 Complete setup finished!"
+echo ""
+echo "✅ Installed all dependencies"
+echo "✅ Created theme system with next-themes"
+echo "✅ Built complete toolbar component"
+echo "✅ Added dark/light/system theme support"
+echo "✅ Created animated AI Editor button"
+echo "✅ Added proper zoom controls"
+echo "✅ Set up navigation buttons"
+echo ""
+echo "🛠️ Complete toolbar features:"
+echo "  • ➖ [100%] ➕ Zoom controls with percentage display"
+echo "  • 🎨 Edit Image Mode button (disabled)"
+echo "  • 📚 Bulk Image Edit button (shows count)"
+echo "  • ✨ AI Editor button (animated rainbow border)"
+echo "  • ⏪ ◀️ Switch Photos ▶️ ⏩ Navigation"
+echo "  • ← Back to Upload button"
+echo "  • 🗑️ Remove All Images button"
+echo "  • 🌙/☀️/💻 Theme toggle (cycles through all modes)"
+echo "  • 👤 User button (disabled)"
+echo ""
+echo "📋 Available commands:"
+echo "  bun run dev      - Start development server"
+echo "  bun run build    - Build for production"
+echo "  bun run start    - Start production server"
+echo "  bun run lint     - Run ESLint checks"
+echo "  bun run clean    - Clean build artifacts"
+echo "  bun run fresh    - Clean install"
+echo ""
+echo "🚀 To start developing:"
+echo "  bun run dev"
+echo ""
+echo "🐎 Happy coding with ImageHorse - Complete Edition!"

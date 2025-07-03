@@ -42,3 +42,8 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Hidden files and folders (dotfiles)
+.*
+!.gitignore
+!.env.example

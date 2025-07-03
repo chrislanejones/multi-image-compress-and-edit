@@ -1,5 +1,6 @@
 import React from 'react';
 import { ImageProvider } from './context/ImageContext';
+import { ThemeProvider } from './components/theme-provider';
 import './globals.css';
 
 export default function RootLayout({
@@ -10,9 +11,16 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background font-sans antialiased">
-        <ImageProvider>
-          {children}
-        </ImageProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <ImageProvider>
+            {children}
+          </ImageProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
