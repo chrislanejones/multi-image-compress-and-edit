@@ -1,49 +1,49 @@
-"use client";
+'use client'
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from '@tanstack/react-router';
-import { useImageContext } from '../../context/ImageContext';
-import { Button } from '../ui/button';
-import { Card } from '../ui/card';
-import { 
-  X, 
-  Download, 
-  RotateCw, 
-  RotateCcw, 
-  FlipHorizontal, 
+import React, { useState, useRef, useEffect, useCallback } from 'react'
+import { useParams, useNavigate } from '@tanstack/react-router'
+import { useImageContext } from '../../context/ImageContext'
+import { Button } from '../ui/button'
+import { Card } from '../ui/card'
+import {
+  X,
+  Download,
+  RotateCw,
+  RotateCcw,
+  FlipHorizontal,
   FlipVertical,
   Crop,
-  blur,
+  Droplets,
   Paintbrush,
   Type,
   ZoomIn,
   ZoomOut,
-  RefreshCw
-} from 'lucide-react';
-import type { EditorState, ImageDataItem } from '../../types';
+  RefreshCw,
+} from 'lucide-react'
+import type { EditorState, ImageDataItem } from '../../types'
 
 interface ImageEditorProps {
-  imageUrl?: string;
-  onImageChange?: (url: string) => void;
-  onDownload?: () => void;
-  onClose?: () => void;
-  fileName?: string;
-  fileType?: string;
-  fileSize?: number;
-  allImages?: ImageDataItem[];
-  currentImageId?: string;
-  onSelectImage?: (img: ImageDataItem) => void;
-  onNavigateImage?: (direction: string) => void;
-  onRemoveAll?: () => void;
-  onUploadNew?: () => void;
-  onEditModeChange?: (isEditMode: boolean) => void;
-  currentToolState?: EditorState;
-  onToolChange?: (tool: EditorState) => void;
+  imageUrl?: string
+  onImageChange?: (url: string) => void
+  onDownload?: () => void
+  onClose?: () => void
+  fileName?: string
+  fileType?: string
+  fileSize?: number
+  allImages?: ImageDataItem[]
+  currentImageId?: string
+  onSelectImage?: (img: ImageDataItem) => void
+  onNavigateImage?: (direction: string) => void
+  onRemoveAll?: () => void
+  onUploadNew?: () => void
+  onEditModeChange?: (isEditMode: boolean) => void
+  currentToolState?: EditorState
+  onToolChange?: (tool: EditorState) => void
 }
 
 export function ImageEditor(props: ImageEditorProps) {
-  const navigate = useNavigate();
-  const params = useParams({ strict: false });
+  const navigate = useNavigate()
+  const params = useParams({ strict: false })
   const {
     images,
     selectedImage,
@@ -52,70 +52,74 @@ export function ImageEditor(props: ImageEditorProps) {
     updateImageUrl,
     removeAllImages,
     setEditMode,
-  } = useImageContext();
+  } = useImageContext()
 
-  const [zoom, setZoom] = useState(1);
-  const [rotation, setRotation] = useState(0);
-  const [currentTool, setCurrentTool] = useState<EditorState>('editImage');
-  
-  const imageRef = useRef<HTMLImageElement>(null);
-  const imageId = params.imageId || props.currentImageId;
+  const [zoom, setZoom] = useState(1)
+  const [rotation, setRotation] = useState(0)
+  const [currentTool, setCurrentTool] = useState<EditorState>('editImage')
+
+  const imageRef = useRef<HTMLImageElement>(null)
+  const imageId = params.imageId || props.currentImageId
 
   useEffect(() => {
     if (imageId && images.length > 0) {
-      const image = images.find((img: any) => img.id === imageId);
+      const image = images.find((img: any) => img.id === imageId)
       if (image && selectedImageId !== imageId) {
-        selectImage(image);
+        selectImage(image)
       }
     }
-  }, [imageId, images, selectedImageId, selectImage]);
+  }, [imageId, images, selectedImageId, selectImage])
 
   const handleToolChange = (tool: EditorState) => {
-    setCurrentTool(tool);
+    setCurrentTool(tool)
     if (props.onToolChange) {
-      props.onToolChange(tool);
+      props.onToolChange(tool)
     }
-  };
+  }
 
   const handleZoomIn = () => {
-    setZoom(prev => Math.min(prev + 0.1, 3));
-  };
+    setZoom((prev) => Math.min(prev + 0.1, 3))
+  }
 
   const handleZoomOut = () => {
-    setZoom(prev => Math.max(prev - 0.1, 0.1));
-  };
+    setZoom((prev) => Math.max(prev - 0.1, 0.1))
+  }
 
   const handleRotateLeft = () => {
-    setRotation(prev => prev - 90);
-  };
+    setRotation((prev) => prev - 90)
+  }
 
   const handleRotateRight = () => {
-    setRotation(prev => prev + 90);
-  };
+    setRotation((prev) => prev + 90)
+  }
 
   const handleDownload = () => {
     if (selectedImage) {
-      const a = document.createElement('a');
-      a.href = selectedImage.url;
-      a.download = selectedImage.file.name || 'image.png';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      const a = document.createElement('a')
+      a.href = selectedImage.url
+      a.download = selectedImage.file.name || 'image.png'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
     }
     if (props.onDownload) {
-      props.onDownload();
+      props.onDownload()
     }
-  };
+  }
 
   const handleClose = () => {
-    setEditMode(false);
-    navigate({ to: '/gallery' });
+    setEditMode(false)
+    navigate({ to: '/gallery' })
     if (props.onClose) {
-      props.onClose();
+      props.onClose()
     }
-  };
+  }
 
-  const currentImage = selectedImage || (props.imageUrl ? { url: props.imageUrl, file: { name: props.fileName || 'image' } } : null);
+  const currentImage =
+    selectedImage ||
+    (props.imageUrl
+      ? { url: props.imageUrl, file: { name: props.fileName || 'image' } }
+      : null)
 
   if (!currentImage) {
     return (
@@ -124,7 +128,7 @@ export function ImageEditor(props: ImageEditorProps) {
           <p className="text-lg mb-4">Loading image...</p>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -134,9 +138,11 @@ export function ImageEditor(props: ImageEditorProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h1 className="text-xl font-semibold">Image Editor</h1>
-            <span className="text-sm text-gray-400">{currentImage.file.name}</span>
+            <span className="text-sm text-gray-400">
+              {currentImage.file.name}
+            </span>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <Button onClick={handleDownload} variant="outline" size="sm">
               <Download className="h-4 w-4 mr-2" />
@@ -210,11 +216,13 @@ export function ImageEditor(props: ImageEditorProps) {
                   Crop
                 </Button>
                 <Button
+                  onClick={() => handleToolChange('blur')}
+                  variant={currentTool === 'blur' ? 'default' : 'outline'}
                   size="sm"
                   className="w-full justify-start"
                 >
-                  <blur className="h-4 w-4 mr-2" />
-                  blur
+                  <Droplets className="h-4 w-4 mr-2" />
+                  Blur
                 </Button>
                 <Button
                   onClick={() => handleToolChange('paint')}
@@ -259,15 +267,16 @@ export function ImageEditor(props: ImageEditorProps) {
               style={{
                 transform: `scale(${zoom}) rotate(${rotation}deg)`,
                 transformOrigin: 'center',
-                transition: 'transform 0.2s ease-in-out'
+                transition: 'transform 0.2s ease-in-out',
               }}
             />
-            
+
             {/* Tool overlays would go here */}
             {currentTool !== 'editImage' && (
               <div className="absolute inset-0 pointer-events-none">
                 <div className="absolute top-2 left-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-sm">
-                  {currentTool.charAt(0).toUpperCase() + currentTool.slice(1)} Tool Active
+                  {currentTool.charAt(0).toUpperCase() + currentTool.slice(1)}{' '}
+                  Tool Active
                 </div>
               </div>
             )}
@@ -277,23 +286,25 @@ export function ImageEditor(props: ImageEditorProps) {
         {/* Right Sidebar - Image List */}
         {images.length > 1 && (
           <div className="w-64 bg-gray-800 border-l border-gray-700 p-4">
-            <h3 className="text-sm font-medium mb-3">Images ({images.length})</h3>
+            <h3 className="text-sm font-medium mb-3">
+              Images ({images.length})
+            </h3>
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {images.map((image: any) => (
                 <Card
                   key={image.id}
                   className={`p-2 cursor-pointer transition-colors ${
-                    selectedImageId === image.id 
-                      ? 'bg-blue-600 border-blue-500' 
+                    selectedImageId === image.id
+                      ? 'bg-blue-600 border-blue-500'
                       : 'bg-gray-700 hover:bg-gray-600'
                   }`}
                   onClick={() => {
-                    selectImage(image);
-                    navigate({ 
-                      to: '/edit/$imageId', 
+                    selectImage(image)
+                    navigate({
+                      to: '/edit/$imageId',
                       params: { imageId: image.id },
-                      search: { state: 'editImage' }
-                    });
+                      search: { state: 'editImage' },
+                    })
                   }}
                 >
                   <div className="flex items-center gap-2">
@@ -318,8 +329,8 @@ export function ImageEditor(props: ImageEditorProps) {
         )}
       </div>
     </div>
-  );
+  )
 }
 
 // Default export for compatibility
-export default ImageEditor;
+export default ImageEditor
