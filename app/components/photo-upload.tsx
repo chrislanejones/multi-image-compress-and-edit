@@ -1,23 +1,17 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Upload } from "lucide-react";
 import { Card, CardHeader, CardContent, CardFooter } from "./ui/card";
 import { Button } from "./ui/button";
 
-// Import from the combined utils module
+// Import optimized utils
 import {
   addToGlobalImages,
   getGlobalImages,
+  processImagesBatch,
   formatBytes,
-  safeRevokeURL,
-  compressImageAggressively,
-  getMimeType,
   type GlobalImage,
 } from "../utils/image-utils";
-
-// Install: npm install browser-image-compression
-// This provides web worker support for non-blocking compression
-import imageCompression from "browser-image-compression";
 
 export default function PhotoUpload() {
   const navigate = useNavigate();
@@ -27,195 +21,39 @@ export default function PhotoUpload() {
   const [progress, setProgress] = useState({
     current: 0,
     total: 0,
-    percent: 0,
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Optimized thumbnail generation - smaller size and better performance
-  const createThumbnail = useCallback(async (file: File): Promise<string> => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d", {
-          alpha: false,
-          willReadFrequently: false,
-        });
-
-        if (!ctx) {
-          resolve(URL.createObjectURL(file));
-          return;
-        }
-
-        // Reduced thumbnail size for better performance - 100px max
-        const MAX_SIZE = 100;
-        const ratio = Math.min(MAX_SIZE / img.width, MAX_SIZE / img.height);
-        canvas.width = img.width * ratio;
-        canvas.height = img.height * ratio;
-
-        // Disable smoothing for speed
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(URL.createObjectURL(blob));
-            } else {
-              resolve(URL.createObjectURL(file));
-            }
-          },
-          "image/jpeg",
-          0.5
-        );
-      };
-
-      img.onerror = () => resolve(URL.createObjectURL(file));
-      img.src = URL.createObjectURL(file);
-    });
-  }, []);
-
-  // Optimized web worker compression
-  const compressWithWebWorker = useCallback(
-    async (
-      file: File
-    ): Promise<{
-      compressed: string;
-      compressedSize: number;
-    }> => {
-      try {
-        const options = {
-          maxSizeMB: 1,
-          maxWidthOrHeight: 1920,
-          useWebWorker: true,
-          fileType: "image/jpeg",
-          quality: 0.8,
-          onProgress: (percent: number) => {
-            setProgress((prev) => ({ ...prev, percent }));
-          },
-        };
-
-        const compressedFile = await imageCompression(file, options);
-        const compressedUrl = URL.createObjectURL(compressedFile);
-
-        return {
-          compressed: compressedUrl,
-          compressedSize: compressedFile.size,
-        };
-      } catch (error) {
-        console.warn("Web worker compression failed, falling back:", error);
-        const result = await compressImageAggressively(
-          URL.createObjectURL(file)
-        );
-        return {
-          compressed: result.url,
-          compressedSize: result.size,
-        };
-      }
-    },
-    []
-  );
-
-  // Optimized file processing
+  // Optimized file handling with batching
   const handleFileChange = useCallback(
     async (files: FileList | null) => {
       if (!files || files.length === 0) return;
 
       setIsProcessing(true);
-      setProgress({ current: 0, total: files.length, percent: 0 });
+      setProgress({ current: 0, total: files.length });
 
       try {
-        const validFiles = Array.from(files).filter((file) => {
-          if (!file.type.startsWith("image/")) return false;
-          if (file.size > 50 * 1024 * 1024) {
-            console.warn(
-              `File ${file.name} too large: ${formatBytes(file.size)}`
-            );
-            return false;
+        // Use optimized batch processing
+        const processedImages = await processImagesBatch(
+          files,
+          (current, total) => {
+            setProgress({ current, total });
           }
-          return true;
-        });
+        );
 
-        if (validFiles.length === 0) {
-          setIsProcessing(false);
-          return;
+        if (processedImages.length > 0) {
+          addToGlobalImages(processedImages);
+          // Navigate immediately after processing
+          navigate({ to: "/resize-and-optimize" });
         }
-
-        const BATCH_SIZE = 1;
-        const BATCH_DELAY = 10;
-        const allProcessedImages: GlobalImage[] = [];
-
-        for (let i = 0; i < validFiles.length; i += BATCH_SIZE) {
-          const batch = validFiles.slice(i, i + BATCH_SIZE);
-
-          const batchPromises = batch.map(async (file, batchIndex) => {
-            const currentIndex = i + batchIndex + 1;
-            setProgress((prev) => ({ ...prev, current: currentIndex }));
-
-            try {
-              const thumbnail = await createThumbnail(file);
-
-              const img = new Image();
-              const dimensions = await new Promise<{
-                width: number;
-                height: number;
-              }>((resolve) => {
-                img.onload = () =>
-                  resolve({
-                    width: img.naturalWidth,
-                    height: img.naturalHeight,
-                  });
-                img.onerror = () => resolve({ width: 0, height: 0 });
-                img.src = URL.createObjectURL(file);
-              });
-
-              const { compressed, compressedSize } =
-                await compressWithWebWorker(file);
-
-              return {
-                id: crypto.randomUUID(),
-                file,
-                url: URL.createObjectURL(file),
-                thumbnail,
-                compressed,
-                originalSize: file.size,
-                compressedSize,
-                width: dimensions.width,
-                height: dimensions.height,
-              };
-            } catch (error) {
-              console.error(`Error processing ${file.name}:`, error);
-              return null;
-            }
-          });
-
-          const batchResults = await Promise.all(batchPromises);
-          const validResults = batchResults.filter(
-            (result): result is NonNullable<typeof result> => result !== null
-          );
-
-          allProcessedImages.push(...validResults);
-
-          if (i + BATCH_SIZE < validFiles.length) {
-            await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY));
-          }
-        }
-
-        // Add to global store using the utility function
-        if (allProcessedImages.length > 0) {
-          addToGlobalImages(allProcessedImages);
-        }
-
-        // Navigate after all processing is complete
-        navigate({ to: "/resize-and-optimize" });
       } catch (error) {
         console.error("Error processing images:", error);
       } finally {
         setIsProcessing(false);
-        setProgress({ current: 0, total: 0, percent: 0 });
+        setProgress({ current: 0, total: 0 });
       }
     },
-    [navigate, createThumbnail, compressWithWebWorker]
+    [navigate]
   );
 
   const handleInputChange = useCallback(
@@ -233,6 +71,7 @@ export default function PhotoUpload() {
     navigate({ to: "/resize-and-optimize" });
   }, [navigate]);
 
+  // Drag and drop handlers
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -263,8 +102,9 @@ export default function PhotoUpload() {
     [handleFileChange]
   );
 
-  // Use the utility function to check if images exist
   const hasImages = getGlobalImages().length > 0;
+  const progressPercent =
+    progress.total > 0 ? (progress.current / progress.total) * 100 : 0;
 
   return (
     <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
@@ -299,19 +139,17 @@ export default function PhotoUpload() {
             onDrop={handleDrop}
           >
             {isProcessing ? (
-              <div className="flex flex-col items-center">
+              <div className="flex flex-col items-center w-full">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-4" />
                 <p className="text-sm text-muted-foreground text-center mb-2">
                   Processing images... ({progress.current}/{progress.total})
                 </p>
-                {progress.percent > 0 && (
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-primary h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${progress.percent}%` }}
-                    />
-                  </div>
-                )}
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-primary h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
               </div>
             ) : (
               <>
@@ -319,10 +157,10 @@ export default function PhotoUpload() {
                 <p className="text-sm text-muted-foreground text-center">
                   {isDragging
                     ? "Drop your images here!"
-                    : "Drag and drop your images here, click to browse, or paste from clipboard"}
+                    : "Drag and drop your images here or click to browse"}
                 </p>
                 <p className="text-xs text-muted-foreground text-center mt-2">
-                  Supports JPEG, PNG, WebP, BMP • Max 50MB per image
+                  Supports JPEG, PNG, WebP • Max 50MB per image
                 </p>
               </>
             )}

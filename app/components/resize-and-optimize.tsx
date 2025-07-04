@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "./ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
-import { ThemeToggle } from "./ui/theme-toggle";
+import { SimpleThemeToggle } from "./ui/theme-toggle";
 import {
   X,
   Upload,
@@ -14,7 +14,6 @@ import {
   Trash2,
   Image as ImageIcon,
   Zap,
-  FileDown,
   Edit,
   Image,
   Sparkles,
@@ -25,7 +24,6 @@ import {
   User,
 } from "lucide-react";
 
-// Import from the combined utils module
 import {
   getGlobalImages,
   removeFromGlobalImages,
@@ -38,8 +36,8 @@ import {
   type GlobalImage,
 } from "../utils/image-utils";
 
-// Optimized thumbnail component with better loading states
-const SuperFastThumbnail = React.memo(
+// Highly optimized thumbnail component
+const FastThumbnail = React.memo(
   ({
     image,
     isSelected,
@@ -54,6 +52,9 @@ const SuperFastThumbnail = React.memo(
     const [isLoaded, setIsLoaded] = useState(false);
     const [hasError, setHasError] = useState(false);
 
+    // Use thumbnail if available, otherwise use compressed, otherwise original
+    const imageUrl = image.thumbnail || image.compressed || image.url;
+
     return (
       <div
         className={`relative aspect-square cursor-pointer rounded-lg overflow-hidden group border-2 transition-all ${
@@ -66,20 +67,20 @@ const SuperFastThumbnail = React.memo(
         {/* Loading state */}
         {!isLoaded && !hasError && (
           <div className="w-full h-full bg-muted animate-pulse flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         )}
 
         {/* Error state */}
         {hasError && (
           <div className="w-full h-full bg-muted flex items-center justify-center">
-            <ImageIcon className="w-8 h-8 text-muted-foreground" />
+            <ImageIcon className="w-6 h-6 text-muted-foreground" />
           </div>
         )}
 
         {/* Image */}
         <img
-          src={image.thumbnail || image.url}
+          src={imageUrl}
           alt={image.file.name}
           className={`w-full h-full object-cover transition-opacity ${
             isLoaded ? "opacity-100" : "opacity-0"
@@ -126,7 +127,7 @@ const SuperFastThumbnail = React.memo(
   }
 );
 
-SuperFastThumbnail.displayName = "SuperFastThumbnail";
+FastThumbnail.displayName = "FastThumbnail";
 
 export default function ResizeAndOptimize() {
   const navigate = useNavigate();
@@ -134,18 +135,21 @@ export default function ResizeAndOptimize() {
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [zoom, setZoom] = useState(100);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [, forceUpdate] = useState({}); // For forcing re-renders when global state changes
+  const [, forceUpdate] = useState({}); // For forcing re-renders
 
   const imagesPerPage = 12;
 
-  // Get current images and stats using utility functions
-  const images = getGlobalImages();
-  const pageData = getPaginatedImages(currentPage, imagesPerPage);
-  const stats = getGlobalImageStats();
-  const selectedImage = selectedImageId
-    ? getGlobalImageById(selectedImageId)
-    : null;
+  // Memoize expensive calculations
+  const images = useMemo(() => getGlobalImages(), [forceUpdate]);
+  const pageData = useMemo(
+    () => getPaginatedImages(currentPage, imagesPerPage),
+    [currentPage, images.length]
+  );
+  const stats = useMemo(() => getGlobalImageStats(), [images.length]);
+  const selectedImage = useMemo(
+    () => (selectedImageId ? getGlobalImageById(selectedImageId) : null),
+    [selectedImageId, images.length]
+  );
 
   // Set initial selection
   useEffect(() => {
@@ -162,7 +166,6 @@ export default function ResizeAndOptimize() {
     (imageId: string, e: React.MouseEvent) => {
       e.stopPropagation();
 
-      // Use the utility function to remove and cleanup
       const removedImage = removeFromGlobalImages(imageId);
 
       if (removedImage) {
@@ -259,7 +262,7 @@ export default function ResizeAndOptimize() {
       <div className="mb-6">
         <div className="grid grid-cols-12 gap-2 mb-4">
           {pageData.currentImages.map((image: GlobalImage) => (
-            <SuperFastThumbnail
+            <FastThumbnail
               key={image.id}
               image={image}
               isSelected={selectedImageId === image.id}
@@ -269,7 +272,7 @@ export default function ResizeAndOptimize() {
           ))}
         </div>
 
-        {/* Complete Toolbar */}
+        {/* Streamlined Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4 bg-gray-700 p-2 rounded-lg z-10 relative">
           <div className="flex items-center gap-2">
             {/* Zoom Controls */}
@@ -296,7 +299,7 @@ export default function ResizeAndOptimize() {
               data-testid="edit-image-button"
             >
               <Edit className="mr-2 h-4 w-4" />
-              Edit Image Mode
+              Edit Image
             </Button>
 
             <Button
@@ -310,69 +313,8 @@ export default function ResizeAndOptimize() {
               }
             >
               <Image className="mr-2 h-4 w-4" />
-              Bulk Image Edit
-              {images.length > 0 && (
-                <span className="ml-1 text-xs opacity-75">
-                  ({images.length})
-                </span>
-              )}
+              Bulk Edit ({images.length})
             </Button>
-
-            {/* AI Editor Button with Animated Rainbow Ring */}
-            <div className="relative">
-              {/* Animated rainbow ring overlay */}
-              <div className="absolute -inset-0.1 rounded-lg opacity-80 py-2 px-4">
-                <div className="w-full h-full rounded-lg bg-gradient-to-r from-red-500 via-orange-500 via-yellow-500 via-green-500 via-blue-500 via-indigo-500 via-purple-500 to-red-500 animate-rainbow-slow"></div>
-              </div>
-
-              {/* Second rainbow ring for depth */}
-              <div className="absolute -inset-0.1 rounded-lg">
-                <div className="w-full h-full rounded-lg bg-gradient-to-r from-purple-400 via-blue-400 via-green-400 via-yellow-400 via-orange-400 via-red-400 to-purple-400 animate-rainbow-reverse opacity-50"></div>
-              </div>
-
-              {/* Animated rainbow outline */}
-              <div
-                className="absolute inset-0 rounded-md p-[1px] rainbow-border"
-                style={{
-                  background:
-                    "linear-gradient(90deg, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #6366f1, #a855f7, #ef4444)",
-                  backgroundSize: "400% 100%",
-                  animation: "rainbow-flow 4s ease-in-out infinite",
-                }}
-              >
-                <div className="w-full h-full bg-background rounded-[calc(0.375rem-1px)]"></div>
-              </div>
-
-              {/* Main AI Editor button */}
-              <button
-                disabled
-                className="py-4 px-5 relative inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground px-4 py-2 h-9"
-              >
-                <svg
-                  className="w-4 h-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z"
-                    fill="currentColor"
-                    opacity="0.5"
-                  />
-                  <path
-                    d="M19 11L19.74 13.09L22 14L19.74 14.91L19 17L18.26 14.91L16 14L18.26 13.09L19 11Z"
-                    fill="currentColor"
-                    opacity="0.7"
-                  />
-                  <path
-                    d="M5 11L5.74 13.09L8 14L5.74 14.91L5 17L4.26 14.91L2 14L4.26 13.09L5 11Z"
-                    fill="currentColor"
-                    opacity="0.3"
-                  />
-                </svg>
-                AI Editor
-              </button>
-            </div>
 
             {/* Navigation Controls */}
             <div className="flex items-center gap-1 ml-2">
@@ -434,11 +376,11 @@ export default function ResizeAndOptimize() {
               onClick={handleRemoveAll}
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Remove All Images
+              Remove All
             </Button>
 
             {/* Theme Toggle */}
-            <ThemeToggle />
+            <SimpleThemeToggle />
 
             {/* User Button */}
             <Button variant="outline" className="h-9 w-9" disabled>
