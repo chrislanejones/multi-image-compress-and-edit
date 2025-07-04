@@ -15,10 +15,22 @@ export interface GlobalImage {
 
 export type ImageFormat = "jpeg" | "png" | "webp";
 
+export interface CropArea {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  unit?: string;
+}
+
 // ===== OPTIMIZED GLOBAL STATE =====
 let globalImages: GlobalImage[] = [];
 let imageUrlCache = new Map<string, string>();
 let thumbnailCache = new Map<string, string>();
+let compressionCache = new Map<
+  string,
+  { compressed: string; compressedSize: number }
+>();
 
 // Batch processing queues
 let processingQueue: (() => Promise<void>)[] = [];
@@ -58,12 +70,36 @@ export const clearGlobalImages = () => {
 
   imageUrlCache.clear();
   thumbnailCache.clear();
+  // Keep compression cache for reuse
+  // compressionCache.clear(); // Don't clear this one
   globalImages.length = 0;
 };
 
 export const getGlobalImages = () => globalImages;
 export const getGlobalImageById = (id: string) =>
   globalImages.find((img) => img.id === id);
+
+export const updateGlobalImage = (
+  id: string,
+  updates: Partial<GlobalImage>
+) => {
+  const index = globalImages.findIndex((img) => img.id === id);
+  if (index !== -1) {
+    globalImages[index] = { ...globalImages[index], ...updates };
+
+    // Cache compression data for persistence
+    if (updates.compressed && updates.compressedSize) {
+      const cacheKey = `${globalImages[index].file.name}-${globalImages[index].file.size}`;
+      compressionCache.set(cacheKey, {
+        compressed: updates.compressed,
+        compressedSize: updates.compressedSize,
+      });
+    }
+
+    return globalImages[index];
+  }
+  return null;
+};
 
 // ===== UTILITY FUNCTIONS =====
 
@@ -104,7 +140,7 @@ export function formatBytes(bytes: number, decimals = 2): string {
 // ===== OPTIMIZED IMAGE PROCESSING =====
 
 /**
- * Fast thumbnail generation with caching and reduced quality
+ * High-quality thumbnail generation with better resolution
  */
 export function createOptimizedThumbnail(file: File): Promise<string> {
   // Check cache first
@@ -129,14 +165,15 @@ export function createOptimizedThumbnail(file: File): Promise<string> {
         return;
       }
 
-      // Much smaller thumbnail for speed
-      const MAX_SIZE = 80;
+      // Better thumbnail size for crisp display
+      const MAX_SIZE = 200; // Increased from 80px
       const ratio = Math.min(MAX_SIZE / img.width, MAX_SIZE / img.height);
       canvas.width = img.width * ratio;
       canvas.height = img.height * ratio;
 
-      // Disable smoothing for speed
-      ctx.imageSmoothingEnabled = false;
+      // Enable smoothing for better quality
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
       canvas.toBlob(
@@ -152,7 +189,7 @@ export function createOptimizedThumbnail(file: File): Promise<string> {
           }
         },
         "image/jpeg",
-        0.3 // Very low quality for speed
+        0.85 // Higher quality from 0.3
       );
     };
 
@@ -167,9 +204,9 @@ export function createOptimizedThumbnail(file: File): Promise<string> {
 }
 
 /**
- * Lightweight compression without web workers
+ * Aggressive compression to target 300KB max file size
  */
-export async function lightweightCompress(file: File): Promise<{
+export async function aggressiveCompress300KB(file: File): Promise<{
   compressed: string;
   compressedSize: number;
 }> {
@@ -178,33 +215,53 @@ export async function lightweightCompress(file: File): Promise<{
 
     let width = img.naturalWidth;
     let height = img.naturalHeight;
-
-    // Scale down large images
-    const MAX_WIDTH = 1200;
-    if (width > MAX_WIDTH) {
-      const ratio = MAX_WIDTH / width;
-      width = Math.floor(width * ratio);
-      height = Math.floor(height * ratio);
-    }
+    let quality = 0.9;
+    let attempts = 0;
+    const maxAttempts = 8;
+    const targetSizeKB = 300;
 
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Cannot get 2D context");
 
-    canvas.width = width;
-    canvas.height = height;
+    let resultBlob: Blob;
 
-    ctx.drawImage(img, 0, 0, width, height);
+    do {
+      canvas.width = width;
+      canvas.height = height;
 
-    const blob = await canvasToBlob(canvas, "jpeg", 0.8);
-    const compressedUrl = URL.createObjectURL(blob);
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
 
+      resultBlob = await canvasToBlob(canvas, "jpeg", quality);
+      const currentSizeKB = resultBlob.size / 1024;
+
+      if (currentSizeKB <= targetSizeKB || attempts >= maxAttempts) {
+        break;
+      }
+
+      // Aggressive reduction strategy
+      if (currentSizeKB > targetSizeKB * 2) {
+        // If way too big, reduce both dimensions and quality
+        const scaleFactor = Math.sqrt(targetSizeKB / currentSizeKB);
+        width = Math.floor(width * scaleFactor);
+        height = Math.floor(height * scaleFactor);
+        quality = Math.max(0.3, quality * 0.8);
+      } else {
+        // Just reduce quality
+        quality = Math.max(0.3, quality * 0.7);
+      }
+
+      attempts++;
+    } while (true);
+
+    const compressedUrl = URL.createObjectURL(resultBlob);
     return {
       compressed: compressedUrl,
-      compressedSize: blob.size,
+      compressedSize: resultBlob.size,
     };
   } catch (error) {
-    console.warn("Compression failed:", error);
+    console.warn("300KB compression failed:", error);
     return {
       compressed: URL.createObjectURL(file),
       compressedSize: file.size,
@@ -265,7 +322,7 @@ export function canvasToBlob(
 // ===== BATCH PROCESSING =====
 
 /**
- * Process images in small batches to prevent UI blocking
+ * Process images in small batches - Check cache and restore compression data
  */
 export async function processImagesBatch(
   files: FileList,
@@ -280,33 +337,47 @@ export async function processImagesBatch(
   if (validFiles.length === 0) return [];
 
   const results: GlobalImage[] = [];
-  const BATCH_SIZE = 2; // Smaller batches
+  const BATCH_SIZE = 3; // Slightly larger batches since no compression
 
   for (let i = 0; i < validFiles.length; i += BATCH_SIZE) {
     const batch = validFiles.slice(i, i + BATCH_SIZE);
 
     const batchPromises = batch.map(async (file) => {
       try {
-        // Quick thumbnail
+        // Quick thumbnail only
         const thumbnail = await createOptimizedThumbnail(file);
 
         // Get dimensions without blocking
         const dimensions = await getDimensionsQuick(file);
 
-        // Lightweight compression
-        const { compressed, compressedSize } = await lightweightCompress(file);
+        // Check if we have cached compression data for this exact file
+        const cacheKey = `${file.name}-${file.size}`;
+        const cachedCompression = compressionCache.get(cacheKey);
 
-        return {
+        console.log(
+          `Processing ${file.name}: Cache ${cachedCompression ? "HIT" : "MISS"}`
+        );
+
+        const newImage: GlobalImage = {
           id: crypto.randomUUID(),
           file,
           url: URL.createObjectURL(file),
           thumbnail,
-          compressed,
+          compressed: cachedCompression?.compressed, // Restore from cache
           originalSize: file.size,
-          compressedSize,
+          compressedSize: cachedCompression?.compressedSize, // Restore from cache
           width: dimensions.width,
           height: dimensions.height,
         };
+
+        // If we have cached data, log it
+        if (cachedCompression) {
+          console.log(
+            `Restored compression for ${file.name}: ${cachedCompression.compressedSize} bytes`
+          );
+        }
+
+        return newImage;
       } catch (error) {
         console.error(`Error processing ${file.name}:`, error);
         return null;
@@ -329,7 +400,7 @@ export async function processImagesBatch(
 
     // Small delay to prevent UI blocking
     if (i + BATCH_SIZE < validFiles.length) {
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 10));
     }
   }
 
@@ -406,3 +477,412 @@ export function getPaginatedImages(page: number, itemsPerPage: number = 12) {
 export const cleanupGlobalImages = () => {
   clearGlobalImages();
 };
+
+// ===== ADDITIONAL UTILITY FUNCTIONS =====
+
+/**
+ * Calculate size reduction percentage
+ */
+export function calculateSizeReduction(
+  originalSize: number,
+  newSize: number
+): number {
+  if (originalSize <= 0) return 0;
+  return 100 - (newSize / originalSize) * 100;
+}
+
+/**
+ * Create a safe image URL, falling back to placeholder if needed
+ */
+export function getSafeImageUrl(url?: string): string {
+  if (!url || typeof url !== "string") return "/placeholder.svg";
+  return url;
+}
+
+/**
+ * Extract format from file type
+ */
+export function getFileFormat(fileType: string | undefined): string {
+  if (!fileType || typeof fileType !== "string") return "unknown";
+  const parts = fileType.split("/");
+  return parts.length > 1 ? parts[1] : "unknown";
+}
+
+/**
+ * Apply crop to an image and return the result as a blob
+ */
+export async function cropImageToBlob(
+  imageUrl: string,
+  crop: any,
+  format: ImageFormat | string = "jpeg",
+  quality = 0.9
+): Promise<{ blob: Blob; fileName: string }> {
+  try {
+    const img = await loadImage(imageUrl);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) {
+      throw new Error("Failed to get canvas context");
+    }
+
+    // Calculate crop dimensions in pixels
+    const cropX = (crop.x / 100) * img.naturalWidth;
+    const cropY = (crop.y / 100) * img.naturalHeight;
+    const cropWidth = (crop.width / 100) * img.naturalWidth;
+    const cropHeight = (crop.height / 100) * img.naturalHeight;
+
+    canvas.width = cropWidth;
+    canvas.height = cropHeight;
+
+    // Draw the cropped portion
+    ctx.drawImage(
+      img,
+      cropX,
+      cropY,
+      cropWidth,
+      cropHeight,
+      0,
+      0,
+      cropWidth,
+      cropHeight
+    );
+
+    const blob = await canvasToBlob(canvas, format, quality);
+    const extension = format === "jpeg" ? "jpg" : format;
+    const fileName = `cropped-image-${Date.now()}.${extension}`;
+
+    return { blob, fileName };
+  } catch (error) {
+    console.error("Error cropping image:", error);
+    throw error;
+  }
+}
+
+/**
+ * Apply crop to an image and return the result as a URL
+ */
+export async function cropImage(
+  image: HTMLImageElement,
+  crop: any,
+  format: ImageFormat | string = "jpeg",
+  quality = 0.9
+): Promise<string> {
+  try {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) {
+      throw new Error("Failed to get canvas context");
+    }
+
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+
+    canvas.width = crop.width;
+    canvas.height = crop.height;
+
+    ctx.drawImage(
+      image,
+      crop.x * scaleX,
+      crop.y * scaleY,
+      crop.width * scaleX,
+      crop.height * scaleY,
+      0,
+      0,
+      crop.width,
+      crop.height
+    );
+
+    const blob = await canvasToBlob(canvas, format, quality);
+    return URL.createObjectURL(blob);
+  } catch (error) {
+    console.error("Error cropping image:", error);
+    throw error;
+  }
+}
+
+/**
+ * Resize an image with high-quality multi-pass algorithm
+ */
+export async function resizeImage(
+  image: HTMLImageElement,
+  width: number,
+  height: number,
+  format: ImageFormat | string = "jpeg",
+  quality = 0.85
+): Promise<string> {
+  try {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+    if (!ctx) {
+      throw new Error("Failed to get canvas context");
+    }
+
+    // Multi-pass resizing for better quality when downscaling significantly
+    if (image.width > width * 1.5 || image.height > height * 1.5) {
+      let currentWidth = image.width;
+      let currentHeight = image.height;
+      let currentSource: HTMLImageElement | HTMLCanvasElement = image;
+
+      // Use intermediate canvas for multi-step resizing
+      const tempCanvas = document.createElement("canvas");
+      const tempCtx = tempCanvas.getContext("2d");
+
+      if (tempCtx) {
+        while (currentWidth > width * 1.5 || currentHeight > height * 1.5) {
+          currentWidth = Math.max(currentWidth * 0.5, width);
+          currentHeight = Math.max(currentHeight * 0.5, height);
+
+          tempCanvas.width = currentWidth;
+          tempCanvas.height = currentHeight;
+
+          tempCtx.imageSmoothingEnabled = true;
+          tempCtx.imageSmoothingQuality = "high";
+          tempCtx.drawImage(currentSource, 0, 0, currentWidth, currentHeight);
+
+          currentSource = tempCanvas;
+        }
+      }
+
+      // Final resize to exact dimensions
+      canvas.width = width;
+      canvas.height = height;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(currentSource, 0, 0, width, height);
+    } else {
+      // Direct resize for small changes
+      canvas.width = width;
+      canvas.height = height;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(image, 0, 0, width, height);
+    }
+
+    const blob = await canvasToBlob(canvas, format, quality);
+    return URL.createObjectURL(blob);
+  } catch (error) {
+    console.error("Error resizing image:", error);
+    throw error;
+  }
+}
+
+/**
+ * Rotate an image by degrees and return a data URL
+ */
+export async function rotateImage(
+  imageUrl: string,
+  degrees: number,
+  format: string = "jpeg",
+  quality = 0.85,
+  backgroundColor: string = "transparent"
+): Promise<string> {
+  const img = await loadImage(imageUrl);
+  const radians = (degrees * Math.PI) / 180;
+
+  // Calculate the bounding box for the rotated image
+  const sin = Math.abs(Math.sin(radians));
+  const cos = Math.abs(Math.cos(radians));
+
+  // Calculate new dimensions that will contain the rotated image
+  const newWidth = Math.floor(img.width * cos + img.height * sin);
+  const newHeight = Math.floor(img.width * sin + img.height * cos);
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Unable to get canvas context");
+
+  // Set canvas size to accommodate the rotated image
+  canvas.width = newWidth;
+  canvas.height = newHeight;
+
+  // Fill background if specified (useful for JPEG format)
+  if (backgroundColor !== "transparent") {
+    ctx.fillStyle = backgroundColor;
+    ctx.fillRect(0, 0, newWidth, newHeight);
+  }
+
+  // Move to center of canvas
+  ctx.translate(newWidth / 2, newHeight / 2);
+
+  // Rotate around center
+  ctx.rotate(radians);
+
+  // Draw image centered at origin
+  ctx.drawImage(img, -img.width / 2, -img.height / 2);
+
+  return canvas.toDataURL(getMimeType(format), normalizeQuality(quality));
+}
+
+/**
+ * Compress an image with optional resizing
+ */
+export async function compressImage(
+  imgSrc: string,
+  format: string = "webp",
+  quality = 85,
+  maxWidth?: number
+): Promise<{ url: string; blob: Blob; width: number; height: number }> {
+  try {
+    const img = await loadImage(imgSrc);
+
+    let width = img.naturalWidth;
+    let height = img.naturalHeight;
+
+    if (maxWidth && width > maxWidth) {
+      const ratio = maxWidth / width;
+      width = Math.floor(width * ratio);
+      height = Math.floor(height * ratio);
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Could not get canvas context");
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(img, 0, 0, width, height);
+
+    const blob = await canvasToBlob(canvas, format, quality);
+    const url = URL.createObjectURL(blob);
+
+    return { url, blob, width, height };
+  } catch (error) {
+    console.error("Error compressing image:", error);
+    throw error;
+  }
+}
+
+/**
+ * Create a file from a blob
+ */
+export function createFileFromBlob(
+  blob: Blob,
+  fileName: string,
+  format: ImageFormat | string = "jpeg"
+): File {
+  const extension = format === "jpeg" ? "jpg" : format;
+  const name = fileName.includes(".")
+    ? fileName.substring(0, fileName.lastIndexOf(".")) + "." + extension
+    : fileName + "." + extension;
+
+  return new File([blob], name, { type: getMimeType(format) });
+}
+
+/**
+ * Download an image
+ */
+export function downloadImage(
+  imageUrl: string,
+  fileName: string,
+  format: ImageFormat | string = "jpeg"
+): void {
+  const extension = format === "jpeg" ? "jpg" : format;
+  const link = document.createElement("a");
+  link.href = imageUrl;
+  link.download = `${fileName.split(".")[0] || "image"}-edited.${extension}`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+/**
+ * Convert base64 data to a blob
+ */
+export function base64ToBlob(
+  base64Data: string,
+  contentType = "image/jpeg"
+): Blob {
+  const base64 = base64Data.includes("base64,")
+    ? base64Data.split("base64,")[1]
+    : base64Data;
+
+  const byteCharacters = atob(base64);
+  const byteArrays: Uint8Array[] = [];
+
+  for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+    const slice = byteCharacters.slice(offset, offset + 512);
+    const byteNumbers = new Array(slice.length);
+
+    for (let i = 0; i < slice.length; i++) {
+      byteNumbers[i] = slice.charCodeAt(i);
+    }
+
+    const byteArray = new Uint8Array(byteNumbers);
+    byteArrays.push(byteArray);
+  }
+
+  return new Blob(byteArrays, { type: contentType });
+}
+
+/**
+ * Get image details from a URL
+ */
+export async function getImageDetails(url: string): Promise<{
+  width: number;
+  height: number;
+  naturalWidth: number;
+  naturalHeight: number;
+}> {
+  const img = await loadImage(url);
+  return {
+    width: img.width,
+    height: img.height,
+    naturalWidth: img.naturalWidth,
+    naturalHeight: img.naturalHeight,
+  };
+}
+
+/**
+ * Get a blob from a URL (dataURL or objectURL)
+ */
+export async function getBlobFromUrl(url: string): Promise<Blob> {
+  const response = await fetch(url);
+  return await response.blob();
+}
+
+/**
+ * Bulk crop multiple images and return as blobs for ZIP download
+ */
+export async function bulkCropImages(
+  imageUrls: string[],
+  crop: any,
+  format: ImageFormat | string = "jpeg",
+  quality = 0.9,
+  onProgress?: (progress: number, current: number, total: number) => void
+): Promise<Array<{ blob: Blob; fileName: string }>> {
+  const results: Array<{ blob: Blob; fileName: string }> = [];
+
+  for (let i = 0; i < imageUrls.length; i++) {
+    const imageUrl = imageUrls[i];
+
+    // Update progress
+    if (onProgress) {
+      onProgress(
+        Math.round((i / imageUrls.length) * 100),
+        i + 1,
+        imageUrls.length
+      );
+    }
+
+    try {
+      const result = await cropImageToBlob(imageUrl, crop, format, quality);
+      results.push({
+        ...result,
+        fileName: `cropped-image-${i + 1}.${
+          format === "jpeg" ? "jpg" : format
+        }`,
+      });
+    } catch (error) {
+      console.error(`Error cropping image ${i + 1}:`, error);
+      // Continue with other images even if one fails
+    }
+  }
+
+  return results;
+}

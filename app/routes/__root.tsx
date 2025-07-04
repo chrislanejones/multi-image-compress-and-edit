@@ -1,5 +1,7 @@
+import React from "react";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { ThemeProvider } from "../components/theme-provider";
+import { Toaster } from "sonner";
 import "../globals.css";
 
 export const Route = createRootRoute({
@@ -17,6 +19,8 @@ export const Route = createRootRoute({
               <Outlet />
             </main>
           </div>
+          {/* Toast notifications */}
+          <Toaster position="top-right" richColors closeButton expand />
         </ThemeProvider>
       </body>
     </html>

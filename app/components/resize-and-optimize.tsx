@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "./ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
-import { SimpleThemeToggle } from "./ui/theme-toggle";
+import { ThemeToggle } from "./ui/theme-toggle";
 import {
   X,
   Upload,
@@ -22,6 +22,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   User,
+  Home,
 } from "lucide-react";
 
 import {
@@ -36,67 +37,149 @@ import {
   type GlobalImage,
 } from "../utils/image-utils";
 
-// Highly optimized thumbnail component
+// Gallery thumbnail with popup effect and clean compression indicator
 const FastThumbnail = React.memo(
   ({
     image,
     isSelected,
     onClick,
     onRemove,
+    forceUpdate,
   }: {
     image: GlobalImage;
     isSelected: boolean;
     onClick: () => void;
     onRemove: (e: React.MouseEvent) => void;
+    forceUpdate: (obj: {}) => void;
   }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [hasError, setHasError] = useState(false);
+    const [isCompressing, setIsCompressing] = useState(false);
+    const [hasAppeared, setHasAppeared] = useState(false);
+    const [compressionAttempted, setCompressionAttempted] = useState(false);
+
+    // Reset compression state if image already has compressed data
+    useEffect(() => {
+      if (image.compressedSize) {
+        console.log(
+          `Image ${image.file.name} already has compression data: ${image.compressedSize} bytes`
+        );
+        setIsCompressing(false);
+        setCompressionAttempted(true);
+      }
+    }, [image.compressedSize, image.file.name]);
+
+    // Compress image when component mounts if not already compressed
+    useEffect(() => {
+      // Always log current state
+      console.log(
+        `Image ${image.file.name}: compressedSize=${image.compressedSize}, isCompressing=${isCompressing}, attempted=${compressionAttempted}`
+      );
+
+      if (!image.compressedSize && !isCompressing && !compressionAttempted) {
+        console.log(`Starting compression for ${image.file.name}`);
+        setIsCompressing(true);
+        setCompressionAttempted(true);
+
+        // Import the compression function dynamically
+        import("../utils/image-utils").then(
+          ({ aggressiveCompress300KB, updateGlobalImage }) => {
+            aggressiveCompress300KB(image.file)
+              .then(({ compressed, compressedSize }) => {
+                console.log(
+                  "✅ Compression complete for",
+                  image.file.name,
+                  "->",
+                  compressedSize,
+                  "bytes"
+                );
+                // Update the global image with compression data
+                updateGlobalImage(image.id, { compressed, compressedSize });
+                setIsCompressing(false);
+                // Force a re-render by updating the forceUpdate in parent
+                forceUpdate({});
+              })
+              .catch((error) => {
+                console.error("❌ Compression failed:", error);
+                setIsCompressing(false);
+              });
+          }
+        );
+      } else if (image.compressedSize) {
+        console.log(
+          `⚡ Image ${image.file.name} already compressed: ${image.compressedSize} bytes`
+        );
+      }
+    }, [
+      image.id,
+      image.compressedSize,
+      isCompressing,
+      compressionAttempted,
+      image.file.name,
+      forceUpdate,
+    ]);
+
+    // Popup effect when component mounts
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        setHasAppeared(true);
+      }, 100);
+      return () => clearTimeout(timer);
+    }, []);
+
+    // Force clear blur after timeout as fallback
+    useEffect(() => {
+      if (isCompressing) {
+        const fallbackTimer = setTimeout(() => {
+          console.log("Fallback: Clearing blur for", image.file.name);
+          setIsCompressing(false);
+        }, 10000); // 10 second fallback
+
+        return () => clearTimeout(fallbackTimer);
+      }
+    }, [isCompressing, image.file.name]);
 
     // Use thumbnail if available, otherwise use compressed, otherwise original
     const imageUrl = image.thumbnail || image.compressed || image.url;
 
+    // Determine if we should show blur (only if actively compressing)
+    const shouldBlur = isCompressing && !image.compressedSize;
+
     return (
       <div
-        className={`relative aspect-square cursor-pointer rounded-lg overflow-hidden group border-2 transition-all ${
+        className={`relative aspect-square cursor-pointer rounded-lg overflow-hidden group border-2 transition-all duration-500 transform ${
+          hasAppeared ? "scale-100 opacity-100" : "scale-75 opacity-0"
+        } ${
           isSelected
             ? "border-primary ring-2 ring-primary/50"
             : "border-border hover:border-primary/50"
         }`}
         onClick={onClick}
       >
-        {/* Loading state */}
-        {!isLoaded && !hasError && (
-          <div className="w-full h-full bg-muted animate-pulse flex items-center justify-center">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-        )}
+        {/* Image with conditional blur effect */}
+        <div className="relative w-full h-full">
+          <img
+            src={imageUrl}
+            alt={image.file.name}
+            className={`w-full h-full object-cover transition-all duration-700 ${
+              isLoaded ? "opacity-100" : "opacity-0"
+            } ${shouldBlur ? "blur-md scale-105" : "blur-0 scale-100"}`}
+            style={{
+              imageRendering: "auto",
+            }}
+            loading="lazy"
+            decoding="async"
+            onLoad={() => setIsLoaded(true)}
+            onError={() => setHasError(true)}
+          />
 
-        {/* Error state */}
-        {hasError && (
-          <div className="w-full h-full bg-muted flex items-center justify-center">
-            <ImageIcon className="w-6 h-6 text-muted-foreground" />
-          </div>
-        )}
-
-        {/* Image */}
-        <img
-          src={imageUrl}
-          alt={image.file.name}
-          className={`w-full h-full object-cover transition-opacity ${
-            isLoaded ? "opacity-100" : "opacity-0"
-          }`}
-          loading="lazy"
-          decoding="async"
-          onLoad={() => setIsLoaded(true)}
-          onError={() => setHasError(true)}
-        />
-
-        {/* Compression indicator */}
-        {image.compressed && (
-          <div className="absolute top-1 left-1 bg-green-500 text-white px-1 py-0.5 text-xs rounded">
-            <Zap className="w-3 h-3 inline" />
-          </div>
-        )}
+          {/* Error state */}
+          {hasError && (
+            <div className="absolute inset-0 bg-muted flex items-center justify-center">
+              <ImageIcon className="w-6 h-6 text-muted-foreground" />
+            </div>
+          )}
+        </div>
 
         {/* Remove button */}
         <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -110,18 +193,32 @@ const FastThumbnail = React.memo(
           </Button>
         </div>
 
-        {/* Size reduction indicator */}
-        {image.compressed && image.compressedSize && (
-          <div className="absolute bottom-1 left-1 bg-black/75 text-white px-1 py-0.5 text-xs rounded">
-            -
-            {Math.round(
-              ((image.originalSize - image.compressedSize) /
-                image.originalSize) *
-                100
-            )}
-            %
-          </div>
-        )}
+        {/* Clean compression indicator - show if we have compression data */}
+        {(() => {
+          const hasCompressedSize = !!image.compressedSize;
+          const isDifferentSize =
+            image.compressedSize && image.compressedSize !== image.originalSize;
+          const shouldShow = hasCompressedSize && isDifferentSize;
+
+          // Debug logging
+          console.log(
+            `Pill for ${image.file.name}: compressedSize=${image.compressedSize}, originalSize=${image.originalSize}, shouldShow=${shouldShow}`
+          );
+
+          return shouldShow && image.compressedSize ? (
+            <div className="absolute bottom-1 left-1 bg-black/80 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 transition-all duration-300">
+              <Zap className="w-3 h-3 text-yellow-400" />
+              <span className="text-white text-xs font-medium">
+                {Math.round(
+                  ((image.originalSize - image.compressedSize) /
+                    image.originalSize) *
+                    100
+                )}
+                %
+              </span>
+            </div>
+          ) : null;
+        })()}
       </div>
     );
   }
@@ -135,12 +232,23 @@ export default function ResizeAndOptimize() {
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [zoom, setZoom] = useState(100);
+  const [countdown, setCountdown] = useState<number | null>(null);
   const [, forceUpdate] = useState({}); // For forcing re-renders
 
   const imagesPerPage = 12;
 
   // Memoize expensive calculations
-  const images = useMemo(() => getGlobalImages(), [forceUpdate]);
+  const images = useMemo(() => {
+    const imgs = getGlobalImages();
+    console.log(
+      "📊 Gallery images updated:",
+      imgs.map(
+        (img) =>
+          `${img.file.name}(${img.compressedSize ? "compressed" : "uncompressed"})`
+      )
+    );
+    return imgs;
+  }, [forceUpdate]);
   const pageData = useMemo(
     () => getPaginatedImages(currentPage, imagesPerPage),
     [currentPage, images.length]
@@ -151,12 +259,29 @@ export default function ResizeAndOptimize() {
     [selectedImageId, images.length]
   );
 
-  // Set initial selection
+  // Set initial selection and handle countdown for no images
   useEffect(() => {
-    if (images.length > 0 && !selectedImageId) {
+    if (images.length === 0) {
+      // Start 3-second countdown
+      setCountdown(3);
+
+      const timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev === null || prev <= 1) {
+            clearInterval(timer);
+            navigate({ to: "/" });
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    } else if (!selectedImageId) {
       setSelectedImageId(images[0].id);
+      setCountdown(null); // Reset countdown if images are found
     }
-  }, [images.length, selectedImageId]);
+  }, [images.length, selectedImageId, navigate]);
 
   const handleSelectImage = useCallback((image: GlobalImage) => {
     setSelectedImageId(image.id);
@@ -243,14 +368,43 @@ export default function ResizeAndOptimize() {
 
   if (images.length === 0) {
     return (
-      <div className="container mx-auto px-4 py-8 min-h-screen">
-        <div className="text-center py-20">
+      <div className="container mx-auto px-4 py-8 min-h-screen flex items-center justify-center">
+        <div className="text-center">
           <ImageIcon className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-          <p className="text-gray-600 mb-4">No images uploaded yet.</p>
-          <Button onClick={() => navigate({ to: "/" })}>
-            <Upload className="mr-2 h-4 w-4" />
-            Upload Images
-          </Button>
+          <h2 className="text-2xl font-semibold text-gray-700 mb-2">
+            No images uploaded yet
+          </h2>
+          <p className="text-gray-500 mb-6">
+            You need to upload some images first before you can edit them.
+          </p>
+
+          {countdown !== null && (
+            <div className="mb-6">
+              <div className="text-4xl font-bold text-primary mb-2">
+                {countdown}
+              </div>
+              <p className="text-sm text-gray-500">
+                Redirecting to upload page in {countdown} second
+                {countdown !== 1 ? "s" : ""}...
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <Button onClick={() => navigate({ to: "/" })} size="lg">
+              <Home className="mr-2 h-4 w-4" />
+              Go to Upload Now
+            </Button>
+            <div>
+              <Button
+                variant="outline"
+                onClick={() => setCountdown(null)}
+                className="text-sm"
+              >
+                Cancel Auto-redirect
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -268,6 +422,7 @@ export default function ResizeAndOptimize() {
               isSelected={selectedImageId === image.id}
               onClick={() => handleSelectImage(image)}
               onRemove={(e) => handleRemoveImage(image.id, e)}
+              forceUpdate={forceUpdate}
             />
           ))}
         </div>
@@ -380,7 +535,7 @@ export default function ResizeAndOptimize() {
             </Button>
 
             {/* Theme Toggle */}
-            <SimpleThemeToggle />
+            <ThemeToggle />
 
             {/* User Button */}
             <Button variant="outline" className="h-9 w-9" disabled>

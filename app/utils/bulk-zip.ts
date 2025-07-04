@@ -1,7 +1,6 @@
 // app/utils/bulk-zip.ts
 import JSZip from "jszip";
-import type { PixelCrop } from "react-image-crop";
-import type { ImageFormat } from "@/types/types";
+import type { ImageFormat } from "../types";
 import { bulkCropImages } from "./image-utils";
 
 export async function zipAndDownloadBlobs(
@@ -41,7 +40,7 @@ export async function zipAndDownloadBlobs(
  */
 export async function bulkProcessAndZip(
   imageUrls: string[],
-  pixelCrop: PixelCrop,
+  pixelCrop: any,
   format: ImageFormat,
   quality: number,
   zipName: string,
@@ -64,15 +63,20 @@ export async function bulkProcessAndZip(
     },
     format,
     quality,
-    (pct, cur, tot) => {
+    (pct: number, cur: number, tot: number) => {
       onProgress?.("cropping", pct, cur, tot);
     }
   );
 
   // Stage 2: zip + download
-  const files = blobs.map(({ blob, fileName }) => ({ name: fileName, blob }));
+  const files = blobs.map(
+    ({ blob, fileName }: { blob: Blob; fileName: string }) => ({
+      name: fileName,
+      blob,
+    })
+  );
   onProgress?.("zipping", 0, files.length, files.length);
-  await zipAndDownloadBlobs(files, zipName, (pct) =>
+  await zipAndDownloadBlobs(files, zipName, (pct: number) =>
     onProgress?.("zipping", pct, files.length, files.length)
   );
 
