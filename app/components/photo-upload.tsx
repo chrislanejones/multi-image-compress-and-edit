@@ -3,18 +3,14 @@ import { useNavigate } from "@tanstack/react-router";
 import { Upload } from "lucide-react";
 import { Card, CardHeader, CardContent, CardFooter } from "./ui/card";
 import { Button } from "./ui/button";
+import imageCompression from "browser-image-compression";
 
-// Import optimized utils
-import {
-  addToGlobalImages,
-  getGlobalImages,
-  processImagesBatch,
-  formatBytes,
-  type GlobalImage,
-} from "../utils/image-utils";
+// Import your context (you'll need to create this)
+import { useImageContext } from "../context/image-context";
 
 export default function PhotoUpload() {
   const navigate = useNavigate();
+  const { addImages, images } = useImageContext();
 
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -24,43 +20,67 @@ export default function PhotoUpload() {
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Optimized file handling with batching
-  const handleFileChange = useCallback(
-    async (files: FileList | null) => {
-      if (!files || files.length === 0) return;
+  async function handleFiles(files: FileList) {
+    if (!files || files.length === 0) return;
 
-      setIsProcessing(true);
-      setProgress({ current: 0, total: files.length });
+    setIsProcessing(true);
+    setProgress({ current: 0, total: files.length });
 
-      try {
-        // Use optimized batch processing
-        const processedImages = await processImagesBatch(
-          files,
-          (current, total) => {
-            setProgress({ current, total });
-          }
-        );
+    try {
+      const processed = await Promise.all(
+        Array.from(files).map(async (file, index) => {
+          // Update progress
+          setProgress((prev) => ({ ...prev, current: index + 1 }));
 
-        if (processedImages.length > 0) {
-          addToGlobalImages(processedImages);
-          // Navigate immediately after processing
-          navigate({ to: "/resize-and-optimize" });
-        }
-      } catch (error) {
-        console.error("Error processing images:", error);
-      } finally {
-        setIsProcessing(false);
-        setProgress({ current: 0, total: 0 });
-      }
-    },
-    [navigate]
-  );
+          const originalSize = file.size;
+
+          // set your compression options as needed
+          const options = {
+            maxSizeMB: 1,
+            maxWidthOrHeight: 1920,
+            useWebWorker: true,
+          };
+
+          const compressedFile = await imageCompression(file, options);
+          const compressedSize = compressedFile.size;
+          const compressionRatio = Math.round(
+            ((originalSize - compressedSize) / originalSize) * 100
+          );
+
+          const url = URL.createObjectURL(compressedFile);
+
+          return {
+            id: crypto.randomUUID(),
+            file: compressedFile,
+            url,
+            metadata: {
+              originalSize,
+              compressedSize,
+              compressionRatio,
+            },
+          };
+        })
+      );
+
+      addImages(processed);
+
+      // Navigate to gallery after processing
+      navigate({ to: "/resize-and-optimize" });
+    } catch (error) {
+      console.error("Error processing images:", error);
+    } finally {
+      setIsProcessing(false);
+      setProgress({ current: 0, total: 0 });
+    }
+  }
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      handleFileChange(e.target.files);
+      if (e.target.files) {
+        handleFiles(e.target.files);
+      }
     },
-    [handleFileChange]
+    []
   );
 
   const handleUploadClick = useCallback(() => {
@@ -89,20 +109,17 @@ export default function PhotoUpload() {
     e.stopPropagation();
   }, []);
 
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsDragging(false);
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
 
-      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        handleFileChange(e.dataTransfer.files);
-      }
-    },
-    [handleFileChange]
-  );
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFiles(e.dataTransfer.files);
+    }
+  }, []);
 
-  const hasImages = getGlobalImages().length > 0;
+  const hasImages = images.length > 0;
   const progressPercent =
     progress.total > 0 ? (progress.current / progress.total) * 100 : 0;
 
@@ -123,7 +140,7 @@ export default function PhotoUpload() {
             ImageHorse
           </div>
           <div className="text-sm text-muted-foreground">
-            Upload Multiple Images for Editing and Compression
+            Upload Multiple Images for Smart Compression and Editing
           </div>
         </CardHeader>
 
@@ -162,16 +179,19 @@ export default function PhotoUpload() {
                 <p className="text-xs text-muted-foreground text-center mt-2">
                   Supports JPEG, PNG, WebP • Max 50MB per image
                 </p>
+                <p className="text-xs text-primary/80 text-center mt-1 font-medium">
+                  ✨ Auto-compression enabled
+                </p>
               </>
             )}
           </div>
 
           <input
             type="file"
-            ref={fileInputRef}
-            onChange={handleInputChange}
             multiple
             accept="image/*"
+            ref={fileInputRef}
+            onChange={handleInputChange}
             className="hidden"
             disabled={isProcessing}
           />
@@ -192,7 +212,7 @@ export default function PhotoUpload() {
                 className="flex-1"
                 disabled={isProcessing}
               >
-                View Gallery ({getGlobalImages().length})
+                View Gallery ({images.length})
               </Button>
             </div>
           ) : (

@@ -1,5 +1,6 @@
 import React from "react";
 import { ThemeProvider } from "./components/theme-provider";
+import { ImageProvider } from "./context/image-context"; // Add this import
 import "./globals.css";
 
 export default function RootLayout({
@@ -16,7 +17,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children} {/* Remove ImageProvider wrapper */}
+          <ImageProvider>{children}</ImageProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -25,17 +25,9 @@ import {
   Home,
 } from "lucide-react";
 
-import {
-  getGlobalImages,
-  removeFromGlobalImages,
-  clearGlobalImages,
-  getGlobalImageById,
-  getGlobalImageStats,
-  getPaginatedImages,
-  formatBytes,
-  safeRevokeURL,
-  type GlobalImage,
-} from "../utils/image-utils";
+import { useImageContext } from "../context/image-context";
+import { formatBytes } from "../utils/image-utils";
+import { ImageEditorToolbar } from "./image-editor-toolbar";
 
 // Gallery thumbnail with popup effect and clean compression indicator
 const FastThumbnail = React.memo(
@@ -46,7 +38,7 @@ const FastThumbnail = React.memo(
     onRemove,
     forceUpdate,
   }: {
-    image: GlobalImage;
+    image: any; // Using any for compatibility with both ImageFile and GlobalImage
     isSelected: boolean;
     onClick: () => void;
     onRemove: (e: React.MouseEvent) => void;
@@ -60,62 +52,86 @@ const FastThumbnail = React.memo(
 
     // Reset compression state if image already has compressed data
     useEffect(() => {
-      if (image.compressedSize) {
+      const compressedSize =
+        image.metadata?.compressedSize || image.compressedSize;
+      if (compressedSize) {
         console.log(
-          `Image ${image.file.name} already has compression data: ${image.compressedSize} bytes`
+          `Image ${image.file?.name} already has compression data: ${compressedSize} bytes`
         );
         setIsCompressing(false);
         setCompressionAttempted(true);
       }
-    }, [image.compressedSize, image.file.name]);
+    }, [
+      image.metadata?.compressedSize,
+      image.compressedSize,
+      image.file?.name,
+    ]);
 
     // Compress image when component mounts if not already compressed
     useEffect(() => {
+      const compressedSize =
+        image.metadata?.compressedSize || image.compressedSize;
+      const fileName = image.file?.name || "unknown";
+
       // Always log current state
       console.log(
-        `Image ${image.file.name}: compressedSize=${image.compressedSize}, isCompressing=${isCompressing}, attempted=${compressionAttempted}`
+        `Image ${fileName}: compressedSize=${compressedSize}, isCompressing=${isCompressing}, attempted=${compressionAttempted}`
       );
 
-      if (!image.compressedSize && !isCompressing && !compressionAttempted) {
-        console.log(`Starting compression for ${image.file.name}`);
+      if (
+        !compressedSize &&
+        !isCompressing &&
+        !compressionAttempted &&
+        image.file
+      ) {
+        console.log(`Starting compression for ${fileName}`);
         setIsCompressing(true);
         setCompressionAttempted(true);
 
         // Import the compression function dynamically
-        import("../utils/image-utils").then(
-          ({ aggressiveCompress300KB, updateGlobalImage }) => {
-            aggressiveCompress300KB(image.file)
-              .then(({ compressed, compressedSize }) => {
-                console.log(
-                  "✅ Compression complete for",
-                  image.file.name,
-                  "->",
-                  compressedSize,
-                  "bytes"
+        import("../utils/image-utils").then(({ aggressiveCompress300KB }) => {
+          aggressiveCompress300KB(image.file)
+            .then(({ compressed, compressedSize: newCompressedSize }) => {
+              console.log(
+                "✅ Compression complete for",
+                fileName,
+                "->",
+                newCompressedSize,
+                "bytes"
+              );
+
+              // Update the image metadata (this would need to be handled by context)
+              if (image.metadata) {
+                image.metadata.compressedSize = newCompressedSize;
+                image.metadata.compressionRatio = Math.round(
+                  ((image.metadata.originalSize - newCompressedSize) /
+                    image.metadata.originalSize) *
+                    100
                 );
-                // Update the global image with compression data
-                updateGlobalImage(image.id, { compressed, compressedSize });
-                setIsCompressing(false);
-                // Force a re-render by updating the forceUpdate in parent
-                forceUpdate({});
-              })
-              .catch((error) => {
-                console.error("❌ Compression failed:", error);
-                setIsCompressing(false);
-              });
-          }
-        );
-      } else if (image.compressedSize) {
+              }
+
+              setIsCompressing(false);
+              // Force a re-render by updating the forceUpdate in parent
+              forceUpdate({});
+            })
+            .catch((error) => {
+              console.error("❌ Compression failed:", error);
+              setIsCompressing(false);
+            });
+        });
+      } else if (compressedSize) {
         console.log(
-          `⚡ Image ${image.file.name} already compressed: ${image.compressedSize} bytes`
+          `⚡ Image ${fileName} already compressed: ${compressedSize} bytes`
         );
       }
     }, [
       image.id,
+      image.metadata?.compressedSize,
       image.compressedSize,
       isCompressing,
       compressionAttempted,
-      image.file.name,
+      image.file?.name,
+      image.file,
       forceUpdate,
     ]);
 
@@ -131,19 +147,21 @@ const FastThumbnail = React.memo(
     useEffect(() => {
       if (isCompressing) {
         const fallbackTimer = setTimeout(() => {
-          console.log("Fallback: Clearing blur for", image.file.name);
+          console.log("Fallback: Clearing blur for", image.file?.name);
           setIsCompressing(false);
         }, 10000); // 10 second fallback
 
         return () => clearTimeout(fallbackTimer);
       }
-    }, [isCompressing, image.file.name]);
+    }, [isCompressing, image.file?.name]);
 
     // Use thumbnail if available, otherwise use compressed, otherwise original
     const imageUrl = image.thumbnail || image.compressed || image.url;
 
     // Determine if we should show blur (only if actively compressing)
-    const shouldBlur = isCompressing && !image.compressedSize;
+    const shouldBlur =
+      isCompressing &&
+      !(image.metadata?.compressedSize || image.compressedSize);
 
     return (
       <div
@@ -160,7 +178,7 @@ const FastThumbnail = React.memo(
         <div className="relative w-full h-full">
           <img
             src={imageUrl}
-            alt={image.file.name}
+            alt={image.file?.name || "Uploaded image"}
             className={`w-full h-full object-cover transition-all duration-700 ${
               isLoaded ? "opacity-100" : "opacity-0"
             } ${shouldBlur ? "blur-md scale-105" : "blur-0 scale-100"}`}
@@ -195,24 +213,26 @@ const FastThumbnail = React.memo(
 
         {/* Clean compression indicator - show if we have compression data */}
         {(() => {
-          const hasCompressedSize = !!image.compressedSize;
+          const originalSize =
+            image.metadata?.originalSize || image.originalSize;
+          const compressedSize =
+            image.metadata?.compressedSize || image.compressedSize;
+          const hasCompressedSize = !!compressedSize;
           const isDifferentSize =
-            image.compressedSize && image.compressedSize !== image.originalSize;
+            compressedSize && compressedSize !== originalSize;
           const shouldShow = hasCompressedSize && isDifferentSize;
 
           // Debug logging
           console.log(
-            `Pill for ${image.file.name}: compressedSize=${image.compressedSize}, originalSize=${image.originalSize}, shouldShow=${shouldShow}`
+            `Pill for ${image.file?.name}: compressedSize=${compressedSize}, originalSize=${originalSize}, shouldShow=${shouldShow}`
           );
 
-          return shouldShow && image.compressedSize ? (
+          return shouldShow && compressedSize && originalSize ? (
             <div className="absolute bottom-1 left-1 bg-black/80 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 transition-all duration-300">
               <Zap className="w-3 h-3 text-yellow-400" />
               <span className="text-white text-xs font-medium">
                 {Math.round(
-                  ((image.originalSize - image.compressedSize) /
-                    image.originalSize) *
-                    100
+                  ((originalSize - compressedSize) / originalSize) * 100
                 )}
                 %
               </span>
@@ -228,38 +248,124 @@ FastThumbnail.displayName = "FastThumbnail";
 
 export default function ResizeAndOptimize() {
   const navigate = useNavigate();
+  const { images, selectedImage, selectImage, removeImage, removeAllImages } =
+    useImageContext();
 
-  const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(0);
   const [zoom, setZoom] = useState(100);
+  const [currentPage, setCurrentPage] = useState(0);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [editorState, setEditorState] = useState<
+    "resizeAndOptimize" | "editImage" | "bulkImageEdit"
+  >("resizeAndOptimize");
   const [, forceUpdate] = useState({}); // For forcing re-renders
 
-  const imagesPerPage = 12;
+  const imagesPerPage = 10;
 
-  // Memoize expensive calculations
-  const images = useMemo(() => {
-    const imgs = getGlobalImages();
-    console.log(
-      "📊 Gallery images updated:",
-      imgs.map(
-        (img) =>
-          `${img.file.name}(${img.compressedSize ? "compressed" : "uncompressed"})`
-      )
-    );
-    return imgs;
-  }, [forceUpdate]);
-  const pageData = useMemo(
-    () => getPaginatedImages(currentPage, imagesPerPage),
-    [currentPage, images.length]
-  );
-  const stats = useMemo(() => getGlobalImageStats(), [images.length]);
-  const selectedImage = useMemo(
-    () => (selectedImageId ? getGlobalImageById(selectedImageId) : null),
-    [selectedImageId, images.length]
+  // Pagination logic
+  const paginatedData = useMemo(() => {
+    const totalPages = Math.ceil(images.length / imagesPerPage);
+    const startIndex = currentPage * imagesPerPage;
+    const endIndex = startIndex + imagesPerPage;
+    const currentImages = images.slice(startIndex, endIndex);
+
+    return {
+      currentImages,
+      totalPages,
+      hasNextPage: currentPage < totalPages - 1,
+      hasPrevPage: currentPage > 0,
+    };
+  }, [images, currentPage, imagesPerPage]);
+
+  const handleSelectImage = useCallback(
+    (image: any) => {
+      selectImage(image);
+    },
+    [selectImage]
   );
 
-  // Set initial selection and handle countdown for no images
+  const handleRemoveImage = useCallback(
+    (imageId: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      removeImage(imageId);
+    },
+    [removeImage]
+  );
+
+  const handleNavigation = useCallback(
+    (direction: "prev" | "next") => {
+      if (!selectedImage || images.length === 0) return;
+
+      const currentIndex = images.findIndex(
+        (img) => img.id === selectedImage.id
+      );
+      let newIndex;
+
+      switch (direction) {
+        case "prev":
+          newIndex = currentIndex > 0 ? currentIndex - 1 : images.length - 1;
+          break;
+        case "next":
+          newIndex = currentIndex < images.length - 1 ? currentIndex + 1 : 0;
+          break;
+        default:
+          return;
+      }
+
+      selectImage(images[newIndex]);
+
+      // Update page if needed
+      const newPage = Math.floor(newIndex / imagesPerPage);
+      if (newPage !== currentPage) {
+        setCurrentPage(newPage);
+      }
+    },
+    [selectedImage, images, selectImage, currentPage, imagesPerPage]
+  );
+
+  const handlePageNavigation = useCallback(
+    (direction: "prev" | "next") => {
+      if (direction === "prev" && paginatedData.hasPrevPage) {
+        setCurrentPage((prev) => prev - 1);
+      } else if (direction === "next" && paginatedData.hasNextPage) {
+        setCurrentPage((prev) => prev + 1);
+      }
+    },
+    [paginatedData.hasPrevPage, paginatedData.hasNextPage]
+  );
+
+  const handleZoom = useCallback((direction: "in" | "out") => {
+    setZoom((prev) => {
+      if (direction === "in") {
+        return Math.min(400, prev + 25);
+      } else {
+        return Math.max(25, prev - 25);
+      }
+    });
+  }, []);
+
+  // Toolbar handlers
+  const handleZoomIn = useCallback(() => handleZoom("in"), [handleZoom]);
+  const handleZoomOut = useCallback(() => handleZoom("out"), [handleZoom]);
+
+  const handleStateChange = useCallback(
+    (newState: "resizeAndOptimize" | "editImage" | "bulkImageEdit") => {
+      setEditorState(newState);
+    },
+    []
+  );
+
+  const handleClose = useCallback(() => {
+    navigate({ to: "/" });
+  }, [navigate]);
+
+  const handleNavigateImage = useCallback(
+    (direction: "prev" | "next") => {
+      handleNavigation(direction);
+    },
+    [handleNavigation]
+  );
+
+  // Set up countdown for no images
   useEffect(() => {
     if (images.length === 0) {
       // Start 3-second countdown
@@ -277,94 +383,10 @@ export default function ResizeAndOptimize() {
       }, 1000);
 
       return () => clearInterval(timer);
-    } else if (!selectedImageId) {
-      setSelectedImageId(images[0].id);
+    } else {
       setCountdown(null); // Reset countdown if images are found
     }
-  }, [images.length, selectedImageId, navigate]);
-
-  const handleSelectImage = useCallback((image: GlobalImage) => {
-    setSelectedImageId(image.id);
-  }, []);
-
-  const handleRemoveImage = useCallback(
-    (imageId: string, e: React.MouseEvent) => {
-      e.stopPropagation();
-
-      const removedImage = removeFromGlobalImages(imageId);
-
-      if (removedImage) {
-        // Update selection if the removed image was selected
-        if (selectedImageId === imageId) {
-          const remainingImages = getGlobalImages();
-          if (remainingImages.length > 0) {
-            setSelectedImageId(remainingImages[0].id);
-          } else {
-            setSelectedImageId(null);
-          }
-        }
-
-        // Force re-render
-        forceUpdate({});
-      }
-    },
-    [selectedImageId]
-  );
-
-  const handleRemoveAll = useCallback(() => {
-    clearGlobalImages();
-    setSelectedImageId(null);
-    setCurrentPage(0);
-    forceUpdate({});
-  }, []);
-
-  const handleNavigation = useCallback(
-    (direction: "prev" | "next" | "prev10" | "next10") => {
-      const images = getGlobalImages();
-      if (images.length === 0 || !selectedImageId) return;
-
-      const currentIndex = images.findIndex(
-        (img: GlobalImage) => img.id === selectedImageId
-      );
-      let newIndex;
-
-      switch (direction) {
-        case "prev":
-          newIndex = currentIndex > 0 ? currentIndex - 1 : images.length - 1;
-          break;
-        case "next":
-          newIndex = currentIndex < images.length - 1 ? currentIndex + 1 : 0;
-          break;
-        case "prev10":
-          newIndex = Math.max(0, currentIndex - 10);
-          break;
-        case "next10":
-          newIndex = Math.min(images.length - 1, currentIndex + 10);
-          break;
-        default:
-          return;
-      }
-
-      setSelectedImageId(images[newIndex].id);
-
-      // Update page if needed
-      const newPage = Math.floor(newIndex / imagesPerPage);
-      if (newPage !== currentPage) {
-        setCurrentPage(newPage);
-      }
-    },
-    [selectedImageId, currentPage, imagesPerPage]
-  );
-
-  const handleZoom = useCallback((direction: "in" | "out") => {
-    setZoom((prev) => {
-      if (direction === "in") {
-        return Math.min(400, prev + 25);
-      } else {
-        return Math.max(25, prev - 25);
-      }
-    });
-  }, []);
+  }, [images.length, navigate]);
 
   if (images.length === 0) {
     return (
@@ -410,18 +432,41 @@ export default function ResizeAndOptimize() {
     );
   }
 
+  if (images.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-8 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <ImageIcon className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+          <h2 className="text-2xl font-semibold text-gray-700 mb-2">
+            No images uploaded yet
+          </h2>
+          <p className="text-gray-500 mb-6">
+            You need to upload some images first before you can edit them.
+          </p>
+          <Button onClick={() => navigate({ to: "/" })} size="lg">
+            <Home className="mr-2 h-4 w-4" />
+            Go to Upload Now
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground p-4">
       {/* Gallery Grid */}
       <div className="mb-6">
-        <div className="grid grid-cols-12 gap-2 mb-4">
-          {pageData.currentImages.map((image: GlobalImage) => (
+        <div className="grid grid-cols-5 md:grid-cols-10 gap-2 p-2 bg-gray-800 rounded-lg mb-6">
+          {paginatedData.currentImages.map((img, index) => (
             <FastThumbnail
-              key={image.id}
-              image={image}
-              isSelected={selectedImageId === image.id}
-              onClick={() => handleSelectImage(image)}
-              onRemove={(e) => handleRemoveImage(image.id, e)}
+              key={img.id}
+              image={img}
+              isSelected={selectedImage?.id === img.id}
+              onClick={() => handleSelectImage(img)}
+              onRemove={(e) => {
+                e.stopPropagation();
+                handleRemoveImage(img.id, e);
+              }}
               forceUpdate={forceUpdate}
             />
           ))}
@@ -471,14 +516,24 @@ export default function ResizeAndOptimize() {
               Bulk Edit ({images.length})
             </Button>
 
+            <Button
+              variant="outline"
+              className="px-4 py-2 h-9"
+              disabled
+              title="AI-powered editing features coming soon"
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              AI Editor
+            </Button>
+
             {/* Navigation Controls */}
             <div className="flex items-center gap-1 ml-2">
               <Button
                 variant="outline"
                 className="py-2 h-9 px-3"
-                onClick={() => handleNavigation("prev10")}
-                disabled={images.length === 0}
-                title="Back 10 images"
+                onClick={() => handlePageNavigation("prev")}
+                disabled={!paginatedData.hasPrevPage}
+                title="Show previous 10 images"
               >
                 <ChevronsLeft className="h-4 w-4" />
               </Button>
@@ -492,7 +547,7 @@ export default function ResizeAndOptimize() {
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <span className="text-sm px-2 text-white whitespace-nowrap">
-                Switch Photos
+                Switch Photos ({currentPage + 1}/{paginatedData.totalPages})
               </span>
               <Button
                 variant="outline"
@@ -506,9 +561,9 @@ export default function ResizeAndOptimize() {
               <Button
                 variant="outline"
                 className="py-2 h-9 px-3"
-                onClick={() => handleNavigation("next10")}
-                disabled={images.length === 0}
-                title="Forward 10 images"
+                onClick={() => handlePageNavigation("next")}
+                disabled={!paginatedData.hasNextPage}
+                title="Show next 10 images"
               >
                 <ChevronsRight className="h-4 w-4" />
               </Button>
@@ -528,7 +583,7 @@ export default function ResizeAndOptimize() {
             <Button
               variant="destructive"
               className="px-4 py-2 h-9"
-              onClick={handleRemoveAll}
+              onClick={removeAllImages}
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Remove All
@@ -554,8 +609,8 @@ export default function ResizeAndOptimize() {
               style={{ minHeight: "400px" }}
             >
               <img
-                src={selectedImage.compressed || selectedImage.url}
-                alt={selectedImage.file.name}
+                src={selectedImage.url}
+                alt={selectedImage.file?.name || "Selected image"}
                 className="max-w-full max-h-full object-contain rounded"
                 style={{ transform: `scale(${zoom / 100})` }}
                 loading="lazy"
@@ -578,7 +633,9 @@ export default function ResizeAndOptimize() {
                 <span className="font-medium text-muted-foreground">
                   Filename:
                 </span>
-                <p className="font-mono text-xs">{selectedImage.file.name}</p>
+                <p className="font-mono text-xs">
+                  {selectedImage.file?.name || "Unknown"}
+                </p>
               </div>
               <div>
                 <span className="font-medium text-muted-foreground">
@@ -593,7 +650,13 @@ export default function ResizeAndOptimize() {
                 <span className="font-medium text-muted-foreground">
                   Original Size:
                 </span>
-                <p>{formatBytes(selectedImage.originalSize)}</p>
+                <p>
+                  {formatBytes(
+                    selectedImage.metadata?.originalSize ||
+                      selectedImage.file?.size ||
+                      0
+                  )}
+                </p>
               </div>
               <div>
                 <span className="font-medium text-muted-foreground">
@@ -601,7 +664,9 @@ export default function ResizeAndOptimize() {
                 </span>
                 <p>
                   {formatBytes(
-                    selectedImage.compressedSize || selectedImage.originalSize
+                    selectedImage.metadata?.compressedSize ||
+                      selectedImage.file?.size ||
+                      0
                   )}
                 </p>
               </div>
@@ -610,16 +675,14 @@ export default function ResizeAndOptimize() {
                   Savings:
                 </span>
                 <p className="text-green-600">
-                  {selectedImage.compressedSize
-                    ? `${Math.round(((selectedImage.originalSize - selectedImage.compressedSize) / selectedImage.originalSize) * 100)}%`
-                    : "0%"}
+                  {selectedImage.metadata?.compressionRatio || 0}%
                 </p>
               </div>
               <div>
                 <span className="font-medium text-muted-foreground">
                   Format:
                 </span>
-                <p>{selectedImage.file.type}</p>
+                <p>{selectedImage.file?.type || "Unknown"}</p>
               </div>
             </div>
           </CardContent>
