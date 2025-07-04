@@ -1,9 +1,30 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react'
-import { useNavigate } from '@tanstack/react-router'
-import { globalImages } from './photo-upload'
-import { Button } from './ui/button'
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
-import { ThemeToggle } from './ui/theme-toggle'
+import React, { useState, useCallback, useMemo, useEffect } from "react";
+import { useNavigate } from "@tanstack/react-router";
+// Import the global state and type it properly
+let globalImages: Array<{
+  id: string;
+  file: File;
+  url: string;
+  thumbnail?: string;
+  compressed?: string;
+  originalSize: number;
+  compressedSize?: number;
+  width?: number;
+  height?: number;
+}> = [];
+
+// Try to get the global images from photo-upload if it exists
+try {
+  const photoUploadModule = require("./photo-upload");
+  if (photoUploadModule.globalImages) {
+    globalImages = photoUploadModule.globalImages;
+  }
+} catch (e) {
+  // Module might not be loaded yet, that's okay
+}
+import { Button } from "./ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
+import { ThemeToggle } from "./ui/theme-toggle";
 import {
   X,
   Upload,
@@ -24,193 +45,257 @@ import {
   ChevronsLeft,
   ChevronsRight,
   User,
-} from 'lucide-react'
+} from "lucide-react";
 
 // Import your existing utils
-import { formatBytes, safeRevokeURL, downloadImagesAsZip } from '../utils/image-utils'
-import { compressImageAggressively } from '../utils/image-processing'
+import {
+  formatBytes,
+  safeRevokeURL,
+  downloadImagesAsZip,
+} from "../utils/image-utils";
+import { compressImageAggressively } from "../utils/image-processing";
 
-// Ultra-fast thumbnail component with zero re-renders
-const SuperFastThumbnail = React.memo(({ 
-  image, 
-  isSelected, 
-  onClick, 
-  onRemove 
-}: {
-  image: any
-  isSelected: boolean
-  onClick: () => void
-  onRemove: (e: React.MouseEvent) => void
-}) => (
-  <div
-    className={`relative aspect-square cursor-pointer rounded-lg overflow-hidden group border-2 transition-all ${
-      isSelected
-        ? 'border-primary ring-2 ring-primary/50'
-        : 'border-border hover:border-primary/50'
-    }`}
-    onClick={onClick}
-  >
-    <img
-      src={image.thumbnail} // Always use the fast thumbnail
-      alt={image.file.name}
-      className="w-full h-full object-cover"
-      loading="lazy"
-      decoding="async" // Performance optimization
-    />
-    {/* Compression indicator */}
-    {image.compressed && (
-      <div className="absolute top-1 left-1 bg-green-500 text-white px-1 py-0.5 text-xs rounded">
-        <Zap className="w-3 h-3 inline" />
-      </div>
-    )}
-    <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-      <Button
-        variant="destructive"
-        size="sm"
-        className="h-6 w-6 p-0"
-        onClick={onRemove}
+// Optimized thumbnail component with better loading states
+const SuperFastThumbnail = React.memo(
+  ({
+    image,
+    isSelected,
+    onClick,
+    onRemove,
+  }: {
+    image: any;
+    isSelected: boolean;
+    onClick: () => void;
+    onRemove: (e: React.MouseEvent) => void;
+  }) => {
+    const [isLoaded, setIsLoaded] = useState(false);
+    const [hasError, setHasError] = useState(false);
+
+    return (
+      <div
+        className={`relative aspect-square cursor-pointer rounded-lg overflow-hidden group border-2 transition-all ${
+          isSelected
+            ? "border-primary ring-2 ring-primary/50"
+            : "border-border hover:border-primary/50"
+        }`}
+        onClick={onClick}
       >
-        <X className="h-3 w-3" />
-      </Button>
-    </div>
-    {/* Size reduction indicator */}
-    {image.compressed && (
-      <div className="absolute bottom-1 left-1 bg-black/75 text-white px-1 py-0.5 text-xs rounded">
-        -{Math.round(((image.originalSize - image.compressedSize) / image.originalSize) * 100)}%
+        {/* Loading state */}
+        {!isLoaded && !hasError && (
+          <div className="w-full h-full bg-muted animate-pulse flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+
+        {/* Error state */}
+        {hasError && (
+          <div className="w-full h-full bg-muted flex items-center justify-center">
+            <ImageIcon className="w-8 h-8 text-muted-foreground" />
+          </div>
+        )}
+
+        {/* Image */}
+        <img
+          src={image.thumbnail || image.url}
+          alt={image.file.name}
+          className={`w-full h-full object-cover transition-opacity ${
+            isLoaded ? "opacity-100" : "opacity-0"
+          }`}
+          loading="lazy"
+          decoding="async"
+          onLoad={() => setIsLoaded(true)}
+          onError={() => setHasError(true)}
+        />
+
+        {/* Compression indicator */}
+        {image.compressed && (
+          <div className="absolute top-1 left-1 bg-green-500 text-white px-1 py-0.5 text-xs rounded">
+            <Zap className="w-3 h-3 inline" />
+          </div>
+        )}
+
+        {/* Remove button */}
+        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button
+            variant="destructive"
+            size="sm"
+            className="h-6 w-6 p-0"
+            onClick={onRemove}
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+
+        {/* Size reduction indicator */}
+        {image.compressed && image.compressedSize && (
+          <div className="absolute bottom-1 left-1 bg-black/75 text-white px-1 py-0.5 text-xs rounded">
+            -
+            {Math.round(
+              ((image.originalSize - image.compressedSize) /
+                image.originalSize) *
+                100
+            )}
+            %
+          </div>
+        )}
       </div>
-    )}
-  </div>
-))
+    );
+  }
+);
+
+SuperFastThumbnail.displayName = "SuperFastThumbnail";
 
 export default function ResizeAndOptimize() {
-  const navigate = useNavigate()
-  const [selectedImageId, setSelectedImageId] = useState<string | null>(null)
-  const [currentPage, setCurrentPage] = useState(0)
-  const [zoom, setZoom] = useState(100)
-  const [isDownloading, setIsDownloading] = useState(false)
+  const navigate = useNavigate();
 
-  const imagesPerPage = 12 // Show more images per page
+  // Use global state instead of context
+  const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [zoom, setZoom] = useState(100);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [, forceUpdate] = useState({}); // For forcing re-renders when global state changes
+
+  const imagesPerPage = 12;
 
   // Memoized data - prevents expensive recalculations
   const pageData = useMemo(() => {
-    const totalPages = Math.ceil(globalImages.length / imagesPerPage)
+    const totalPages = Math.ceil(globalImages.length / imagesPerPage);
     const currentImages = globalImages.slice(
       currentPage * imagesPerPage,
       (currentPage + 1) * imagesPerPage
-    )
-    const selectedImage = globalImages.find(img => img.id === selectedImageId)
-    
+    );
+    const selectedImage = globalImages.find(
+      (img) => img.id === selectedImageId
+    );
+
     // Calculate total savings
-    const totalOriginalSize = globalImages.reduce((sum, img) => sum + img.originalSize, 0)
-    const totalCompressedSize = globalImages.reduce((sum, img) => sum + (img.compressedSize || img.originalSize), 0)
-    const totalSavings = totalOriginalSize - totalCompressedSize
-    const savingsPercent = totalOriginalSize > 0 ? (totalSavings / totalOriginalSize) * 100 : 0
-    
-    return { 
-      totalPages, 
-      currentImages, 
-      selectedImage, 
+    const totalOriginalSize = globalImages.reduce(
+      (sum: number, img: any) => sum + img.originalSize,
+      0
+    );
+    const totalCompressedSize = globalImages.reduce((sum: number, img: any) => {
+      return sum + (img.compressedSize || img.originalSize);
+    }, 0);
+    const totalSavings = totalOriginalSize - totalCompressedSize;
+    const savingsPercent =
+      totalOriginalSize > 0 ? (totalSavings / totalOriginalSize) * 100 : 0;
+
+    return {
+      totalPages,
+      currentImages,
+      selectedImage,
       totalOriginalSize,
       totalCompressedSize,
       totalSavings,
-      savingsPercent
-    }
-  }, [globalImages.length, currentPage, selectedImageId, imagesPerPage])
+      savingsPercent,
+    };
+  }, [globalImages, currentPage, selectedImageId, imagesPerPage]);
 
   // Set initial selection
   useEffect(() => {
     if (globalImages.length > 0 && !selectedImageId) {
-      setSelectedImageId(globalImages[0].id)
+      setSelectedImageId(globalImages[0].id);
     }
-  }, [selectedImageId])
+  }, [selectedImageId]);
 
   const handleSelectImage = useCallback((image: any) => {
-    setSelectedImageId(image.id)
-  }, [])
+    setSelectedImageId(image.id);
+  }, []);
 
-  const handleRemoveImage = useCallback((imageId: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    
-    const index = globalImages.findIndex(img => img.id === imageId)
-    if (index === -1) return
+  const handleRemoveImage = useCallback(
+    (imageId: string, e: React.MouseEvent) => {
+      e.stopPropagation();
 
-    // Clean up URLs using your util
-    const imageToRemove = globalImages[index]
-    safeRevokeURL(imageToRemove.url)
-    safeRevokeURL(imageToRemove.thumbnail)
-    if (imageToRemove.compressed) safeRevokeURL(imageToRemove.compressed)
+      const index = globalImages.findIndex((img) => img.id === imageId);
+      if (index === -1) return;
 
-    // Remove from global array
-    globalImages.splice(index, 1)
+      // Clean up URLs
+      const imageToRemove = globalImages[index];
+      safeRevokeURL(imageToRemove.url);
+      safeRevokeURL(imageToRemove.thumbnail);
+      if (imageToRemove.compressed) safeRevokeURL(imageToRemove.compressed);
 
-    // Update selection
-    if (selectedImageId === imageId) {
-      if (globalImages.length > 0) {
-        const newIndex = Math.min(index, globalImages.length - 1)
-        setSelectedImageId(globalImages[newIndex]?.id || null)
-      } else {
-        setSelectedImageId(null)
+      // Remove from global array
+      globalImages.splice(index, 1);
+
+      // Update selection
+      if (selectedImageId === imageId) {
+        if (globalImages.length > 0) {
+          const newIndex = Math.min(index, globalImages.length - 1);
+          setSelectedImageId(globalImages[newIndex]?.id || null);
+        } else {
+          setSelectedImageId(null);
+        }
       }
-    }
 
-    // Force re-render
-    setCurrentPage(prev => prev)
-  }, [selectedImageId])
+      // Force re-render
+      forceUpdate({});
+    },
+    [selectedImageId]
+  );
 
   const handleRemoveAll = useCallback(() => {
-    // Clean up all URLs using your util
-    globalImages.forEach(img => {
-      safeRevokeURL(img.url)
-      safeRevokeURL(img.thumbnail)
-      if (img.compressed) safeRevokeURL(img.compressed)
-    })
-    
-    globalImages.length = 0
-    setSelectedImageId(null)
-    setCurrentPage(0)
-  }, [])
+    // Clean up all URLs
+    globalImages.forEach((img: any) => {
+      safeRevokeURL(img.url);
+      safeRevokeURL(img.thumbnail);
+      if (img.compressed) safeRevokeURL(img.compressed);
+    });
 
-  const handleNavigation = useCallback((direction: 'prev' | 'next' | 'prev10' | 'next10') => {
-    if (globalImages.length === 0 || !selectedImageId) return
-    
-    const currentIndex = globalImages.findIndex(img => img.id === selectedImageId)
-    let newIndex
-    
-    switch (direction) {
-      case 'prev':
-        newIndex = currentIndex > 0 ? currentIndex - 1 : globalImages.length - 1
-        break
-      case 'next':
-        newIndex = currentIndex < globalImages.length - 1 ? currentIndex + 1 : 0
-        break
-      case 'prev10':
-        newIndex = Math.max(0, currentIndex - 10)
-        break
-      case 'next10':
-        newIndex = Math.min(globalImages.length - 1, currentIndex + 10)
-        break
-      default:
-        return
-    }
-    
-    setSelectedImageId(globalImages[newIndex].id)
-    
-    // Update page if needed
-    const newPage = Math.floor(newIndex / imagesPerPage)
-    if (newPage !== currentPage) {
-      setCurrentPage(newPage)
-    }
-  }, [selectedImageId, currentPage, imagesPerPage])
+    globalImages.length = 0;
+    setSelectedImageId(null);
+    setCurrentPage(0);
+    forceUpdate({});
+  }, []);
 
-  const handleZoom = useCallback((direction: 'in' | 'out') => {
-    setZoom(prev => {
-      if (direction === 'in') {
-        return Math.min(400, prev + 25)
-      } else {
-        return Math.max(25, prev - 25)
+  const handleNavigation = useCallback(
+    (direction: "prev" | "next" | "prev10" | "next10") => {
+      if (globalImages.length === 0 || !selectedImageId) return;
+
+      const currentIndex = globalImages.findIndex(
+        (img: any) => img.id === selectedImageId
+      );
+      let newIndex;
+
+      switch (direction) {
+        case "prev":
+          newIndex =
+            currentIndex > 0 ? currentIndex - 1 : globalImages.length - 1;
+          break;
+        case "next":
+          newIndex =
+            currentIndex < globalImages.length - 1 ? currentIndex + 1 : 0;
+          break;
+        case "prev10":
+          newIndex = Math.max(0, currentIndex - 10);
+          break;
+        case "next10":
+          newIndex = Math.min(globalImages.length - 1, currentIndex + 10);
+          break;
+        default:
+          return;
       }
-    })
-  }, [])
+
+      setSelectedImageId(globalImages[newIndex].id);
+
+      // Update page if needed
+      const newPage = Math.floor(newIndex / imagesPerPage);
+      if (newPage !== currentPage) {
+        setCurrentPage(newPage);
+      }
+    },
+    [selectedImageId, currentPage, imagesPerPage]
+  );
+
+  const handleZoom = useCallback((direction: "in" | "out") => {
+    setZoom((prev) => {
+      if (direction === "in") {
+        return Math.min(400, prev + 25);
+      } else {
+        return Math.max(25, prev - 25);
+      }
+    });
+  }, []);
 
   if (globalImages.length === 0) {
     return (
@@ -218,23 +303,30 @@ export default function ResizeAndOptimize() {
         <div className="text-center py-20">
           <ImageIcon className="mx-auto h-16 w-16 text-gray-400 mb-4" />
           <p className="text-gray-600 mb-4">No images uploaded yet.</p>
-          <Button onClick={() => navigate({ to: '/' })}>
+          <Button onClick={() => navigate({ to: "/" })}>
             <Upload className="mr-2 h-4 w-4" />
             Upload Images
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
-  const { totalPages, currentImages, selectedImage, totalOriginalSize, totalSavings, savingsPercent } = pageData
+  const {
+    totalPages,
+    currentImages,
+    selectedImage,
+    totalOriginalSize,
+    totalSavings,
+    savingsPercent,
+  } = pageData;
 
   return (
     <div className="min-h-screen bg-background text-foreground p-4">
       {/* Gallery Grid */}
       <div className="mb-6">
         <div className="grid grid-cols-12 gap-2 mb-4">
-          {currentImages.map((image) => (
+          {currentImages.map((image: any) => (
             <SuperFastThumbnail
               key={image.id}
               image={image}
@@ -245,48 +337,48 @@ export default function ResizeAndOptimize() {
           ))}
         </div>
 
-        {/* Complete Toolbar - Exactly matching your HTML structure */}
+        {/* Complete Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4 bg-gray-700 p-2 rounded-lg z-10 relative">
           <div className="flex items-center gap-2">
             {/* Zoom Controls */}
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="h-9 w-9 p-0"
-              onClick={() => handleZoom('out')}
+              onClick={() => handleZoom("out")}
             >
               <Minus className="h-4 w-4" />
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="h-9 w-9 p-0"
-              onClick={() => handleZoom('in')}
+              onClick={() => handleZoom("in")}
             >
               <Plus className="h-4 w-4" />
             </Button>
 
             {/* Editor Mode Buttons */}
-            <Button 
-              variant="outline" 
-              className="px-4 py-2 h-9" 
+            <Button
+              variant="outline"
+              className="px-4 py-2 h-9"
               disabled
               data-testid="edit-image-button"
             >
               <Edit className="mr-2 h-4 w-4" />
               Edit Image Mode
             </Button>
-            
-            <Button 
-              variant="outline" 
+
+            <Button
+              variant="outline"
               className="px-4 py-2 h-9"
               disabled={!globalImages || globalImages.length <= 1}
               title={
                 !globalImages
                   ? "No images available"
                   : globalImages.length <= 1
-                  ? `Bulk edit requires multiple images (currently ${
-                      globalImages.length
-                    } image${globalImages.length === 1 ? "" : "s"})`
-                  : `Edit ${globalImages.length} images at once`
+                    ? `Bulk edit requires multiple images (currently ${
+                        globalImages.length
+                      } image${globalImages.length === 1 ? "" : "s"})`
+                    : `Edit ${globalImages.length} images at once`
               }
             >
               <Image className="mr-2 h-4 w-4" />
@@ -297,7 +389,7 @@ export default function ResizeAndOptimize() {
                 </span>
               )}
             </Button>
-            
+
             {/* AI Editor Button with Animated Rainbow Ring */}
             <div className="relative">
               {/* Animated rainbow ring overlay */}
@@ -309,12 +401,13 @@ export default function ResizeAndOptimize() {
               <div className="absolute -inset-0.1 rounded-lg">
                 <div className="w-full h-full rounded-lg bg-gradient-to-r from-purple-400 via-blue-400 via-green-400 via-yellow-400 via-orange-400 via-red-400 to-purple-400 animate-rainbow-reverse opacity-50"></div>
               </div>
-              
+
               {/* Animated rainbow outline */}
               <div
                 className="absolute inset-0 rounded-md p-[1px] rainbow-border"
                 style={{
-                  background: "linear-gradient(90deg, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #6366f1, #a855f7, #ef4444)",
+                  background:
+                    "linear-gradient(90deg, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #6366f1, #a855f7, #ef4444)",
                   backgroundSize: "400% 100%",
                   animation: "rainbow-flow 4s ease-in-out infinite",
                 }}
@@ -358,7 +451,7 @@ export default function ResizeAndOptimize() {
               <Button
                 variant="outline"
                 className="py-2 h-9 px-3"
-                onClick={() => handleNavigation('prev10')}
+                onClick={() => handleNavigation("prev10")}
                 disabled={globalImages.length === 0}
                 title="Back 10 images"
               >
@@ -367,17 +460,19 @@ export default function ResizeAndOptimize() {
               <Button
                 variant="outline"
                 className="py-2 h-9 px-3"
-                onClick={() => handleNavigation('prev')}
+                onClick={() => handleNavigation("prev")}
                 disabled={globalImages.length === 0}
                 title="Previous image"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <span className="text-sm px-2 text-white whitespace-nowrap">Switch Photos</span>
+              <span className="text-sm px-2 text-white whitespace-nowrap">
+                Switch Photos
+              </span>
               <Button
                 variant="outline"
                 className="py-2 h-9 px-3"
-                onClick={() => handleNavigation('next')}
+                onClick={() => handleNavigation("next")}
                 disabled={globalImages.length === 0}
                 title="Next image"
               >
@@ -386,7 +481,7 @@ export default function ResizeAndOptimize() {
               <Button
                 variant="outline"
                 className="py-2 h-9 px-3"
-                onClick={() => handleNavigation('next10')}
+                onClick={() => handleNavigation("next10")}
                 disabled={globalImages.length === 0}
                 title="Forward 10 images"
               >
@@ -397,16 +492,16 @@ export default function ResizeAndOptimize() {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="px-4 py-2 h-9"
-              onClick={() => navigate({ to: '/' })}
+              onClick={() => navigate({ to: "/" })}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Upload
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               className="px-4 py-2 h-9"
               onClick={handleRemoveAll}
             >
@@ -414,15 +509,11 @@ export default function ResizeAndOptimize() {
               Remove All Images
             </Button>
 
-            {/* Theme Toggle - Proper ShadUI Dropdown */}
+            {/* Theme Toggle */}
             <ThemeToggle />
 
             {/* User Button */}
-            <Button 
-              variant="outline" 
-              className="h-9 w-9" 
-              disabled
-            >
+            <Button variant="outline" className="h-9 w-9" disabled>
               <User className="h-4 w-4" />
             </Button>
           </div>
@@ -435,7 +526,7 @@ export default function ResizeAndOptimize() {
           <CardContent className="p-4">
             <div
               className="flex items-center justify-center bg-muted rounded-lg"
-              style={{ minHeight: '400px' }}
+              style={{ minHeight: "400px" }}
             >
               <img
                 src={selectedImage.compressed || selectedImage.url}
@@ -459,32 +550,50 @@ export default function ResizeAndOptimize() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
               <div>
-                <span className="font-medium text-muted-foreground">Filename:</span>
+                <span className="font-medium text-muted-foreground">
+                  Filename:
+                </span>
                 <p className="font-mono text-xs">{selectedImage.file.name}</p>
               </div>
               <div>
-                <span className="font-medium text-muted-foreground">Dimensions:</span>
-                <p>{selectedImage.width} × {selectedImage.height}</p>
-              </div>
-              <div>
-                <span className="font-medium text-muted-foreground">Original Size:</span>
-                <p>{formatBytes(selectedImage.originalSize)}</p>
-              </div>
-              <div>
-                <span className="font-medium text-muted-foreground">Compressed:</span>
-                <p>{formatBytes(selectedImage.compressedSize || selectedImage.originalSize)}</p>
-              </div>
-              <div>
-                <span className="font-medium text-muted-foreground">Savings:</span>
-                <p className="text-green-600">
-                  {selectedImage.compressedSize 
-                    ? `${Math.round(((selectedImage.originalSize - selectedImage.compressedSize) / selectedImage.originalSize) * 100)}%`
-                    : '0%'
-                  }
+                <span className="font-medium text-muted-foreground">
+                  Dimensions:
+                </span>
+                <p>
+                  {selectedImage.width || "Unknown"} ×{" "}
+                  {selectedImage.height || "Unknown"}
                 </p>
               </div>
               <div>
-                <span className="font-medium text-muted-foreground">Format:</span>
+                <span className="font-medium text-muted-foreground">
+                  Original Size:
+                </span>
+                <p>{formatBytes(selectedImage.originalSize)}</p>
+              </div>
+              <div>
+                <span className="font-medium text-muted-foreground">
+                  Compressed:
+                </span>
+                <p>
+                  {formatBytes(
+                    selectedImage.compressedSize || selectedImage.originalSize
+                  )}
+                </p>
+              </div>
+              <div>
+                <span className="font-medium text-muted-foreground">
+                  Savings:
+                </span>
+                <p className="text-green-600">
+                  {selectedImage.compressedSize
+                    ? `${Math.round(((selectedImage.originalSize - selectedImage.compressedSize) / selectedImage.originalSize) * 100)}%`
+                    : "0%"}
+                </p>
+              </div>
+              <div>
+                <span className="font-medium text-muted-foreground">
+                  Format:
+                </span>
                 <p>{selectedImage.file.type}</p>
               </div>
             </div>
@@ -492,5 +601,5 @@ export default function ResizeAndOptimize() {
         </Card>
       )}
     </div>
-  )
+  );
 }
