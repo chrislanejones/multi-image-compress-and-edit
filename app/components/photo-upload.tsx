@@ -4,7 +4,7 @@ import { Upload } from "lucide-react";
 import { Card, CardHeader, CardContent, CardFooter } from "./ui/card";
 import { Button } from "./ui/button";
 
-// Import your existing utils
+// Import from the combined utils module
 import {
   addToGlobalImages,
   getGlobalImages,
@@ -15,18 +15,12 @@ import {
   type GlobalImage,
 } from "../utils/image-utils";
 
-// Import the ImageContext you already have
-import { useImageContext } from "../context/image-context";
-
 // Install: npm install browser-image-compression
 // This provides web worker support for non-blocking compression
 import imageCompression from "browser-image-compression";
 
 export default function PhotoUpload() {
   const navigate = useNavigate();
-
-  // Use your existing ImageContext instead of global state
-  const { images, addImages } = useImageContext();
 
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -42,15 +36,10 @@ export default function PhotoUpload() {
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
-        // Use OffscreenCanvas if available for better performance
-        const canvas =
-          typeof OffscreenCanvas !== "undefined"
-            ? new OffscreenCanvas(100, 100)
-            : document.createElement("canvas");
-
+        const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d", {
           alpha: false,
-          willReadFrequently: false, // Performance optimization
+          willReadFrequently: false,
         });
 
         if (!ctx) {
@@ -68,25 +57,17 @@ export default function PhotoUpload() {
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        // Convert to blob with lower quality for thumbnails
-        if (canvas instanceof OffscreenCanvas) {
-          canvas
-            .convertToBlob({ type: "image/jpeg", quality: 0.5 })
-            .then((blob) => resolve(URL.createObjectURL(blob)))
-            .catch(() => resolve(URL.createObjectURL(file)));
-        } else {
-          canvas.toBlob(
-            (blob) => {
-              if (blob) {
-                resolve(URL.createObjectURL(blob));
-              } else {
-                resolve(URL.createObjectURL(file));
-              }
-            },
-            "image/jpeg",
-            0.5
-          );
-        }
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(URL.createObjectURL(blob));
+            } else {
+              resolve(URL.createObjectURL(file));
+            }
+          },
+          "image/jpeg",
+          0.5
+        );
       };
 
       img.onerror = () => resolve(URL.createObjectURL(file));
@@ -104,13 +85,12 @@ export default function PhotoUpload() {
     }> => {
       try {
         const options = {
-          maxSizeMB: 1, // Target 1MB or less
-          maxWidthOrHeight: 1920, // Max dimension
-          useWebWorker: true, // Use web worker for non-blocking
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
           fileType: "image/jpeg",
           quality: 0.8,
           onProgress: (percent: number) => {
-            // This runs in web worker, very smooth
             setProgress((prev) => ({ ...prev, percent }));
           },
         };
@@ -124,7 +104,6 @@ export default function PhotoUpload() {
         };
       } catch (error) {
         console.warn("Web worker compression failed, falling back:", error);
-        // Fallback to your existing compression
         const result = await compressImageAggressively(
           URL.createObjectURL(file)
         );
@@ -137,7 +116,7 @@ export default function PhotoUpload() {
     []
   );
 
-  // Optimized file processing with smaller batches and proper cleanup
+  // Optimized file processing
   const handleFileChange = useCallback(
     async (files: FileList | null) => {
       if (!files || files.length === 0) return;
@@ -147,10 +126,8 @@ export default function PhotoUpload() {
 
       try {
         const validFiles = Array.from(files).filter((file) => {
-          // Quick validation
           if (!file.type.startsWith("image/")) return false;
           if (file.size > 50 * 1024 * 1024) {
-            // 50MB limit
             console.warn(
               `File ${file.name} too large: ${formatBytes(file.size)}`
             );
@@ -164,10 +141,9 @@ export default function PhotoUpload() {
           return;
         }
 
-        // Smaller batches for better performance
-        const BATCH_SIZE = 1; // Process one at a time for smoothest experience
-        const BATCH_DELAY = 10; // Small delay between batches
-        const allProcessedImages: any[] = [];
+        const BATCH_SIZE = 1;
+        const BATCH_DELAY = 10;
+        const allProcessedImages: GlobalImage[] = [];
 
         for (let i = 0; i < validFiles.length; i += BATCH_SIZE) {
           const batch = validFiles.slice(i, i + BATCH_SIZE);
@@ -177,10 +153,8 @@ export default function PhotoUpload() {
             setProgress((prev) => ({ ...prev, current: currentIndex }));
 
             try {
-              // 1. Create thumbnail immediately (very fast)
               const thumbnail = await createThumbnail(file);
 
-              // 2. Get image dimensions
               const img = new Image();
               const dimensions = await new Promise<{
                 width: number;
@@ -195,7 +169,6 @@ export default function PhotoUpload() {
                 img.src = URL.createObjectURL(file);
               });
 
-              // 3. Compress in web worker (non-blocking)
               const { compressed, compressedSize } =
                 await compressWithWebWorker(file);
 
@@ -221,39 +194,16 @@ export default function PhotoUpload() {
             (result): result is NonNullable<typeof result> => result !== null
           );
 
-          // Add valid results to our collection
           allProcessedImages.push(...validResults);
 
-          // Yield to main thread for smoother UI
           if (i + BATCH_SIZE < validFiles.length) {
             await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY));
           }
         }
 
-        // Add all processed images to ImageContext at once
+        // Add to global store using the utility function
         if (allProcessedImages.length > 0) {
-          // Convert to the format expected by ImageContext
-          const imageFiles = allProcessedImages.map((result) => ({
-            id: result.id,
-            file: result.file,
-            url: result.url,
-            thumbnail: result.thumbnail,
-            compressed: result.compressed,
-            compressedSize: result.compressedSize,
-            originalSize: result.originalSize,
-            width: result.width,
-            height: result.height,
-            metadata: {},
-          }));
-
-          // Add to ImageContext - you may need to adjust this based on your context implementation
-          // If addImages expects FileList, you might need to handle this differently
-          for (const imageFile of imageFiles) {
-            // Create a DataTransfer to convert back to FileList format if needed
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(imageFile.file);
-            await addImages(dataTransfer.files);
-          }
+          addToGlobalImages(allProcessedImages);
         }
 
         // Navigate after all processing is complete
@@ -265,7 +215,7 @@ export default function PhotoUpload() {
         setProgress({ current: 0, total: 0, percent: 0 });
       }
     },
-    [navigate, createThumbnail, compressWithWebWorker, addImages]
+    [navigate, createThumbnail, compressWithWebWorker]
   );
 
   const handleInputChange = useCallback(
@@ -313,16 +263,8 @@ export default function PhotoUpload() {
     [handleFileChange]
   );
 
-  // Use ImageContext instead of global state
-  const hasImages = images.length > 0;
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      // Cleanup any temporary URLs created during processing
-      // The ImageContext will handle main image cleanup
-    };
-  }, []);
+  // Use the utility function to check if images exist
+  const hasImages = getGlobalImages().length > 0;
 
   return (
     <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
@@ -412,7 +354,7 @@ export default function PhotoUpload() {
                 className="flex-1"
                 disabled={isProcessing}
               >
-                View Gallery ({images.length})
+                View Gallery ({getGlobalImages().length})
               </Button>
             </div>
           ) : (

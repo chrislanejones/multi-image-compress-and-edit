@@ -1,27 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-// Import the global state and type it properly
-let globalImages: Array<{
-  id: string;
-  file: File;
-  url: string;
-  thumbnail?: string;
-  compressed?: string;
-  originalSize: number;
-  compressedSize?: number;
-  width?: number;
-  height?: number;
-}> = [];
-
-// Try to get the global images from photo-upload if it exists
-try {
-  const photoUploadModule = require("./photo-upload");
-  if (photoUploadModule.globalImages) {
-    globalImages = photoUploadModule.globalImages;
-  }
-} catch (e) {
-  // Module might not be loaded yet, that's okay
-}
 import { Button } from "./ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
 import { ThemeToggle } from "./ui/theme-toggle";
@@ -47,13 +25,18 @@ import {
   User,
 } from "lucide-react";
 
-// Import your existing utils
+// Import from the combined utils module
 import {
+  getGlobalImages,
+  removeFromGlobalImages,
+  clearGlobalImages,
+  getGlobalImageById,
+  getGlobalImageStats,
+  getPaginatedImages,
   formatBytes,
   safeRevokeURL,
-  downloadImagesAsZip,
+  type GlobalImage,
 } from "../utils/image-utils";
-import { compressImageAggressively } from "../utils/image-processing";
 
 // Optimized thumbnail component with better loading states
 const SuperFastThumbnail = React.memo(
@@ -63,7 +46,7 @@ const SuperFastThumbnail = React.memo(
     onClick,
     onRemove,
   }: {
-    image: any;
+    image: GlobalImage;
     isSelected: boolean;
     onClick: () => void;
     onRemove: (e: React.MouseEvent) => void;
@@ -148,7 +131,6 @@ SuperFastThumbnail.displayName = "SuperFastThumbnail";
 export default function ResizeAndOptimize() {
   const navigate = useNavigate();
 
-  // Use global state instead of context
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [zoom, setZoom] = useState(100);
@@ -157,48 +139,22 @@ export default function ResizeAndOptimize() {
 
   const imagesPerPage = 12;
 
-  // Memoized data - prevents expensive recalculations
-  const pageData = useMemo(() => {
-    const totalPages = Math.ceil(globalImages.length / imagesPerPage);
-    const currentImages = globalImages.slice(
-      currentPage * imagesPerPage,
-      (currentPage + 1) * imagesPerPage
-    );
-    const selectedImage = globalImages.find(
-      (img) => img.id === selectedImageId
-    );
-
-    // Calculate total savings
-    const totalOriginalSize = globalImages.reduce(
-      (sum: number, img: any) => sum + img.originalSize,
-      0
-    );
-    const totalCompressedSize = globalImages.reduce((sum: number, img: any) => {
-      return sum + (img.compressedSize || img.originalSize);
-    }, 0);
-    const totalSavings = totalOriginalSize - totalCompressedSize;
-    const savingsPercent =
-      totalOriginalSize > 0 ? (totalSavings / totalOriginalSize) * 100 : 0;
-
-    return {
-      totalPages,
-      currentImages,
-      selectedImage,
-      totalOriginalSize,
-      totalCompressedSize,
-      totalSavings,
-      savingsPercent,
-    };
-  }, [globalImages, currentPage, selectedImageId, imagesPerPage]);
+  // Get current images and stats using utility functions
+  const images = getGlobalImages();
+  const pageData = getPaginatedImages(currentPage, imagesPerPage);
+  const stats = getGlobalImageStats();
+  const selectedImage = selectedImageId
+    ? getGlobalImageById(selectedImageId)
+    : null;
 
   // Set initial selection
   useEffect(() => {
-    if (globalImages.length > 0 && !selectedImageId) {
-      setSelectedImageId(globalImages[0].id);
+    if (images.length > 0 && !selectedImageId) {
+      setSelectedImageId(images[0].id);
     }
-  }, [selectedImageId]);
+  }, [images.length, selectedImageId]);
 
-  const handleSelectImage = useCallback((image: any) => {
+  const handleSelectImage = useCallback((image: GlobalImage) => {
     setSelectedImageId(image.id);
   }, []);
 
@@ -206,43 +162,29 @@ export default function ResizeAndOptimize() {
     (imageId: string, e: React.MouseEvent) => {
       e.stopPropagation();
 
-      const index = globalImages.findIndex((img) => img.id === imageId);
-      if (index === -1) return;
+      // Use the utility function to remove and cleanup
+      const removedImage = removeFromGlobalImages(imageId);
 
-      // Clean up URLs
-      const imageToRemove = globalImages[index];
-      safeRevokeURL(imageToRemove.url);
-      safeRevokeURL(imageToRemove.thumbnail);
-      if (imageToRemove.compressed) safeRevokeURL(imageToRemove.compressed);
-
-      // Remove from global array
-      globalImages.splice(index, 1);
-
-      // Update selection
-      if (selectedImageId === imageId) {
-        if (globalImages.length > 0) {
-          const newIndex = Math.min(index, globalImages.length - 1);
-          setSelectedImageId(globalImages[newIndex]?.id || null);
-        } else {
-          setSelectedImageId(null);
+      if (removedImage) {
+        // Update selection if the removed image was selected
+        if (selectedImageId === imageId) {
+          const remainingImages = getGlobalImages();
+          if (remainingImages.length > 0) {
+            setSelectedImageId(remainingImages[0].id);
+          } else {
+            setSelectedImageId(null);
+          }
         }
-      }
 
-      // Force re-render
-      forceUpdate({});
+        // Force re-render
+        forceUpdate({});
+      }
     },
     [selectedImageId]
   );
 
   const handleRemoveAll = useCallback(() => {
-    // Clean up all URLs
-    globalImages.forEach((img: any) => {
-      safeRevokeURL(img.url);
-      safeRevokeURL(img.thumbnail);
-      if (img.compressed) safeRevokeURL(img.compressed);
-    });
-
-    globalImages.length = 0;
+    clearGlobalImages();
     setSelectedImageId(null);
     setCurrentPage(0);
     forceUpdate({});
@@ -250,33 +192,32 @@ export default function ResizeAndOptimize() {
 
   const handleNavigation = useCallback(
     (direction: "prev" | "next" | "prev10" | "next10") => {
-      if (globalImages.length === 0 || !selectedImageId) return;
+      const images = getGlobalImages();
+      if (images.length === 0 || !selectedImageId) return;
 
-      const currentIndex = globalImages.findIndex(
-        (img: any) => img.id === selectedImageId
+      const currentIndex = images.findIndex(
+        (img: GlobalImage) => img.id === selectedImageId
       );
       let newIndex;
 
       switch (direction) {
         case "prev":
-          newIndex =
-            currentIndex > 0 ? currentIndex - 1 : globalImages.length - 1;
+          newIndex = currentIndex > 0 ? currentIndex - 1 : images.length - 1;
           break;
         case "next":
-          newIndex =
-            currentIndex < globalImages.length - 1 ? currentIndex + 1 : 0;
+          newIndex = currentIndex < images.length - 1 ? currentIndex + 1 : 0;
           break;
         case "prev10":
           newIndex = Math.max(0, currentIndex - 10);
           break;
         case "next10":
-          newIndex = Math.min(globalImages.length - 1, currentIndex + 10);
+          newIndex = Math.min(images.length - 1, currentIndex + 10);
           break;
         default:
           return;
       }
 
-      setSelectedImageId(globalImages[newIndex].id);
+      setSelectedImageId(images[newIndex].id);
 
       // Update page if needed
       const newPage = Math.floor(newIndex / imagesPerPage);
@@ -297,7 +238,7 @@ export default function ResizeAndOptimize() {
     });
   }, []);
 
-  if (globalImages.length === 0) {
+  if (images.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8 min-h-screen">
         <div className="text-center py-20">
@@ -312,21 +253,12 @@ export default function ResizeAndOptimize() {
     );
   }
 
-  const {
-    totalPages,
-    currentImages,
-    selectedImage,
-    totalOriginalSize,
-    totalSavings,
-    savingsPercent,
-  } = pageData;
-
   return (
     <div className="min-h-screen bg-background text-foreground p-4">
       {/* Gallery Grid */}
       <div className="mb-6">
         <div className="grid grid-cols-12 gap-2 mb-4">
-          {currentImages.map((image: any) => (
+          {pageData.currentImages.map((image: GlobalImage) => (
             <SuperFastThumbnail
               key={image.id}
               image={image}
@@ -370,22 +302,18 @@ export default function ResizeAndOptimize() {
             <Button
               variant="outline"
               className="px-4 py-2 h-9"
-              disabled={!globalImages || globalImages.length <= 1}
+              disabled={images.length <= 1}
               title={
-                !globalImages
-                  ? "No images available"
-                  : globalImages.length <= 1
-                    ? `Bulk edit requires multiple images (currently ${
-                        globalImages.length
-                      } image${globalImages.length === 1 ? "" : "s"})`
-                    : `Edit ${globalImages.length} images at once`
+                images.length <= 1
+                  ? `Bulk edit requires multiple images (currently ${images.length} image${images.length === 1 ? "" : "s"})`
+                  : `Edit ${images.length} images at once`
               }
             >
               <Image className="mr-2 h-4 w-4" />
               Bulk Image Edit
-              {globalImages && globalImages.length > 0 && (
+              {images.length > 0 && (
                 <span className="ml-1 text-xs opacity-75">
-                  ({globalImages.length})
+                  ({images.length})
                 </span>
               )}
             </Button>
@@ -452,7 +380,7 @@ export default function ResizeAndOptimize() {
                 variant="outline"
                 className="py-2 h-9 px-3"
                 onClick={() => handleNavigation("prev10")}
-                disabled={globalImages.length === 0}
+                disabled={images.length === 0}
                 title="Back 10 images"
               >
                 <ChevronsLeft className="h-4 w-4" />
@@ -461,7 +389,7 @@ export default function ResizeAndOptimize() {
                 variant="outline"
                 className="py-2 h-9 px-3"
                 onClick={() => handleNavigation("prev")}
-                disabled={globalImages.length === 0}
+                disabled={images.length === 0}
                 title="Previous image"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -473,7 +401,7 @@ export default function ResizeAndOptimize() {
                 variant="outline"
                 className="py-2 h-9 px-3"
                 onClick={() => handleNavigation("next")}
-                disabled={globalImages.length === 0}
+                disabled={images.length === 0}
                 title="Next image"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -482,7 +410,7 @@ export default function ResizeAndOptimize() {
                 variant="outline"
                 className="py-2 h-9 px-3"
                 onClick={() => handleNavigation("next10")}
-                disabled={globalImages.length === 0}
+                disabled={images.length === 0}
                 title="Forward 10 images"
               >
                 <ChevronsRight className="h-4 w-4" />
