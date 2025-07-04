@@ -1,567 +1,467 @@
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+// app/components/resize-and-optimize.tsx - Step 3: With smart toolbar integration
+import React, { useState, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
-import { X, Image as ImageIcon, Zap, Home } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
-
-import { useImageContext } from "../context/image-context";
-import { formatBytes } from "../utils/image-utils";
+import { Input } from "./ui/input";
 import { ImageEditorToolbar } from "./image-editor-toolbar";
+import {
+  Upload,
+  X,
+  Eye,
+  Download,
+  Trash2,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  FlipHorizontal,
+} from "lucide-react";
+import { CompressionSidebar } from "./CompressionSidebar";
 
-// Enhanced FastThumbnail with compression animation
-const FastThumbnail = React.memo(
-  ({
-    image,
-    isSelected,
-    onClick,
-    onRemove,
-    forceUpdate,
-  }: {
-    image: any;
-    isSelected: boolean;
-    onClick: () => void;
-    onRemove: (e: React.MouseEvent) => void;
-    forceUpdate: (obj: {}) => void;
-  }) => {
-    const [isLoaded, setIsLoaded] = useState(false);
-    const [hasError, setHasError] = useState(false);
-    const [isCompressing, setIsCompressing] = useState(false);
-    const [hasAppeared, setHasAppeared] = useState(false);
-    const [compressionAttempted, setCompressionAttempted] = useState(false);
-
-    // Reset compression state if image already has compressed data
-    useEffect(() => {
-      const compressedSize =
-        image.metadata?.compressedSize || image.compressedSize;
-      if (compressedSize) {
-        console.log(
-          `Image ${image.file?.name} already has compression data: ${compressedSize} bytes`
-        );
-        setIsCompressing(false);
-        setCompressionAttempted(true);
-      }
-    }, [
-      image.metadata?.compressedSize,
-      image.compressedSize,
-      image.file?.name,
-    ]);
-
-    // Compress image when component mounts if not already compressed
-    useEffect(() => {
-      const compressedSize =
-        image.metadata?.compressedSize || image.compressedSize;
-      const fileName = image.file?.name || "unknown";
-
-      // Always log current state
-      console.log(
-        `Image ${fileName}: compressedSize=${compressedSize}, isCompressing=${isCompressing}, attempted=${compressionAttempted}`
-      );
-
-      if (
-        !compressedSize &&
-        !isCompressing &&
-        !compressionAttempted &&
-        image.file
-      ) {
-        console.log(`Starting compression for ${fileName}`);
-        setIsCompressing(true);
-        setCompressionAttempted(true);
-
-        // Import the compression function dynamically
-        import("../utils/image-utils").then(({ aggressiveCompress300KB }) => {
-          aggressiveCompress300KB(image.file)
-            .then(({ compressed, compressedSize: newCompressedSize }) => {
-              console.log(
-                "✅ Compression complete for",
-                fileName,
-                "->",
-                newCompressedSize,
-                "bytes"
-              );
-
-              // Update the image metadata (this would need to be handled by context)
-              if (image.metadata) {
-                image.metadata.compressedSize = newCompressedSize;
-                image.metadata.compressionRatio = Math.round(
-                  ((image.metadata.originalSize - newCompressedSize) /
-                    image.metadata.originalSize) *
-                    100
-                );
-              }
-
-              setIsCompressing(false);
-              // Force a re-render by updating the forceUpdate in parent
-              forceUpdate({});
-            })
-            .catch((error) => {
-              console.error("❌ Compression failed:", error);
-              setIsCompressing(false);
-            });
-        });
-      } else if (compressedSize) {
-        console.log(
-          `⚡ Image ${fileName} already compressed: ${compressedSize} bytes`
-        );
-      }
-    }, [
-      image.id,
-      image.metadata?.compressedSize,
-      image.compressedSize,
-      isCompressing,
-      compressionAttempted,
-      image.file?.name,
-      image.file,
-      forceUpdate,
-    ]);
-
-    // Popup effect when component mounts
-    useEffect(() => {
-      const timer = setTimeout(() => {
-        setHasAppeared(true);
-      }, 100);
-      return () => clearTimeout(timer);
-    }, []);
-
-    // Force clear blur after timeout as fallback
-    useEffect(() => {
-      if (isCompressing) {
-        const fallbackTimer = setTimeout(() => {
-          console.log("Fallback: Clearing blur for", image.file?.name);
-          setIsCompressing(false);
-        }, 10000); // 10 second fallback
-
-        return () => clearTimeout(fallbackTimer);
-      }
-    }, [isCompressing, image.file?.name]);
-
-    // Use thumbnail if available, otherwise use compressed, otherwise original
-    const imageUrl = image.thumbnail || image.compressed || image.url;
-
-    // Determine if we should show blur (only if actively compressing)
-    const shouldBlur =
-      isCompressing &&
-      !(image.metadata?.compressedSize || image.compressedSize);
-
-    return (
-      <div
-        className={`relative aspect-square cursor-pointer rounded-lg overflow-hidden group border-2 transition-all duration-500 transform ${
-          hasAppeared ? "scale-100 opacity-100" : "scale-75 opacity-0"
-        } ${
-          isSelected
-            ? "border-primary ring-2 ring-primary/50"
-            : "border-border hover:border-primary/50"
-        }`}
-        onClick={onClick}
-      >
-        {/* Image with conditional blur effect */}
-        <div className="relative w-full h-full">
-          <img
-            src={imageUrl}
-            alt={image.file?.name || "Uploaded image"}
-            className={`w-full h-full object-cover transition-all duration-700 ${
-              isLoaded ? "opacity-100" : "opacity-0"
-            } ${shouldBlur ? "blur-md scale-105" : "blur-0 scale-100"}`}
-            style={{
-              imageRendering: "auto",
-            }}
-            loading="lazy"
-            decoding="async"
-            onLoad={() => setIsLoaded(true)}
-            onError={() => setHasError(true)}
-          />
-
-          {/* Error state */}
-          {hasError && (
-            <div className="absolute inset-0 bg-muted flex items-center justify-center">
-              <ImageIcon className="w-6 h-6 text-muted-foreground" />
-            </div>
-          )}
-
-          {/* Compression loading overlay */}
-          {shouldBlur && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-              <div className="bg-white/90 backdrop-blur-sm rounded-full p-2">
-                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Remove button */}
-        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button
-            variant="destructive"
-            size="sm"
-            className="h-6 w-6 p-0"
-            onClick={onRemove}
-          >
-            <X className="h-3 w-3" />
-          </Button>
-        </div>
-
-        {/* Clean compression indicator - show if we have compression data */}
-        {(() => {
-          const originalSize =
-            image.metadata?.originalSize || image.originalSize;
-          const compressedSize =
-            image.metadata?.compressedSize || image.compressedSize;
-          const hasCompressedSize = !!compressedSize;
-          const isDifferentSize =
-            compressedSize && compressedSize !== originalSize;
-          const shouldShow = hasCompressedSize && isDifferentSize;
-
-          // Debug logging
-          console.log(
-            `Pill for ${image.file?.name}: compressedSize=${compressedSize}, originalSize=${originalSize}, shouldShow=${shouldShow}`
-          );
-
-          return shouldShow && compressedSize && originalSize ? (
-            <div className="absolute bottom-1 left-1 bg-black/80 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 transition-all duration-300 animate-in slide-in-from-bottom-2">
-              <Zap className="w-3 h-3 text-yellow-400" />
-              <span className="text-white text-xs font-medium">
-                {Math.round(
-                  ((originalSize - compressedSize) / originalSize) * 100
-                )}
-                %
-              </span>
-            </div>
-          ) : null;
-        })()}
-      </div>
-    );
-  }
+// Simple Label component
+const Label: React.FC<{
+  htmlFor?: string;
+  className?: string;
+  children: React.ReactNode;
+}> = ({ htmlFor, className = "", children }) => (
+  <label
+    htmlFor={htmlFor}
+    className={`text-sm font-medium text-gray-700 dark:text-gray-300 ${className}`}
+  >
+    {children}
+  </label>
 );
 
-FastThumbnail.displayName = "FastThumbnail";
+// Utility functions
+const formatBytes = (bytes: number): string => {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
+
+// Simple compression function
+const compressImage = async (
+  file: File,
+  quality: number = 0.8
+): Promise<File> => {
+  return new Promise((resolve) => {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d")!;
+    const img = new Image();
+
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            const compressedFile = new File([blob], file.name, {
+              type: "image/jpeg",
+              lastModified: Date.now(),
+            });
+            resolve(compressedFile);
+          } else {
+            resolve(file);
+          }
+        },
+        "image/jpeg",
+        quality
+      );
+    };
+
+    img.src = URL.createObjectURL(file);
+  });
+};
+
+interface ProcessedImage {
+  id: string;
+  file: File;
+  url: string;
+  thumbnail?: string;
+  compressed?: {
+    file: File;
+    url: string;
+    compressionRatio: number;
+    quality: number;
+  };
+  metadata: {
+    width: number;
+    height: number;
+    size: number;
+    type: string;
+  };
+}
 
 export default function ResizeAndOptimize() {
   const navigate = useNavigate();
-  const { images, selectedImage, selectImage, removeImage, removeAllImages } =
-    useImageContext();
-
-  const [zoom, setZoom] = useState(100);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const [editorState, setEditorState] = useState<
-    | "resizeAndOptimize"
-    | "editImage"
-    | "bulkImageEdit"
-    | "crop"
-    | "blur"
-    | "paint"
-    | "text"
-  >("resizeAndOptimize");
-  const [, forceUpdate] = useState({}); // For forcing re-renders
-
-  const imagesPerPage = 10;
-
-  // Pagination logic
-  const paginatedData = useMemo(() => {
-    const totalPages = Math.ceil(images.length / imagesPerPage);
-    const startIndex = currentPage * imagesPerPage;
-    const endIndex = startIndex + imagesPerPage;
-    const currentImages = images.slice(startIndex, endIndex);
-
-    return {
-      currentImages,
-      totalPages,
-      hasNextPage: currentPage < totalPages - 1,
-      hasPrevPage: currentPage > 0,
-    };
-  }, [images, currentPage, imagesPerPage]);
-
-  const handleSelectImage = useCallback(
-    (image: any) => {
-      selectImage(image);
-    },
-    [selectImage]
+  const [images, setImages] = useState<ProcessedImage[]>([]);
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(
+    null
   );
+  const [isUploading, setIsUploading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [mode, setMode] = useState<
+    "gallery" | "edit" | "crop" | "blur" | "paint" | "text"
+  >("gallery");
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
-  const handleRemoveImage = useCallback(
-    (imageId: string, e: React.MouseEvent) => {
-      e.stopPropagation();
-      removeImage(imageId);
-    },
-    [removeImage]
-  );
+  const imagesPerPage = 12;
+  const totalPages = Math.ceil(images.length / imagesPerPage);
+  const startIndex = (currentPage - 1) * imagesPerPage;
+  const currentImages = images.slice(startIndex, startIndex + imagesPerPage);
 
-  const handleNavigation = useCallback(
-    (direction: "prev" | "next") => {
-      if (!selectedImage || images.length === 0) return;
+  // Create thumbnail
+  const createThumbnail = useCallback((file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d")!;
+      const img = new Image();
 
-      const currentIndex = images.findIndex(
-        (img) => img.id === selectedImage.id
-      );
-      let newIndex;
+      img.onload = () => {
+        const maxSize = 150;
+        const ratio = Math.min(maxSize / img.width, maxSize / img.height);
+        canvas.width = img.width * ratio;
+        canvas.height = img.height * ratio;
 
-      switch (direction) {
-        case "prev":
-          newIndex = currentIndex > 0 ? currentIndex - 1 : images.length - 1;
-          break;
-        case "next":
-          newIndex = currentIndex < images.length - 1 ? currentIndex + 1 : 0;
-          break;
-        default:
-          return;
-      }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.7));
+      };
 
-      selectImage(images[newIndex]);
-
-      // Update page if needed
-      const newPage = Math.floor(newIndex / imagesPerPage);
-      if (newPage !== currentPage) {
-        setCurrentPage(newPage);
-      }
-    },
-    [selectedImage, images, selectImage, currentPage, imagesPerPage]
-  );
-
-  const handleZoom = useCallback((direction: "in" | "out") => {
-    setZoom((prev) => {
-      if (direction === "in") {
-        return Math.min(400, prev + 25);
-      } else {
-        return Math.max(25, prev - 25);
-      }
+      img.src = URL.createObjectURL(file);
     });
   }, []);
 
-  // Toolbar handlers
-  const handleZoomIn = useCallback(() => handleZoom("in"), [handleZoom]);
-  const handleZoomOut = useCallback(() => handleZoom("out"), [handleZoom]);
-
-  const handleStateChange = useCallback(
+  // Get image metadata
+  const getImageMetadata = useCallback(
     (
-      newState:
-        | "resizeAndOptimize"
-        | "editImage"
-        | "bulkImageEdit"
-        | "crop"
-        | "blur"
-        | "paint"
-        | "text"
-    ) => {
-      setEditorState(newState);
+      file: File
+    ): Promise<{
+      width: number;
+      height: number;
+      size: number;
+      type: string;
+    }> => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          resolve({
+            width: img.naturalWidth,
+            height: img.naturalHeight,
+            size: file.size,
+            type: file.type,
+          });
+        };
+        img.src = URL.createObjectURL(file);
+      });
     },
     []
   );
 
-  const handleClose = useCallback(() => {
-    navigate({ to: "/" });
-  }, [navigate]);
+  // Handle file upload
+  const handleFileUpload = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(event.target.files || []);
+      if (files.length === 0) return;
 
-  const handleNavigateImage = useCallback(
-    (direction: "prev" | "next") => {
-      handleNavigation(direction);
+      setIsUploading(true);
+
+      try {
+        const newImages: ProcessedImage[] = [];
+
+        for (const file of files.slice(0, 5)) {
+          // Limit to 5 files
+          const [thumbnail, metadata] = await Promise.all([
+            createThumbnail(file),
+            getImageMetadata(file),
+          ]);
+
+          const processedImage: ProcessedImage = {
+            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            file,
+            url: URL.createObjectURL(file),
+            thumbnail,
+            metadata,
+          };
+
+          newImages.push(processedImage);
+        }
+
+        setImages((prev) => [...prev, ...newImages]);
+      } catch (error) {
+        console.error("Upload failed:", error);
+      } finally {
+        setIsUploading(false);
+        // Reset the input
+        event.target.value = "";
+      }
     },
-    [handleNavigation]
+    [createThumbnail, getImageMetadata]
+  );
+
+  // Remove image
+  const removeImage = useCallback(
+    (id: string) => {
+      setImages((prev) => {
+        const updated = prev.filter((img) => img.id !== id);
+        // Reset selection if removed image was selected
+        if (selectedImageIndex !== null) {
+          const selectedImage = prev[selectedImageIndex];
+          if (selectedImage?.id === id) {
+            setSelectedImageIndex(null);
+            setMode("gallery");
+          }
+        }
+        return updated;
+      });
+    },
+    [selectedImageIndex]
+  );
+
+  // Toolbar event handlers
+  const handleModeChange = useCallback(
+    (newMode: "gallery" | "edit" | "crop" | "blur" | "paint" | "text") => {
+      setMode(newMode);
+      if (newMode === "gallery") {
+        setSelectedImageIndex(null);
+        setZoomLevel(1);
+      }
+    },
+    []
+  );
+
+  const handleImageNavigation = useCallback(
+    (direction: "prev" | "next") => {
+      if (selectedImageIndex === null) return;
+
+      const newIndex =
+        direction === "prev"
+          ? Math.max(0, selectedImageIndex - 1)
+          : Math.min(images.length - 1, selectedImageIndex + 1);
+
+      setSelectedImageIndex(newIndex);
+    },
+    [selectedImageIndex, images.length]
   );
 
   const handlePageNavigation = useCallback(
     (direction: "prev" | "next") => {
-      if (direction === "prev" && paginatedData.hasPrevPage) {
-        setCurrentPage((prev) => prev - 1);
-      } else if (direction === "next" && paginatedData.hasNextPage) {
-        setCurrentPage((prev) => prev + 1);
-      }
+      const newPage =
+        direction === "prev"
+          ? Math.max(1, currentPage - 1)
+          : Math.min(totalPages, currentPage + 1);
+
+      setCurrentPage(newPage);
     },
-    [paginatedData.hasPrevPage, paginatedData.hasNextPage]
+    [currentPage, totalPages]
   );
 
-  // Set up countdown for no images
-  useEffect(() => {
-    if (images.length === 0) {
-      // Start 3-second countdown
-      setCountdown(3);
+  const handleZoomChange = useCallback((zoom: number) => {
+    setZoomLevel(zoom);
+  }, []);
 
-      const timer = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev === null || prev <= 1) {
-            clearInterval(timer);
-            navigate({ to: "/" });
-            return null;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+  const handleToolAction = useCallback((action: string) => {
+    console.log(`Tool action: ${action}`);
+    // TODO: Implement actual tool functionality
+  }, []);
 
-      return () => clearInterval(timer);
-    } else {
-      setCountdown(null); // Reset countdown if images are found
-    }
-  }, [images.length, navigate]);
+  const handleBulkAction = useCallback((action: "compress" | "download") => {
+    console.log(`Bulk action: ${action}`);
+    // TODO: Implement bulk operations
+  }, []);
 
-  if (images.length === 0) {
-    return (
-      <div className="container mx-auto px-4 py-8 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <ImageIcon className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-          <h2 className="text-2xl font-semibold text-gray-700 mb-2">
-            No images uploaded yet
-          </h2>
-          <p className="text-gray-500 mb-6">
-            You need to upload some images first before you can edit them.
-          </p>
+  const handleThemeToggle = useCallback(() => {
+    setIsDarkMode((prev) => !prev);
+    // TODO: Implement theme switching
+  }, []);
 
-          {countdown !== null && (
-            <div className="mb-6">
-              <div className="text-4xl font-bold text-primary mb-2">
-                {countdown}
-              </div>
-              <p className="text-sm text-gray-500">
-                Redirecting to upload page in {countdown} second
-                {countdown !== 1 ? "s" : ""}...
-              </p>
-            </div>
-          )}
+  // Select image for editing
+  const selectImageForEdit = useCallback(
+    (index: number) => {
+      const actualIndex = startIndex + index;
+      setSelectedImageIndex(actualIndex);
+      setMode("edit");
+      setZoomLevel(1);
+    },
+    [startIndex]
+  );
 
-          <div className="space-y-3">
-            <Button onClick={() => navigate({ to: "/" })} size="lg">
-              <Home className="mr-2 h-4 w-4" />
-              Go to Upload Now
-            </Button>
-            <div>
-              <Button
-                variant="outline"
-                onClick={() => setCountdown(null)}
-                className="text-sm"
-              >
-                Cancel Auto-redirect
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Get selected image
+  const selectedImage =
+    selectedImageIndex !== null ? images[selectedImageIndex] : null;
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-4">
-      {/* Gallery Grid */}
-      <div className="mb-6">
-        <div className="grid grid-cols-5 md:grid-cols-10 gap-2 p-2 bg-gray-800 rounded-lg mb-6">
-          {paginatedData.currentImages.map((img, index) => (
-            <FastThumbnail
-              key={img.id}
-              image={img}
-              isSelected={selectedImage?.id === img.id}
-              onClick={() => handleSelectImage(img)}
-              onRemove={(e) => {
-                e.stopPropagation();
-                handleRemoveImage(img.id, e);
-              }}
-              forceUpdate={forceUpdate}
-            />
-          ))}
+    <div
+      className={`min-h-screen ${isDarkMode ? "dark bg-gray-900" : "bg-gray-50"}`}
+    >
+      {/* Toolbar */}
+      <ImageEditorToolbar
+        mode={mode}
+        currentImageIndex={selectedImageIndex || 0}
+        totalImages={images.length}
+        currentPage={currentPage}
+        totalPages={totalPages}
+        zoomLevel={zoomLevel}
+        onModeChange={handleModeChange}
+        onImageNavigation={handleImageNavigation}
+        onPageNavigation={handlePageNavigation}
+        onZoomChange={handleZoomChange}
+        onToolAction={handleToolAction}
+        onBulkAction={handleBulkAction}
+        onThemeToggle={handleThemeToggle}
+        isDarkMode={isDarkMode}
+      />
+
+      <div className="flex h-[calc(100vh-73px)]">
+        {" "}
+        {/* Adjust for toolbar height */}
+        {/* Main Content Area */}
+        <div className="flex-1 p-6">
+          {mode === "gallery" ? (
+            // Gallery View
+            <div className="space-y-6">
+              {/* Upload Area */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Upload className="h-5 w-5" />
+                    Upload Images
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <Label htmlFor="file-upload" className="cursor-pointer">
+                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center hover:border-blue-500 dark:hover:border-blue-400 transition-colors">
+                        <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                        <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                          Click to upload images
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          PNG, JPG up to 10MB (max 5 files)
+                        </p>
+                      </div>
+                    </Label>
+                    <Input
+                      id="file-upload"
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      disabled={isUploading}
+                      className="hidden"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Image Gallery */}
+              {images.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                      Image Gallery ({images.length} images)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {currentImages.map((image, index) => (
+                        <div key={image.id} className="group relative">
+                          <div className="aspect-square bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
+                            <img
+                              src={image.thumbnail || image.url}
+                              alt={`Image ${startIndex + index + 1}`}
+                              className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                              onClick={() => selectImageForEdit(index)}
+                              loading="lazy"
+                            />
+                          </div>
+
+                          {/* Image Info Overlay */}
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <div className="flex space-x-2">
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => selectImageForEdit(index)}
+                                className="bg-white/90 hover:bg-white"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => removeImage(image.id)}
+                                className="bg-red-500/90 hover:bg-red-500 text-white"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Image Details */}
+                          <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                            <p className="font-medium truncate">
+                              {image.file.name}
+                            </p>
+                            <p>
+                              {image.metadata.width} × {image.metadata.height}
+                            </p>
+                            <p>{formatBytes(image.metadata.size)}</p>
+                            {image.compressed && (
+                              <p className="text-green-600 dark:text-green-400">
+                                Compressed (
+                                {Math.round(
+                                  image.compressed.compressionRatio * 100
+                                )}
+                                %)
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          ) : (
+            // Edit View
+            selectedImage && (
+              <div className="h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg">
+                <div
+                  className="relative max-w-full max-h-full overflow-auto"
+                  style={{ transform: `scale(${zoomLevel})` }}
+                >
+                  <img
+                    src={selectedImage.url}
+                    alt={selectedImage.file.name}
+                    className="max-w-full max-h-full object-contain"
+                  />
+
+                  {/* Edit Mode Overlay */}
+                  {mode !== "edit" && (
+                    <div className="absolute inset-0 bg-blue-500 bg-opacity-20 border-2 border-blue-500 rounded">
+                      <div className="absolute top-2 left-2 bg-blue-500 text-white px-2 py-1 rounded text-sm font-medium capitalize">
+                        {mode} Mode
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          )}
         </div>
-
-        {/* Use the ImageEditorToolbar component */}
-        <ImageEditorToolbar
-          editorState={editorState}
-          zoom={zoom}
-          currentPage={currentPage + 1}
-          totalPages={paginatedData.totalPages}
-          allImages={images}
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          onClose={handleClose}
-          onRemoveAll={removeAllImages}
-          onNavigateImage={handleNavigateImage}
-          onNavigatePage={handlePageNavigation}
-          onStateChange={handleStateChange}
-          blurAmount={10}
-          blurRadius={25}
-        />
+        {/* Compression Sidebar (only in gallery mode) */}
+        {mode === "gallery" && images.length > 0 && (
+          <div className="w-80 border-l border-gray-200 dark:border-gray-700">
+            <CompressionSidebar images={images} onImagesUpdate={setImages} />
+          </div>
+        )}
       </div>
-
-      {/* Main Image Display */}
-      {selectedImage && (
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <div
-              className="flex items-center justify-center bg-muted rounded-lg"
-              style={{ minHeight: "400px" }}
-            >
-              <img
-                src={selectedImage.url}
-                alt={selectedImage.file?.name || "Selected image"}
-                className="max-w-full max-h-full object-contain rounded"
-                style={{ transform: `scale(${zoom / 100})` }}
-                loading="lazy"
-                decoding="async"
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Image Info */}
-      {selectedImage && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Image Information</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
-              <div>
-                <span className="font-medium text-muted-foreground">
-                  Filename:
-                </span>
-                <p className="font-mono text-xs">
-                  {selectedImage.file?.name || "Unknown"}
-                </p>
-              </div>
-              <div>
-                <span className="font-medium text-muted-foreground">
-                  Dimensions:
-                </span>
-                <p>
-                  {selectedImage.width || "Unknown"} ×{" "}
-                  {selectedImage.height || "Unknown"}
-                </p>
-              </div>
-              <div>
-                <span className="font-medium text-muted-foreground">
-                  Original Size:
-                </span>
-                <p>
-                  {formatBytes(
-                    selectedImage.metadata?.originalSize ||
-                      selectedImage.file?.size ||
-                      0
-                  )}
-                </p>
-              </div>
-              <div>
-                <span className="font-medium text-muted-foreground">
-                  Compressed:
-                </span>
-                <p>
-                  {formatBytes(
-                    selectedImage.metadata?.compressedSize ||
-                      selectedImage.file?.size ||
-                      0
-                  )}
-                </p>
-              </div>
-              <div>
-                <span className="font-medium text-muted-foreground">
-                  Savings:
-                </span>
-                <p className="text-green-600">
-                  {selectedImage.metadata?.compressionRatio || 0}%
-                </p>
-              </div>
-              <div>
-                <span className="font-medium text-muted-foreground">
-                  Format:
-                </span>
-                <p>{selectedImage.file?.type || "Unknown"}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

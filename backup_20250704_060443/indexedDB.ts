@@ -1,6 +1,6 @@
 "use client";
 
-import { base64ToBlob, getFileFormat } from "./image-utils";
+import { base64ToBlob, getFileFormat } from "./core-image-utils";
 
 // IndexedDB configuration
 const DB_CONFIG = {

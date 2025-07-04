@@ -1,7 +1,7 @@
 // app/utils/bulk-zip.ts
 import JSZip from "jszip";
 import type { ImageFormat } from "../types";
-import { bulkCropImages } from "./image-utils";
+import { bulkCropImages } from "./core-image-utils";
 
 export async function zipAndDownloadBlobs(
   files: Array<{ name: string; blob: Blob }>,

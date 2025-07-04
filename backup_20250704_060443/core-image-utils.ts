@@ -1,5 +1,8 @@
 "use client";
 
+// Import types from the centralized types file
+import type { ImageFormat } from "../types";
+
 // ===== TYPES =====
 export interface GlobalImage {
   id: string;
@@ -12,8 +15,6 @@ export interface GlobalImage {
   width?: number;
   height?: number;
 }
-
-export type ImageFormat = "jpeg" | "png" | "webp";
 
 export interface CropArea {
   x: number;
@@ -29,12 +30,15 @@ let imageUrlCache = new Map<string, string>();
 let thumbnailCache = new Map<string, string>();
 let compressionCache = new Map<
   string,
-  { compressed: string; compressedSize: number }
+  { compressed: string; compressedSize: number; timestamp: number }
 >();
 
 // Batch processing queues
 let processingQueue: (() => Promise<void>)[] = [];
 let isProcessing = false;
+
+// Cache management constants
+const MAX_CACHE_SIZE = 100;
 
 // State management functions with optimizations
 export const addToGlobalImages = (images: GlobalImage[]) => {
@@ -70,8 +74,8 @@ export const clearGlobalImages = () => {
 
   imageUrlCache.clear();
   thumbnailCache.clear();
-  // Keep compression cache for reuse
-  // compressionCache.clear(); // Don't clear this one
+  // Keep compression cache for reuse but clean it up
+  cleanupCache();
   globalImages.length = 0;
 };
 
@@ -93,6 +97,7 @@ export const updateGlobalImage = (
       compressionCache.set(cacheKey, {
         compressed: updates.compressed,
         compressedSize: updates.compressedSize,
+        timestamp: Date.now(),
       });
     }
 
@@ -143,6 +148,23 @@ export function normalizeQuality(quality: number): number {
 
   // If quality is in percentage (0-100), convert to 0-1
   return Math.max(0, Math.min(1, quality / 100));
+}
+
+// ===== CACHE MANAGEMENT =====
+
+function cleanupCache() {
+  if (compressionCache.size > MAX_CACHE_SIZE) {
+    const entries = Array.from(compressionCache.entries());
+    entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
+
+    // Remove oldest 20% of entries
+    const toRemove = Math.floor(entries.length * 0.2);
+    for (let i = 0; i < toRemove; i++) {
+      const [key, value] = entries[i];
+      safeRevokeURL(value.compressed);
+      compressionCache.delete(key);
+    }
+  }
 }
 
 // ===== OPTIMIZED IMAGE PROCESSING =====
@@ -326,6 +348,37 @@ export function canvasToBlob(
   });
 }
 
+/**
+ * Quick dimension calculation - EXPORTED
+ */
+export function getDimensionsQuick(
+  file: File
+): Promise<{ width: number; height: number }> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const timeout = setTimeout(() => {
+      resolve({ width: 0, height: 0 });
+    }, 1000);
+
+    img.onload = () => {
+      clearTimeout(timeout);
+      URL.revokeObjectURL(img.src); // Clean up
+      resolve({
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+      });
+    };
+
+    img.onerror = () => {
+      clearTimeout(timeout);
+      URL.revokeObjectURL(img.src); // Clean up
+      resolve({ width: 0, height: 0 });
+    };
+
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 // ===== BATCH PROCESSING =====
 
 /**
@@ -411,36 +464,10 @@ export async function processImagesBatch(
     }
   }
 
+  // Cleanup cache periodically
+  cleanupCache();
+
   return results;
-}
-
-/**
- * Quick dimension calculation
- */
-function getDimensionsQuick(
-  file: File
-): Promise<{ width: number; height: number }> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    const timeout = setTimeout(() => {
-      resolve({ width: 0, height: 0 });
-    }, 1000);
-
-    img.onload = () => {
-      clearTimeout(timeout);
-      resolve({
-        width: img.naturalWidth,
-        height: img.naturalHeight,
-      });
-    };
-
-    img.onerror = () => {
-      clearTimeout(timeout);
-      resolve({ width: 0, height: 0 });
-    };
-
-    img.src = URL.createObjectURL(file);
-  });
 }
 
 // ===== STATE HELPERS =====
@@ -763,6 +790,87 @@ export async function compressImage(
   } catch (error) {
     console.error("Error compressing image:", error);
     throw error;
+  }
+}
+
+/**
+ * Aggressive compression function that was missing
+ */
+export async function compressImageAggressively(
+  imageUrl: string,
+  targetSizeKB: number = 300,
+  format: ImageFormat = "jpeg",
+  maxAttempts: number = 8
+): Promise<{ url: string; blob: Blob; compressionRatio: number }> {
+  try {
+    const img = await loadImage(imageUrl);
+
+    let width = img.naturalWidth;
+    let height = img.naturalHeight;
+    let quality = 0.9;
+    let attempts = 0;
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Cannot get 2D context");
+
+    let resultBlob: Blob;
+    const originalSize = await getBlobSize(imageUrl);
+
+    do {
+      canvas.width = width;
+      canvas.height = height;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+
+      resultBlob = await canvasToBlob(canvas, format, quality);
+      const currentSizeKB = resultBlob.size / 1024;
+
+      if (currentSizeKB <= targetSizeKB || attempts >= maxAttempts) {
+        break;
+      }
+
+      // Aggressive reduction strategy
+      if (currentSizeKB > targetSizeKB * 2) {
+        // If way too big, reduce both dimensions and quality
+        const scaleFactor = Math.sqrt(targetSizeKB / currentSizeKB);
+        width = Math.floor(width * scaleFactor);
+        height = Math.floor(height * scaleFactor);
+        quality = Math.max(0.1, quality * 0.7);
+      } else {
+        // Just reduce quality
+        quality = Math.max(0.1, quality * 0.8);
+      }
+
+      attempts++;
+    } while (true);
+
+    const compressedUrl = URL.createObjectURL(resultBlob);
+    const compressionRatio =
+      originalSize > 0 ? resultBlob.size / originalSize : 1;
+
+    return {
+      url: compressedUrl,
+      blob: resultBlob,
+      compressionRatio,
+    };
+  } catch (error) {
+    console.error("Aggressive compression failed:", error);
+    throw error;
+  }
+}
+
+/**
+ * Helper function to get blob size from URL
+ */
+async function getBlobSize(url: string): Promise<number> {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return blob.size;
+  } catch {
+    return 0;
   }
 }
 

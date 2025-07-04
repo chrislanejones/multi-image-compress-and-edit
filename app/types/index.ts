@@ -443,7 +443,7 @@ export const IMAGES_PER_PAGE = 12;
 
 // ===== RE-EXPORTS FROM IMAGE-UTILS =====
 // These types are already defined in image-utils.ts but exported here for convenience
-export type { CropArea as UtilsCropArea } from "../utils/image-utils";
+export type { CropArea as UtilsCropArea } from "../utils/core-image-utils";
 
 // ===== DEPRECATED TYPES (for backward compatibility) =====
 /**
