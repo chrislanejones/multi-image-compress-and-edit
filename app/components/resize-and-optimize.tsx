@@ -1,35 +1,14 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Button } from "./ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
-import { ThemeToggle } from "./ui/theme-toggle";
-import {
-  X,
-  Upload,
-  ArrowLeft,
-  Minus,
-  Plus,
-  Download,
-  Settings,
-  Trash2,
-  Image as ImageIcon,
-  Zap,
-  Edit,
-  Image,
-  Sparkles,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  User,
-  Home,
-} from "lucide-react";
+import { X, Image as ImageIcon, Zap, Home } from "lucide-react";
+import { Button } from "./ui/button";
 
 import { useImageContext } from "../context/image-context";
 import { formatBytes } from "../utils/image-utils";
 import { ImageEditorToolbar } from "./image-editor-toolbar";
 
-// Gallery thumbnail with popup effect and clean compression indicator
+// Enhanced FastThumbnail with compression animation
 const FastThumbnail = React.memo(
   ({
     image,
@@ -38,7 +17,7 @@ const FastThumbnail = React.memo(
     onRemove,
     forceUpdate,
   }: {
-    image: any; // Using any for compatibility with both ImageFile and GlobalImage
+    image: any;
     isSelected: boolean;
     onClick: () => void;
     onRemove: (e: React.MouseEvent) => void;
@@ -197,6 +176,15 @@ const FastThumbnail = React.memo(
               <ImageIcon className="w-6 h-6 text-muted-foreground" />
             </div>
           )}
+
+          {/* Compression loading overlay */}
+          {shouldBlur && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+              <div className="bg-white/90 backdrop-blur-sm rounded-full p-2">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Remove button */}
@@ -228,7 +216,7 @@ const FastThumbnail = React.memo(
           );
 
           return shouldShow && compressedSize && originalSize ? (
-            <div className="absolute bottom-1 left-1 bg-black/80 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 transition-all duration-300">
+            <div className="absolute bottom-1 left-1 bg-black/80 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 transition-all duration-300 animate-in slide-in-from-bottom-2">
               <Zap className="w-3 h-3 text-yellow-400" />
               <span className="text-white text-xs font-medium">
                 {Math.round(
@@ -255,7 +243,13 @@ export default function ResizeAndOptimize() {
   const [currentPage, setCurrentPage] = useState(0);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [editorState, setEditorState] = useState<
-    "resizeAndOptimize" | "editImage" | "bulkImageEdit"
+    | "resizeAndOptimize"
+    | "editImage"
+    | "bulkImageEdit"
+    | "crop"
+    | "blur"
+    | "paint"
+    | "text"
   >("resizeAndOptimize");
   const [, forceUpdate] = useState({}); // For forcing re-renders
 
@@ -322,17 +316,6 @@ export default function ResizeAndOptimize() {
     [selectedImage, images, selectImage, currentPage, imagesPerPage]
   );
 
-  const handlePageNavigation = useCallback(
-    (direction: "prev" | "next") => {
-      if (direction === "prev" && paginatedData.hasPrevPage) {
-        setCurrentPage((prev) => prev - 1);
-      } else if (direction === "next" && paginatedData.hasNextPage) {
-        setCurrentPage((prev) => prev + 1);
-      }
-    },
-    [paginatedData.hasPrevPage, paginatedData.hasNextPage]
-  );
-
   const handleZoom = useCallback((direction: "in" | "out") => {
     setZoom((prev) => {
       if (direction === "in") {
@@ -348,7 +331,16 @@ export default function ResizeAndOptimize() {
   const handleZoomOut = useCallback(() => handleZoom("out"), [handleZoom]);
 
   const handleStateChange = useCallback(
-    (newState: "resizeAndOptimize" | "editImage" | "bulkImageEdit") => {
+    (
+      newState:
+        | "resizeAndOptimize"
+        | "editImage"
+        | "bulkImageEdit"
+        | "crop"
+        | "blur"
+        | "paint"
+        | "text"
+    ) => {
       setEditorState(newState);
     },
     []
@@ -363,6 +355,17 @@ export default function ResizeAndOptimize() {
       handleNavigation(direction);
     },
     [handleNavigation]
+  );
+
+  const handlePageNavigation = useCallback(
+    (direction: "prev" | "next") => {
+      if (direction === "prev" && paginatedData.hasPrevPage) {
+        setCurrentPage((prev) => prev - 1);
+      } else if (direction === "next" && paginatedData.hasNextPage) {
+        setCurrentPage((prev) => prev + 1);
+      }
+    },
+    [paginatedData.hasPrevPage, paginatedData.hasNextPage]
   );
 
   // Set up countdown for no images
@@ -432,26 +435,6 @@ export default function ResizeAndOptimize() {
     );
   }
 
-  if (images.length === 0) {
-    return (
-      <div className="container mx-auto px-4 py-8 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <ImageIcon className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-          <h2 className="text-2xl font-semibold text-gray-700 mb-2">
-            No images uploaded yet
-          </h2>
-          <p className="text-gray-500 mb-6">
-            You need to upload some images first before you can edit them.
-          </p>
-          <Button onClick={() => navigate({ to: "/" })} size="lg">
-            <Home className="mr-2 h-4 w-4" />
-            Go to Upload Now
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background text-foreground p-4">
       {/* Gallery Grid */}
@@ -472,132 +455,23 @@ export default function ResizeAndOptimize() {
           ))}
         </div>
 
-        {/* Streamlined Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-4 bg-gray-700 p-2 rounded-lg z-10 relative">
-          <div className="flex items-center gap-2">
-            {/* Zoom Controls */}
-            <Button
-              variant="outline"
-              className="h-9 w-9 p-0"
-              onClick={() => handleZoom("out")}
-            >
-              <Minus className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              className="h-9 w-9 p-0"
-              onClick={() => handleZoom("in")}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-
-            {/* Editor Mode Buttons */}
-            <Button
-              variant="outline"
-              className="px-4 py-2 h-9"
-              disabled
-              data-testid="edit-image-button"
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Edit Image
-            </Button>
-
-            <Button
-              variant="outline"
-              className="px-4 py-2 h-9"
-              disabled={images.length <= 1}
-              title={
-                images.length <= 1
-                  ? `Bulk edit requires multiple images (currently ${images.length} image${images.length === 1 ? "" : "s"})`
-                  : `Edit ${images.length} images at once`
-              }
-            >
-              <Image className="mr-2 h-4 w-4" />
-              Bulk Edit ({images.length})
-            </Button>
-
-            <Button
-              variant="outline"
-              className="px-4 py-2 h-9"
-              disabled
-              title="AI-powered editing features coming soon"
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              AI Editor
-            </Button>
-
-            {/* Navigation Controls */}
-            <div className="flex items-center gap-1 ml-2">
-              <Button
-                variant="outline"
-                className="py-2 h-9 px-3"
-                onClick={() => handlePageNavigation("prev")}
-                disabled={!paginatedData.hasPrevPage}
-                title="Show previous 10 images"
-              >
-                <ChevronsLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                className="py-2 h-9 px-3"
-                onClick={() => handleNavigation("prev")}
-                disabled={images.length === 0}
-                title="Previous image"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm px-2 text-white whitespace-nowrap">
-                Switch Photos ({currentPage + 1}/{paginatedData.totalPages})
-              </span>
-              <Button
-                variant="outline"
-                className="py-2 h-9 px-3"
-                onClick={() => handleNavigation("next")}
-                disabled={images.length === 0}
-                title="Next image"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                className="py-2 h-9 px-3"
-                onClick={() => handlePageNavigation("next")}
-                disabled={!paginatedData.hasNextPage}
-                title="Show next 10 images"
-              >
-                <ChevronsRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              className="px-4 py-2 h-9"
-              onClick={() => navigate({ to: "/" })}
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Upload
-            </Button>
-            <Button
-              variant="destructive"
-              className="px-4 py-2 h-9"
-              onClick={removeAllImages}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Remove All
-            </Button>
-
-            {/* Theme Toggle */}
-            <ThemeToggle />
-
-            {/* User Button */}
-            <Button variant="outline" className="h-9 w-9" disabled>
-              <User className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+        {/* Use the ImageEditorToolbar component */}
+        <ImageEditorToolbar
+          editorState={editorState}
+          zoom={zoom}
+          currentPage={currentPage + 1}
+          totalPages={paginatedData.totalPages}
+          allImages={images}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onClose={handleClose}
+          onRemoveAll={removeAllImages}
+          onNavigateImage={handleNavigateImage}
+          onNavigatePage={handlePageNavigation}
+          onStateChange={handleStateChange}
+          blurAmount={10}
+          blurRadius={25}
+        />
       </div>
 
       {/* Main Image Display */}

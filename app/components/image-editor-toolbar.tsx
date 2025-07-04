@@ -34,6 +34,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Slider } from "./ui/slider";
@@ -68,6 +69,7 @@ export interface ImageEditorToolbarProps {
   onRemoveAll?: () => void;
   onUploadNew?: () => void;
   onNavigateImage?: (direction: "prev" | "next") => void;
+  onNavigatePage?: (direction: "prev" | "next") => void;
   onStateChange: (
     state:
       | "resizeAndOptimize"
@@ -147,6 +149,7 @@ export const ImageEditorToolbar: React.FC<ImageEditorToolbarProps> = ({
   onRemoveAll,
   onUploadNew,
   onNavigateImage,
+  onNavigatePage,
   onStateChange,
   onApplyCrop,
   onApplyBlur,
@@ -163,9 +166,17 @@ export const ImageEditorToolbar: React.FC<ImageEditorToolbarProps> = ({
 }) => {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
+
   React.useEffect(() => setMounted(true), []);
-  const toggleTheme = () =>
-    mounted && setTheme(theme === "dark" ? "light" : "dark");
+
+  const handleThemeChange = React.useCallback(
+    (newTheme: string) => {
+      setTimeout(() => {
+        setTheme(newTheme);
+      }, 0);
+    },
+    [setTheme]
+  );
 
   // Render padlock for edit modes
   const renderPadlock = () => {
@@ -252,58 +263,58 @@ export const ImageEditorToolbar: React.FC<ImageEditorToolbarProps> = ({
                 Bulk Edit ({allImages?.length || 0})
               </Button>
 
-              {/* AI Editor Button with Animated Ring */}
-              <div className="relative">
-                {/* Animated rainbow ring overlay */}
-                <div className="absolute -inset-0.5 rounded-lg opacity-75">
-                  <div className="w-full h-full rounded-lg bg-gradient-to-r from-red-500 via-orange-500 via-yellow-500 via-green-500 via-blue-500 via-indigo-500 via-purple-500 to-red-500 animate-rainbow-slow"></div>
-                </div>
+              <Button
+                disabled
+                variant="outline"
+                className="h-9"
+                title="AI-powered editing features coming soon"
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                AI Editor
+              </Button>
 
-                {/* Second rainbow ring for depth */}
-                <div className="absolute -inset-0.5 rounded-lg">
-                  <div className="w-full h-full rounded-lg bg-gradient-to-r from-purple-400 via-blue-400 via-green-400 via-yellow-400 via-orange-400 via-red-400 to-purple-400 animate-rainbow-reverse opacity-50"></div>
-                </div>
-
-                {/* Main button */}
+              {/* Navigation Controls with << >> for pages, < > for images */}
+              <div className="flex items-center gap-1 ml-2">
                 <Button
-                  disabled
                   variant="outline"
-                  className="relative h-9 bg-background"
+                  className="py-2 h-9 px-3"
+                  onClick={() => onNavigatePage && onNavigatePage("prev")}
+                  disabled={!onNavigatePage || currentPage <= 1}
+                  title="Previous page (show previous 10 images)"
                 >
-                  <svg
-                    className="w-4 h-4 mr-2"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z"
-                      fill="currentColor"
-                      opacity="0.5"
-                    />
-                    <path
-                      d="M19 11L19.74 13.09L22 14L19.74 14.91L19 17L18.26 14.91L16 14L18.26 13.09L19 11Z"
-                      fill="currentColor"
-                      opacity="0.7"
-                    />
-                    <path
-                      d="M5 11L5.74 13.09L8 14L5.74 14.91L5 17L4.26 14.91L2 14L4.26 13.09L5 11Z"
-                      fill="currentColor"
-                      opacity="0.3"
-                    />
-                  </svg>
-                  AI Editor
+                  <ChevronsLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  className="py-2 h-9 px-3"
+                  onClick={() => onNavigateImage && onNavigateImage("prev")}
+                  disabled={!onNavigateImage}
+                  title="Previous image"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm px-2 text-white whitespace-nowrap">
+                  Switch Photos ({currentPage}/{totalPages})
+                </span>
+                <Button
+                  variant="outline"
+                  className="py-2 h-9 px-3"
+                  onClick={() => onNavigateImage && onNavigateImage("next")}
+                  disabled={!onNavigateImage}
+                  title="Next image"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  className="py-2 h-9 px-3"
+                  onClick={() => onNavigatePage && onNavigatePage("next")}
+                  disabled={!onNavigatePage || currentPage >= totalPages}
+                  title="Next page (show next 10 images)"
+                >
+                  <ChevronsRight className="h-4 w-4" />
                 </Button>
               </div>
-
-              {onNavigateImage && (
-                <SimplePagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onNavigate={onNavigateImage}
-                  className="ml-2"
-                />
-              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -327,13 +338,15 @@ export const ImageEditorToolbar: React.FC<ImageEditorToolbarProps> = ({
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={toggleTheme}
+                  onClick={() =>
+                    handleThemeChange(theme === "dark" ? "light" : "dark")
+                  }
                   className="h-9 w-9"
                 >
                   {theme === "dark" ? (
-                    <Moon className="h-4 w-4" />
-                  ) : (
                     <Sun className="h-4 w-4" />
+                  ) : (
+                    <Moon className="h-4 w-4" />
                   )}
                 </Button>
               )}
