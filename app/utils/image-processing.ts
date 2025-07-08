@@ -1,6 +1,6 @@
 // app/utils/image-processing.ts
 import { loadImage, canvasToBlob, getMimeType } from "./image";
-import type { ImageFormat, CompressionLevel } from "@/types/index";
+import type { ImageFormat, CompressionLevel } from "@/types/types";
 
 /**
  * Compress an image, with optional true B&W thresholding.

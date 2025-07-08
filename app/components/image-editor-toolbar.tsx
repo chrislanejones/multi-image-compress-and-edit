@@ -5,7 +5,7 @@ import { EditModeToolbar } from "./toolbars/EditModeToolbar";
 import { CropToolbar } from "./toolbars/CropToolbar";
 import { BlurToolbar } from "./toolbars/BlurToolbar";
 import { Lock, Images } from "lucide-react";
-import { EditorState } from "../types";
+import { EditorState } from "../types/types";
 
 const toolbarMap: Partial<Record<EditorState, React.ReactNode>> = {
   resizeAndOptimize: <MainToolbar />,

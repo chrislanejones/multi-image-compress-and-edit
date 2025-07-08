@@ -1,34 +1,178 @@
 import { create } from "zustand";
-import type { EditorState, ImageFormat, CompressionLevel } from "../types";
+import type {
+  EditorState,
+  ImageFormat,
+  CompressionLevel,
+} from "../types/types";
 
 interface EditorStore {
+  // Core editor state
   editorState: EditorState;
   zoom: number;
-  // Dimensions are now managed in ImageContext
+
+  // Image processing settings
   quality: number;
   format: ImageFormat;
   compressionLevel: CompressionLevel;
 
+  // Tool-specific settings
+  blurAmount: number;
+  blurRadius: number;
+  brushSize: number;
+  brushColor: string;
+
+  // UI state
+  isProcessing: boolean;
+  hasUnsavedChanges: boolean;
+
+  // Actions
   setEditorState: (state: EditorState) => void;
+  setZoom: (zoom: number) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
-  setQuality: (q: number) => void;
-  setFormat: (f: ImageFormat) => void;
+
+  // Settings actions
+  setQuality: (quality: number) => void;
+  setFormat: (format: ImageFormat) => void;
   setCompressionLevel: (level: CompressionLevel) => void;
+
+  // Tool actions
+  setBlurAmount: (amount: number) => void;
+  setBlurRadius: (radius: number) => void;
+  setBrushSize: (size: number) => void;
+  setBrushColor: (color: string) => void;
+
+  // Processing state
+  setIsProcessing: (processing: boolean) => void;
+  setHasUnsavedChanges: (hasChanges: boolean) => void;
+
+  // Reset functions
   handleReset: () => void;
+  resetToDefaults: () => void;
 }
 
-export const useEditorStore = create<EditorStore>((set) => ({
-  editorState: "resizeAndOptimize",
+// Default values
+const DEFAULT_VALUES = {
   zoom: 100,
   quality: 85,
-  format: "webp",
-  compressionLevel: "medium",
+  format: "webp" as ImageFormat,
+  compressionLevel: "medium" as CompressionLevel,
+  blurAmount: 5,
+  blurRadius: 10,
+  brushSize: 10,
+  brushColor: "#ff0000",
+};
+
+export const useEditorStore = create<EditorStore>((set, get) => ({
+  // Initial state
+  editorState: "resizeAndOptimize",
+  zoom: DEFAULT_VALUES.zoom,
+  quality: DEFAULT_VALUES.quality,
+  format: DEFAULT_VALUES.format,
+  compressionLevel: DEFAULT_VALUES.compressionLevel,
+  blurAmount: DEFAULT_VALUES.blurAmount,
+  blurRadius: DEFAULT_VALUES.blurRadius,
+  brushSize: DEFAULT_VALUES.brushSize,
+  brushColor: DEFAULT_VALUES.brushColor,
+  isProcessing: false,
+  hasUnsavedChanges: false,
+
+  // Basic actions
   setEditorState: (newState) => set({ editorState: newState }),
-  onZoomIn: () => set((state) => ({ zoom: Math.min(400, state.zoom + 25) })),
-  onZoomOut: () => set((state) => ({ zoom: Math.max(25, state.zoom - 25) })),
-  setQuality: (q) => set({ quality: q }),
-  setFormat: (f) => set({ format: f }),
-  setCompressionLevel: (level) => set({ compressionLevel: level }),
-  handleReset: () => set({ quality: 85, format: "webp", compressionLevel: "medium" }),
+
+  setZoom: (zoom) => set({ zoom: Math.max(25, Math.min(400, zoom)) }),
+
+  onZoomIn: () =>
+    set((state) => ({
+      zoom: Math.min(400, state.zoom + 25),
+    })),
+
+  onZoomOut: () =>
+    set((state) => ({
+      zoom: Math.max(25, state.zoom - 25),
+    })),
+
+  // Settings actions
+  setQuality: (quality) =>
+    set({
+      quality: Math.max(1, Math.min(100, quality)),
+      hasUnsavedChanges: true,
+    }),
+
+  setFormat: (format) =>
+    set({
+      format,
+      hasUnsavedChanges: true,
+    }),
+
+  setCompressionLevel: (level) => {
+    // Auto-update quality based on compression level
+    const qualityMap: Record<CompressionLevel, number> = {
+      low: 95,
+      medium: 85,
+      high: 75,
+      extremeSmall: 60,
+      extremeBW: 30,
+    };
+
+    set({
+      compressionLevel: level,
+      quality: qualityMap[level],
+      hasUnsavedChanges: true,
+    });
+  },
+
+  // Tool actions
+  setBlurAmount: (amount) =>
+    set({
+      blurAmount: Math.max(1, Math.min(20, amount)),
+      hasUnsavedChanges: true,
+    }),
+
+  setBlurRadius: (radius) =>
+    set({
+      blurRadius: Math.max(5, Math.min(50, radius)),
+      hasUnsavedChanges: true,
+    }),
+
+  setBrushSize: (size) =>
+    set({
+      brushSize: Math.max(1, Math.min(50, size)),
+      hasUnsavedChanges: true,
+    }),
+
+  setBrushColor: (color) =>
+    set({
+      brushColor: color,
+      hasUnsavedChanges: true,
+    }),
+
+  // Processing state
+  setIsProcessing: (processing) => set({ isProcessing: processing }),
+
+  setHasUnsavedChanges: (hasChanges) => set({ hasUnsavedChanges: hasChanges }),
+
+  // Reset functions
+  handleReset: () =>
+    set({
+      quality: DEFAULT_VALUES.quality,
+      format: DEFAULT_VALUES.format,
+      compressionLevel: DEFAULT_VALUES.compressionLevel,
+      hasUnsavedChanges: false,
+    }),
+
+  resetToDefaults: () =>
+    set({
+      editorState: "resizeAndOptimize",
+      zoom: DEFAULT_VALUES.zoom,
+      quality: DEFAULT_VALUES.quality,
+      format: DEFAULT_VALUES.format,
+      compressionLevel: DEFAULT_VALUES.compressionLevel,
+      blurAmount: DEFAULT_VALUES.blurAmount,
+      blurRadius: DEFAULT_VALUES.blurRadius,
+      brushSize: DEFAULT_VALUES.brushSize,
+      brushColor: DEFAULT_VALUES.brushColor,
+      isProcessing: false,
+      hasUnsavedChanges: false,
+    }),
 }));

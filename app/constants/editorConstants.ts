@@ -1,4 +1,4 @@
-import type { CoreWebVitalsScore } from "@/types";
+import type { CoreWebVitalsScore } from "@/types/types";
 
 export const COMPRESSION_LEVELS = [
   { value: "low", label: "Low (Best Quality)", quality: 95 },

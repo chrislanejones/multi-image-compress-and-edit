@@ -70,18 +70,31 @@
 
 /* Custom animations for the AI Editor button */
 @keyframes rainbow-flow {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 @keyframes rainbow-slow {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes rainbow-reverse {
-  0% { transform: rotate(360deg); }
-  100% { transform: rotate(0deg); }
+  0% {
+    transform: rotate(360deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
 }
 
 .animate-rainbow-slow {
@@ -98,20 +111,24 @@
 
 /* Image editor specific styles */
 .image-editor-canvas {
-  background-image: 
-    linear-gradient(45deg, #f0f0f0 25%, transparent 25%), 
-    linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), 
-    linear-gradient(45deg, transparent 75%, #f0f0f0 75%), 
+  background-image:
+    linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
+    linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
     linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
   background-size: 20px 20px;
-  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  background-position:
+    0 0,
+    0 10px,
+    10px -10px,
+    -10px 0px;
 }
 
 .dark .image-editor-canvas {
-  background-image: 
-    linear-gradient(45deg, #374151 25%, transparent 25%), 
-    linear-gradient(-45deg, #374151 25%, transparent 25%), 
-    linear-gradient(45deg, transparent 75%, #374151 75%), 
+  background-image:
+    linear-gradient(45deg, #374151 25%, transparent 25%),
+    linear-gradient(-45deg, #374151 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #374151 75%),
     linear-gradient(-45deg, transparent 75%, #374151 75%);
 }
 
@@ -148,5 +165,129 @@
 
 /* Blur tool cursor */
 .blur-cursor {
-  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>') 12 12, auto;
+  cursor:
+    url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>')
+      12 12,
+    auto;
+}
+
+/* Add these styles to your existing globals.css file */
+
+/* Sonner Toast Dark Theme Styles */
+[data-sonner-toaster] {
+  --normal-bg: hsl(var(--background));
+  --normal-border: hsl(var(--border));
+  --normal-text: hsl(var(--foreground));
+  --success-bg: hsl(142 76% 36%);
+  --success-border: hsl(142 76% 46%);
+  --success-text: hsl(0 0% 100%);
+  --error-bg: hsl(0 84% 60%);
+  --error-border: hsl(0 84% 70%);
+  --error-text: hsl(0 0% 100%);
+  --warning-bg: hsl(38 92% 50%);
+  --warning-border: hsl(38 92% 60%);
+  --warning-text: hsl(0 0% 100%);
+  --info-bg: hsl(199 89% 48%);
+  --info-border: hsl(199 89% 58%);
+  --info-text: hsl(0 0% 100%);
+}
+
+/* Dark theme overrides */
+.dark [data-sonner-toaster] {
+  --normal-bg: hsl(var(--card));
+  --normal-border: hsl(var(--border));
+  --normal-text: hsl(var(--card-foreground));
+  --success-bg: hsl(142 76% 26%);
+  --success-border: hsl(142 76% 36%);
+  --error-bg: hsl(0 62% 30%);
+  --error-border: hsl(0 62% 40%);
+  --warning-bg: hsl(38 92% 40%);
+  --warning-border: hsl(38 92% 50%);
+  --info-bg: hsl(199 89% 38%);
+  --info-border: hsl(199 89% 48%);
+}
+
+/* Toast container styles */
+[data-sonner-toast] {
+  background: var(--normal-bg) !important;
+  border: 1px solid var(--normal-border) !important;
+  color: var(--normal-text) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Dark theme specific toast styles */
+.dark [data-sonner-toast] {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Success toast */
+[data-sonner-toast][data-type="success"] {
+  background: var(--success-bg) !important;
+  border-color: var(--success-border) !important;
+  color: var(--success-text) !important;
+}
+
+/* Error toast */
+[data-sonner-toast][data-type="error"] {
+  background: var(--error-bg) !important;
+  border-color: var(--error-border) !important;
+  color: var(--error-text) !important;
+}
+
+/* Warning toast */
+[data-sonner-toast][data-type="warning"] {
+  background: var(--warning-bg) !important;
+  border-color: var(--warning-border) !important;
+  color: var(--warning-text) !important;
+}
+
+/* Info toast */
+[data-sonner-toast][data-type="info"] {
+  background: var(--info-bg) !important;
+  border-color: var(--info-border) !important;
+  color: var(--info-text) !important;
+}
+
+/* Toast title */
+[data-sonner-toast] [data-title] {
+  color: inherit !important;
+  font-weight: 600 !important;
+}
+
+/* Toast description */
+[data-sonner-toast] [data-description] {
+  color: inherit !important;
+  opacity: 0.9 !important;
+}
+
+/* Close button */
+[data-sonner-toast] [data-close-button] {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: inherit !important;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Loading toast spinner */
+[data-sonner-toast] [data-icon] {
+  color: inherit !important;
+}
+
+/* Custom toast animations */
+[data-sonner-toast] {
+  transition: all 0.3s ease !important;
+}
+
+[data-sonner-toast][data-mounted] {
+  transform: translateY(0) !important;
+  opacity: 1 !important;
+}
+
+[data-sonner-toast][data-removed] {
+  transform: translateY(-100%) !important;
+  opacity: 0 !important;
 }
