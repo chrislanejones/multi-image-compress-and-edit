@@ -449,4 +449,4 @@ export const SUPPORTED_IMAGE_TYPES = [
 export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 export const DEFAULT_COMPRESSION_QUALITY = 85;
 export const DEFAULT_THUMBNAIL_SIZE = 200;
-export const IMAGES_PER_PAGE = 12;
+export const IMAGES_PER_PAGE = 10;
