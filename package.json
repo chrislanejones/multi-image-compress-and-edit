@@ -42,7 +42,8 @@
     "react-hook-form": "^7.55.0",
     "react-image-crop": "^11.0.7",
     "sonner": "^1.7.4",
-    "zod": "^3.24.2"
+    "zod": "^3.24.2",
+    "zustand": "5.0.6"
   },
   "devDependencies": {
     "@tanstack/router-cli": "^1.124.0",

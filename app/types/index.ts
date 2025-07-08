@@ -273,6 +273,16 @@ export interface ImageContextType {
   setCurrentPage: (page: number) => void;
   setEditorState: (state: EditorState) => void;
   setEditMode: (isEditMode: boolean) => void;
+  // Add specific editing actions that toolbars will call
+  onApplyCrop?: () => void;
+  onApplyBlur?: () => void;
+  onRotateLeft?: () => void;
+  onRotateRight?: () => void;
+  onFlipHorizontal?: () => void;
+  onFlipVertical?: () => void;
+  onReset?: () => void;
+  onClose?: () => void;
+  onNavigatePage?: (direction: "prev" | "next") => void;
 }
 
 // ===== EVENT TYPES =====
@@ -440,30 +450,3 @@ export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 export const DEFAULT_COMPRESSION_QUALITY = 85;
 export const DEFAULT_THUMBNAIL_SIZE = 200;
 export const IMAGES_PER_PAGE = 12;
-
-// ===== RE-EXPORTS FROM IMAGE-UTILS =====
-// These types are already defined in image-utils.ts but exported here for convenience
-export type { CropArea as UtilsCropArea } from "../utils/image-utils";
-
-// ===== DEPRECATED TYPES (for backward compatibility) =====
-/**
- * @deprecated GlobalImage now extends ImageFile - use ImageFile for new code
- */
-export type LegacyImageFile = ImageFile;
-
-// ===== UTILITY TYPE HELPERS =====
-/**
- * Helper to extract metadata from ImageFile
- */
-export type ImageFileMetadata = NonNullable<ImageFile["metadata"]>;
-
-/**
- * Helper to create ImageFile with required metadata
- */
-export type ImageFileWithMetadata = ImageFile & {
-  metadata: {
-    originalSize: number;
-    compressedSize: number;
-    compressionRatio: number;
-  };
-};

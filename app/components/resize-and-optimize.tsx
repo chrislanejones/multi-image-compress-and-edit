@@ -5,7 +5,7 @@ import { X, Image as ImageIcon, Zap, Home } from "lucide-react";
 import { Button } from "./ui/button";
 
 import { useImageContext } from "../context/image-context";
-import { formatBytes } from "../utils/image-utils";
+import { formatBytes } from "../utils/image";
 import { ImageEditorToolbar } from "./image-editor-toolbar";
 
 // Enhanced FastThumbnail with compression animation
@@ -68,7 +68,7 @@ const FastThumbnail = React.memo(
         setCompressionAttempted(true);
 
         // Import the compression function dynamically
-        import("../utils/image-utils").then(({ aggressiveCompress300KB }) => {
+        import("../utils/image").then(({ aggressiveCompress300KB }) => {
           aggressiveCompress300KB(image.file)
             .then(({ compressed, compressedSize: newCompressedSize }) => {
               console.log(
@@ -455,23 +455,7 @@ export default function ResizeAndOptimize() {
           ))}
         </div>
 
-        {/* Use the ImageEditorToolbar component */}
-        <ImageEditorToolbar
-          editorState={editorState}
-          zoom={zoom}
-          currentPage={currentPage + 1}
-          totalPages={paginatedData.totalPages}
-          allImages={images}
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          onClose={handleClose}
-          onRemoveAll={removeAllImages}
-          onNavigateImage={handleNavigateImage}
-          onNavigatePage={handlePageNavigation}
-          onStateChange={handleStateChange}
-          blurAmount={10}
-          blurRadius={25}
-        />
+        <ImageEditorToolbar />
       </div>
 
       {/* Main Image Display */}
