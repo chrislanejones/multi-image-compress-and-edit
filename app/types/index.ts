@@ -426,12 +426,6 @@ export function isImageFile(obj: any): obj is ImageFile {
   return obj && typeof obj.id === "string" && obj.file instanceof File;
 }
 
-export function isGlobalImage(obj: any): obj is GlobalImage {
-  return (
-    isImageFile(obj) &&
-    (obj.thumbnail !== undefined || obj.compressed !== undefined)
-  );
-}
 
 export function isValidImageFormat(format: string): format is ImageFormat {
   return ["jpeg", "png", "webp", "avif"].includes(format);
@@ -450,3 +444,7 @@ export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 export const DEFAULT_COMPRESSION_QUALITY = 85;
 export const DEFAULT_THUMBNAIL_SIZE = 200;
 export const IMAGES_PER_PAGE = 10;
+
+export type CompressionLevel = "low" | "medium" | "high" | "extremeSmall" | "extremeBW";
+
+export type CoreWebVitalsScore = "good" | "almost-there" | "needs-improvement" | "poor";

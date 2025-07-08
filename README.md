@@ -15,96 +15,72 @@ A powerful image editing and compression tool built with TanStack Start and supe
 
 ## 🚀 Quick Start
 
-### One-Command Setup
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/your-repo/imagehorse/main/setup.sh | bash
-```
-
-Or manual setup:
-
 ### Prerequisites
 
 Make sure you have [Bun](https://bun.sh) installed:
 
-```bash
+\`\`\`bash
 curl -fsSL https://bun.sh/install | bash
-```
+\`\`\`
 
 ### Installation
 
-```bash
+\`\`\`bash
 # Clone the repository
-git clone https://github.com/your-repo/imagehorse.git
-cd imagehorse
+git clone https://github.com/chrislanejones/multi-image-compress-and-edit.git
+cd multi-image-compress-and-edit
 
 # Install dependencies with Bun (ultra-fast!)
 bun install
 
 # Start development server
 bun run dev
-
-# Build for production
-bun run build
-
-# Start production server
-bun run start
-```
+\`\`\`
 
 ## 📋 Available Scripts
 
-```bash
+\`\`\`bash
 bun run dev      # Start development server with hot reload
 bun run build    # Build optimized production bundle
-bun run start    # Start production server
+bun run start    # Start production server (after build)
 bun run lint     # Run ESLint checks
 bun run clean    # Clean all build artifacts
 bun run fresh    # Clean install (removes node_modules and reinstalls)
-```
+\`\`\`
 
 ## 🏗️ Project Structure
 
-```
+\`\`\`
 imagehorse/
 ├── app/                    # Main application directory
 │   ├── components/         # Reusable UI components
-│   │   ├── ui/            # Base UI components (Button, Card, etc.)
-│   │   ├── tools/         # Image editing tools
-│   │   └── editor/        # Main editor components
-│   ├── context/           # React context providers
-│   ├── hooks/             # Custom React hooks
-│   ├── lib/               # Utility functions
-│   ├── routes/            # TanStack Router pages
-│   ├── types/             # TypeScript type definitions
-│   ├── utils/             # Image processing utilities
-│   └── globals.css        # Global styles
-├── public/                # Static assets
-├── backup/                # Legacy component backups
-└── bunfig.toml           # Bun configuration
-```
+│   │   ├── ui/             # Base UI components (Button, Card, etc.)
+│   │   └── toolbars/       # Toolbar components
+│   ├── constants/          # App-wide constants
+│   ├── context/            # React context providers
+│   ├── hooks/              # Custom React hooks
+│   ├── routes/             # TanStack Router pages
+│   ├── store/              # Zustand global state stores
+│   ├── types/              # TypeScript type definitions
+│   └── utils/              # Image processing utilities
+├── public/                 # Static assets
+└── bunfig.toml             # Bun configuration
+\`\`\`
 
 ## 🎨 Key Components
 
 ### Image Processing Pipeline
 
-- **PhotoUpload** - Multi-format upload with compression
-- **ResizeAndOptimize** - Main gallery with smart thumbnails
-- **ImageEditor** - Advanced editing interface
-- **BulkImageEditor** - Batch operations (planned)
-
-### Editing Tools
-
-- **CroppingTool** - Precise image cropping
-- **BlurTool** - Selective blur effects
-- **PaintTool** - Drawing and annotations
-- **TextTool** - Text overlays and typography
+- **PhotoUpload** (`/`) - Multi-format upload with initial compression.
+- **Gallery & Resizer** (`/resize-and-optimize`) - Main gallery with smart thumbnails and the optimization sidebar.
+- **Edit Mode** (`/resize-and-optimize/edit-image`) - Focused editing interface.
 
 ### Performance Features
 
-- **Web Worker Compression** - Non-blocking image processing
-- **Smart Thumbnails** - Fast preview generation
-- **Memory Management** - Automatic cleanup of blob URLs
-- **Optimized Rendering** - React.memo and memoized calculations
+- **Web Worker Compression** - Non-blocking image processing.
+- **Smart Thumbnails** - Fast preview generation.
+- **Memory Management** - Automatic cleanup of blob URLs.
+- **Centralized State** - Zustand and React Context for efficient state updates.
 
 ## 🔥 Why Bun?
 
@@ -116,83 +92,48 @@ ImageHorse leverages Bun for superior performance:
 - 💾 **Lower memory usage** during development
 - 🎯 **Native TypeScript** support out of the box
 
-## 📊 Performance Benchmarks
-
-With Bun, you can expect:
-
-- Package installs: `~2-5 seconds` (vs 30-60s with npm)
-- Dev server startup: `~500ms` (vs 3-5s with traditional tools)
-- Hot reload: `~50ms` (vs 500ms+ with webpack)
-- Build time: `~2-3 seconds` for full production build
-
 ## 🛠️ Development
 
 ### Adding New Features
 
-1. **Image Tools**: Add new tools in `app/components/tools/`
-2. **UI Components**: Extend base components in `app/components/ui/`
-3. **Image Processing**: Add utilities in `app/utils/image-processing.ts`
-4. **Routes**: Add new pages in `app/routes/`
+1. **UI Components**: Extend base components in `app/components/ui/`
+2. **Image Processing**: Add utilities in `app/utils/image-processing.ts`
+3. **Routes**: Add new pages in `app/routes/` following TanStack Router conventions.
 
 ### Code Quality
 
-```bash
+\`\`\`bash
 # Run linting
 bun run lint
 
-# Format code (if prettier is configured)
-bun run format
-
 # Type checking
 bun run type-check
-```
+\`\`\`
 
 ## 🎯 Architecture
 
-ImageHorse follows a modern React architecture:
-
 - **TanStack Start** - Full-stack React framework with file-based routing
 - **TanStack Router** - Type-safe routing with search params
-- **Context API** - Global state management for images
+- **Zustand & Context API** - Hybrid global state management
 - **TypeScript** - Full type safety across the application
 - **Tailwind CSS** - Utility-first styling with design system
 - **Radix UI** - Accessible component primitives
 - **Bun** - JavaScript runtime and package manager
 
-## 🔧 Configuration
-
-### Environment Variables
-
-Create a `.env.local` file:
-
-```env
-# Optional: Analytics or tracking IDs
-NEXT_PUBLIC_ANALYTICS_ID=your_analytics_id
-
-# Optional: Feature flags
-NEXT_PUBLIC_ENABLE_AI_EDITOR=false
-```
-
-### Customization
-
-- **Themes**: Modify CSS variables in `app/globals.css`
-- **Components**: Customize UI components in `app/components/ui/`
-- **Image Processing**: Adjust compression settings in `utils/image-processing.ts`
-
 ## 📈 Migration Status
 
 ✅ **Completed**
 
-- Basic structure and routing
-- Image upload and gallery
-- Context-based state management
+- Core structure and type-safe routing
+- Image upload and gallery view
+- Centralized state management (Zustand/Context)
 - Bun optimization and configuration
-- Theme system (light/dark/system)
-- Smart compression with web workers
+- Theme system (light/dark)
+- Resize & Optimize sidebar integration
 
 🚧 **In Progress**
 
-- Individual editing tools refinement
+- Individual editing tools refinement (Crop, Blur, etc.)
 - Advanced image processing features
 
 🔮 **Planned**
@@ -200,81 +141,21 @@ NEXT_PUBLIC_ENABLE_AI_EDITOR=false
 - Bulk editing features
 - AI-powered image enhancement
 - Cloud storage integration
-- Plugin system for custom tools
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Install dependencies: `bun install`
+2. Create a feature branch: \`git checkout -b feature/amazing-feature\`
+3. Install dependencies: \`bun install\`
 4. Make your changes
-5. Test with: `bun run lint` and `bun run build`
-6. Commit: `git commit -m 'Add amazing feature'`
-7. Push: `git push origin feature/amazing-feature`
+5. Test with: \`bun run lint\` and \`bun run build\`
+6. Commit: \`git commit -m 'Add amazing feature'\`
+7. Push: \`git push origin feature/amazing-feature\`
 8. Submit a pull request
-
-## 🐛 Troubleshooting
-
-### Bun Issues
-
-```bash
-# Reset everything
-bun run fresh
-
-# Check Bun version
-bun --version
-
-# Update Bun
-bun upgrade
-```
-
-### Development Issues
-
-```bash
-# Clear all caches and reinstall
-bun run clean && bun install
-
-# Force reinstall dependencies
-rm -rf node_modules bun.lockb && bun install
-```
-
-### Common Problems
-
-**Hot reload not working?**
-
-```bash
-# Restart dev server
-bun run dev
-```
-
-**Build failing?**
-
-```bash
-# Check for TypeScript errors
-bun run type-check
-
-# Clean build and retry
-bun run clean && bun run build
-```
-
-**Memory issues?**
-
-```bash
-# Check if running out of memory
-bun --max-old-space-size=4096 run build
-```
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details
-
-## 🙏 Acknowledgments
-
-- [Bun](https://bun.sh) - The fast all-in-one JavaScript runtime
-- [TanStack](https://tanstack.com) - Powerful React tools
-- [Tailwind CSS](https://tailwindcss.com) - Utility-first CSS framework
-- [Radix UI](https://radix-ui.com) - Accessible component primitives
-- [Lucide](https://lucide.dev) - Beautiful icon library
+MIT License
 
 ---
 

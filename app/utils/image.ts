@@ -672,6 +672,17 @@ export async function resizeImage(
 /**
  * Rotate an image by degrees and return a data URL
  */
+
+/**
+ * Normalizes a quality value (e.g., 85 or 0.85) to the 0-1 range.
+ */
+function normalizeQuality(quality: number): number {
+  if (quality > 1) {
+    return quality / 100;
+  }
+  return Math.max(0, Math.min(1, quality));
+}
+
 export async function rotateImage(
   imageUrl: string,
   degrees: number,
