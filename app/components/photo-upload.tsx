@@ -41,7 +41,7 @@ export default function PhotoUpload() {
 
           const url = URL.createObjectURL(compressedFile);
 
-          return {
+          const imageData = {
             id: crypto.randomUUID(),
             file: compressedFile,
             url,
@@ -57,6 +57,8 @@ export default function PhotoUpload() {
               compressionRatio,
             },
           };
+
+          return imageData;
         })
       );
 

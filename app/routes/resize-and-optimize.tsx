@@ -132,7 +132,9 @@ function ResizeAndOptimizeLayout() {
                     src={selectedImage.url}
                     alt={selectedImage.file?.name || "Selected image"}
                     className="max-w-full max-h-full object-contain rounded transition-transform duration-200"
-                    style={{ transform: `scale(${zoom / 100})` }}
+                    style={{ 
+                      transform: `scale(${zoom / 100}) rotate(${selectedImage.rotation || 0}deg) scaleX(${selectedImage.flipHorizontal ? -1 : 1}) scaleY(${selectedImage.flipVertical ? -1 : 1})` 
+                    }}
                   />
                 </div>
               </CardContent>
@@ -146,7 +148,7 @@ function ResizeAndOptimizeLayout() {
           <ImageResizer />
 
           {/* Image Zoom View */}
-          {selectedImage && <ImageZoomView imageUrl={selectedImage.url} />}
+          {selectedImage && <ImageZoomView imageUrl={selectedImage.url} imageTransforms={selectedImage} />}
 
           {/* Image Stats */}
           <ImageStats selectedImage={selectedImage} />

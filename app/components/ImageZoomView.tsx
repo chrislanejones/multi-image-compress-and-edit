@@ -8,6 +8,11 @@ import { Slider } from "./ui/slider";
 
 export interface ImageZoomViewProps {
   imageUrl: string;
+  imageTransforms?: {
+    rotation?: number;
+    flipHorizontal?: boolean;
+    flipVertical?: boolean;
+  };
 }
 
 interface MousePosition {
@@ -15,7 +20,7 @@ interface MousePosition {
   y: number;
 }
 
-export default function ImageZoomView({ imageUrl }: ImageZoomViewProps) {
+export default function ImageZoomView({ imageUrl, imageTransforms }: ImageZoomViewProps) {
   const [magnifierZoom, setMagnifierZoom] = useState<number>(3);
   const [mousePosition, setMousePosition] = useState<MousePosition>({
     x: 0.5,
@@ -124,6 +129,7 @@ export default function ImageZoomView({ imageUrl }: ImageZoomViewProps) {
                 backgroundPosition: getBackgroundPosition(),
                 backgroundSize: `${magnifierZoom * 100}%`,
                 backgroundRepeat: "no-repeat",
+                transform: `rotate(${imageTransforms?.rotation || 0}deg) scaleX(${imageTransforms?.flipHorizontal ? -1 : 1}) scaleY(${imageTransforms?.flipVertical ? -1 : 1})`,
               }}
             >
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

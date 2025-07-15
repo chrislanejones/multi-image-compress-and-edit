@@ -2,7 +2,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React from "react";
 import { useImageContext } from "../../context/image-context";
-import { X, Zap } from "lucide-react";
+import { X, Zap, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import type { ImageFile } from "../../types/types";
 
@@ -14,22 +14,34 @@ const FastThumbnail = React.memo(
     isSelected,
     onClick,
     onRemove,
+    isLoading,
   }: {
     image: ImageFile;
     isSelected: boolean;
     onClick: () => void;
     onRemove: (e: React.MouseEvent) => void;
+    isLoading: boolean;
   }) => (
     <div
       onClick={onClick}
       className={`relative aspect-square cursor-pointer rounded-lg overflow-hidden group border-2 transition-all duration-300 ease-in-out ${isSelected ? "border-primary ring-2 ring-primary/50 scale-105" : "border-border hover:border-primary/50"}`}
     >
-      <img
-        src={image.url}
-        alt={image.file.name}
-        className="w-full h-full object-cover"
-        loading="lazy"
-      />
+      <div className="relative w-full h-full">
+        {isLoading && (
+          <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
+            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+        <img
+          src={image.url}
+          alt={image.file.name}
+          className={`w-full h-full object-cover transition-opacity duration-500 ease-in-out ${isLoading ? "opacity-0" : "opacity-100"}`}
+          loading="lazy"
+          style={{
+            transform: `rotate(${image.rotation || 0}deg) scaleX(${image.flipHorizontal ? -1 : 1}) scaleY(${image.flipVertical ? -1 : 1})`,
+          }}
+        />
+      </div>
       <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <Button
           variant="destructive"
@@ -58,17 +70,18 @@ export const Route = createFileRoute("/resize-and-optimize/")({
 });
 
 function GalleryComponent() {
-  const { images, selectedImage, onSelect, onRemove } = useImageContext();
-  const [currentPage, setCurrentPage] = React.useState(1);
-
-  const totalPages = Math.ceil(images.length / ITEMS_PER_PAGE);
-  const start = (currentPage - 1) * ITEMS_PER_PAGE;
-  const visibleImages = images.slice(start, start + ITEMS_PER_PAGE);
+  const { 
+    paginatedImages, 
+    selectedImage, 
+    onSelect, 
+    onRemove,
+    loadingImages
+  } = useImageContext();
 
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-5 md:grid-cols-10 gap-2 p-2 bg-gray-800 rounded-lg">
-        {visibleImages.map((img) => (
+        {paginatedImages.map((img) => (
           <FastThumbnail
             key={img.id}
             image={img}
@@ -78,6 +91,7 @@ function GalleryComponent() {
               e.stopPropagation();
               onRemove(img.id);
             }}
+            isLoading={loadingImages.has(img.id)}
           />
         ))}
       </div>

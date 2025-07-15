@@ -32,6 +32,7 @@ interface FullImageContextType {
   isCompressing: boolean;
   compressionProgress: number;
   itemsPerPage: number;
+  loadingImages: Set<string>;
   onDrop: (acceptedFiles: File[], fileRejections: any[], event: any) => void;
   addImages: (images: ImageFile[]) => void;
   onRemove: (id: string) => void;
@@ -43,12 +44,19 @@ interface FullImageContextType {
   onDownload: () => void;
   onClear: () => void;
   setResizeDraft: (draft: ResizeDraft | null) => void;
+  handleApplyResize: () => void;
+  handleReset: () => void;
   setCurrentPage: (page: number) => void;
   setItemsPerPage: (count: number) => void;
   removeAllImages: () => void;
   navigateImage: (direction: NavigationDirection) => void;
   onNavigatePage: (direction: "prev" | "next") => void;
   onClose: () => void;
+  onRotateLeft: (id: string) => void;
+  onRotateRight: (id: string) => void;
+  onFlipHorizontal: (id: string) => void;
+  onFlipVertical: (id: string) => void;
+  onReset: (id: string) => void;
 }
 
 const ImageContext = createContext<FullImageContextType | null>(null);
@@ -65,6 +73,7 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
   const [resizeDraft, setResizeDraft] = useState<ResizeDraft | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
   const [compressionProgress, setCompressionProgress] = useState(0);
+  const [loadingImages, setLoadingImages] = useState<Set<string>>(new Set());
 
   const selectedImage = useMemo(
     () => images.find((img) => img.id === selectedImageId) ?? null,
@@ -93,6 +102,14 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
         width: 0,
         height: 0,
       }));
+
+      // Add new image IDs to loading state
+      setLoadingImages((prev) => {
+        const newSet = new Set(prev);
+        newImages.forEach((img) => newSet.add(img.id));
+        return newSet;
+      });
+
       setImages((prev) => [...prev, ...newImages]);
     },
     []
@@ -122,6 +139,26 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       prev.map((img) =>
         img.id === id
           ? { ...img, rotation: ((img.rotation || 0) + degrees) % 360 }
+          : img
+      )
+    );
+  }, []);
+
+  const onFlipHorizontal = useCallback((id: string) => {
+    setImages((prev) =>
+      prev.map((img) =>
+        img.id === id
+          ? { ...img, flipHorizontal: !img.flipHorizontal }
+          : img
+      )
+    );
+  }, []);
+
+  const onFlipVertical = useCallback((id: string) => {
+    setImages((prev) =>
+      prev.map((img) =>
+        img.id === id
+          ? { ...img, flipVertical: !img.flipVertical }
           : img
       )
     );
@@ -192,6 +229,178 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
     link.click();
   }, [selectedImage]);
 
+  const handleApplyResize = useCallback(async () => {
+    if (!selectedImage || !resizeDraft) return;
+
+    try {
+      // Create a canvas to apply the resize
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      
+      if (!ctx) {
+        throw new Error("Could not get canvas context");
+      }
+
+      // Get device pixel ratio for high DPI support
+      const pixelRatio = window.devicePixelRatio || 1;
+      
+      // Set canvas dimensions considering pixel density
+      const displayWidth = resizeDraft.width;
+      const displayHeight = resizeDraft.height;
+      
+      // Scale canvas for high DPI
+      canvas.width = displayWidth * pixelRatio;
+      canvas.height = displayHeight * pixelRatio;
+      
+      // Scale the canvas back down using CSS
+      canvas.style.width = `${displayWidth}px`;
+      canvas.style.height = `${displayHeight}px`;
+      
+      // Scale the drawing context so everything draws at the correct size
+      ctx.scale(pixelRatio, pixelRatio);
+
+      // Load the image
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Failed to load image"));
+        img.src = selectedImage.url;
+      });
+
+      // Apply high-quality rendering settings
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
+      // Use advanced resizing algorithm for better quality
+      if (displayWidth < img.naturalWidth || displayHeight < img.naturalHeight) {
+        // Downscaling - use multiple passes for better quality
+        const steps = Math.ceil(Math.log2(Math.max(
+          img.naturalWidth / displayWidth,
+          img.naturalHeight / displayHeight
+        )));
+        
+        let currentCanvas = document.createElement("canvas");
+        let currentCtx = currentCanvas.getContext("2d");
+        let currentWidth = img.naturalWidth;
+        let currentHeight = img.naturalHeight;
+        
+        // Initial setup
+        currentCanvas.width = currentWidth;
+        currentCanvas.height = currentHeight;
+        currentCtx!.drawImage(img, 0, 0);
+        
+        // Progressive downscaling
+        for (let i = 0; i < steps; i++) {
+          const newWidth = Math.max(displayWidth, Math.ceil(currentWidth / 2));
+          const newHeight = Math.max(displayHeight, Math.ceil(currentHeight / 2));
+          
+          const tempCanvas = document.createElement("canvas");
+          const tempCtx = tempCanvas.getContext("2d");
+          tempCanvas.width = newWidth;
+          tempCanvas.height = newHeight;
+          
+          tempCtx!.imageSmoothingEnabled = true;
+          tempCtx!.imageSmoothingQuality = "high";
+          tempCtx!.drawImage(currentCanvas, 0, 0, newWidth, newHeight);
+          
+          currentCanvas = tempCanvas;
+          currentCtx = tempCtx;
+          currentWidth = newWidth;
+          currentHeight = newHeight;
+          
+          if (currentWidth === displayWidth && currentHeight === displayHeight) {
+            break;
+          }
+        }
+        
+        // Final draw to target canvas
+        ctx.drawImage(currentCanvas, 0, 0, displayWidth, displayHeight);
+      } else {
+        // Upscaling - direct draw with high quality
+        ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
+      }
+
+      // Convert canvas to blob and create new URL
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("Failed to create blob"));
+        }, "image/png", 1.0);
+      });
+
+      const resizedUrl = URL.createObjectURL(blob);
+      
+      // Update the image with the new resized version
+      setImages((prev) =>
+        prev.map((img) =>
+          img.id === selectedImage.id
+            ? {
+                ...img,
+                url: resizedUrl,
+                width: resizeDraft.width,
+                height: resizeDraft.height,
+                file: new File([blob], img.file.name, { type: blob.type }),
+                size: blob.size,
+                resize: {
+                  width: resizeDraft.width,
+                  height: resizeDraft.height,
+                },
+              }
+            : img
+        )
+      );
+
+      // Clean up the old URL to prevent memory leaks
+      if (selectedImage.url !== selectedImage.compressedUrl) {
+        URL.revokeObjectURL(selectedImage.url);
+      }
+
+    } catch (error) {
+      console.error("Error applying resize:", error);
+    }
+  }, [selectedImage, resizeDraft]);
+
+  const handleReset = useCallback(() => {
+    if (!selectedImage) return;
+    
+    // Reset to original dimensions
+    setImages((prev) =>
+      prev.map((img) =>
+        img.id === selectedImage.id
+          ? {
+              ...img,
+              resize: undefined,
+              rotation: 0,
+              flipHorizontal: false,
+              flipVertical: false,
+              crop: undefined,
+            }
+          : img
+      )
+    );
+    
+    setResizeDraft(null);
+  }, [selectedImage]);
+
+  const onResetImage = useCallback((id: string) => {
+    setImages((prev) =>
+      prev.map((img) =>
+        img.id === id
+          ? {
+              ...img,
+              resize: undefined,
+              rotation: 0,
+              flipHorizontal: false,
+              flipVertical: false,
+              crop: undefined,
+            }
+          : img
+      )
+    );
+  }, []);
+
   useEffect(() => {
     images.forEach((img) => {
       if (img.width === 0) {
@@ -208,6 +417,13 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
                 : p
             )
           );
+
+          // Remove from loading state once image is loaded
+          setLoadingImages((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(img.id);
+            return newSet;
+          });
         };
         image.src = img.url;
       }
@@ -216,17 +432,25 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const onNavigatePage = useCallback(
     (direction: "prev" | "next") => {
-      const idx = images.findIndex((i) => i.id === selectedImageId);
-      if (idx === -1) return;
+      let newPage = currentPage;
 
-      let next = idx;
-      if (direction === "next") next = Math.min(idx + 10, images.length - 1);
-      if (direction === "prev") next = Math.max(idx - 10, 0);
+      if (direction === "next" && currentPage < totalPages) {
+        newPage = currentPage + 1;
+      } else if (direction === "prev" && currentPage > 1) {
+        newPage = currentPage - 1;
+      }
 
-      const img = images[next];
-      setSelectedImageId(img?.id ?? null);
+      if (newPage !== currentPage) {
+        setCurrentPage(newPage);
+        // Select the first image on the new page
+        const start = (newPage - 1) * itemsPerPage;
+        const firstImageOnPage = images[start];
+        if (firstImageOnPage) {
+          setSelectedImageId(firstImageOnPage.id);
+        }
+      }
     },
-    [images, selectedImageId]
+    [currentPage, totalPages, images, itemsPerPage]
   );
 
   const value = useMemo(
@@ -240,6 +464,7 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       isCompressing,
       compressionProgress,
       itemsPerPage,
+      loadingImages,
       onDrop,
       onRemove,
       onSelect,
@@ -250,8 +475,15 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       onDownload,
       onClear,
       setResizeDraft,
+      handleApplyResize,
+      handleReset,
       setCurrentPage,
       setItemsPerPage,
+      onRotateLeft: (id: string) => onRotate(id, -90),
+      onRotateRight: (id: string) => onRotate(id, 90),
+      onFlipHorizontal: (id: string) => onFlipHorizontal(id),
+      onFlipVertical: (id: string) => onFlipVertical(id),
+      onReset: (id: string) => onResetImage(id),
       addImages: (newImages: ImageFile[]) =>
         setImages((prev) => [...prev, ...newImages]),
       removeAllImages: () => setImages([]),
@@ -279,6 +511,7 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       isCompressing,
       compressionProgress,
       itemsPerPage,
+      loadingImages,
       onRemove,
       onSelect,
       onRotate,
@@ -287,6 +520,8 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       onCompress,
       onDownload,
       onClear,
+      handleApplyResize,
+      handleReset,
     ]
   );
 

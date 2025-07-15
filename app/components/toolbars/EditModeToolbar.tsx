@@ -1,3 +1,4 @@
+// app/components/toolbars/EditModeToolbar.tsx
 import React from "react";
 import {
   Minus,
@@ -21,6 +22,10 @@ import { useNavigate } from "@tanstack/react-router";
 export const EditModeToolbar = () => {
   const { onZoomIn, onZoomOut, setEditorState } = useEditorStore();
   const {
+    selectedImage,
+    onRotate,
+    onResize,
+    onClear,
     onRotateLeft,
     onRotateRight,
     onFlipHorizontal,
@@ -36,6 +41,7 @@ export const EditModeToolbar = () => {
 
   return (
     <div className="w-full grid grid-cols-3 items-center">
+      {/* Left: zoom + rotate + flip + reset */}
       <div className="flex items-center gap-2 justify-self-start">
         <Button onClick={onZoomIn} variant="outline" className="h-9 w-9 p-0">
           <Plus className="h-4 w-4" />
@@ -44,38 +50,43 @@ export const EditModeToolbar = () => {
           <Minus className="h-4 w-4" />
         </Button>
         <Button
-          onClick={onRotateLeft}
+          onClick={() => selectedImage && onRotateLeft(selectedImage.id)}
           variant="outline"
           className="h-9 w-9 p-0"
         >
           <RotateCcw className="h-4 w-4" />
         </Button>
         <Button
-          onClick={onRotateRight}
+          onClick={() => selectedImage && onRotateRight(selectedImage.id)}
           variant="outline"
           className="h-9 w-9 p-0"
         >
           <RotateCw className="h-4 w-4" />
         </Button>
         <Button
-          onClick={onFlipHorizontal}
+          onClick={() => selectedImage && onFlipHorizontal(selectedImage.id)}
           variant="outline"
           className="h-9 w-9 p-0"
         >
           <FlipHorizontal className="h-4 w-4" />
         </Button>
         <Button
-          onClick={onFlipVertical}
+          onClick={() => selectedImage && onFlipVertical(selectedImage.id)}
           variant="outline"
           className="h-9 w-9 p-0"
         >
           <FlipVertical className="h-4 w-4" />
         </Button>
-        <Button onClick={onReset} variant="outline" className="h-9 w-9 p-0">
+        <Button
+          onClick={() => selectedImage && onReset(selectedImage.id)}
+          variant="outline"
+          className="h-9 w-9 p-0"
+        >
           <RefreshCcw className="h-4 w-4" />
         </Button>
       </div>
 
+      {/* Center: tools */}
       <div className="flex items-center gap-2 justify-self-center">
         <Button
           onClick={() => setEditorState("crop")}
@@ -106,6 +117,8 @@ export const EditModeToolbar = () => {
           <Type className="mr-2 h-4 w-4" /> Text
         </Button>
       </div>
+
+      {/* Right: exit */}
       <div className="flex items-center gap-2 justify-self-end">
         <Button onClick={handleExitEditMode} variant="outline" className="h-9">
           <X className="mr-2 h-4 w-4" /> Exit Edit

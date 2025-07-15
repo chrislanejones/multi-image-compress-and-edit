@@ -16,6 +16,8 @@ export interface ImageFile {
   compressedSize?: number;
   compressedUrl?: string;
   rotation?: number;
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
   crop?: { x: number; y: number; width: number; height: number };
   resize?: { width: number; height: number };
   metadata?: ImageMetadata;
