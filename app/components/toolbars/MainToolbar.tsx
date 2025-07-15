@@ -1,3 +1,4 @@
+// app/components/main-toolbar.tsx
 import React from "react";
 import {
   Minus,
@@ -37,14 +38,11 @@ export const MainToolbar = () => {
 
   const handleEnterEditMode = () => {
     setEditorState("editImage");
-    // @ts-ignore - This will be fixed by running 'bun run generate-routes'
     navigate({ to: "/resize-and-optimize/edit-image" });
   };
 
   const handleRemoveAll = () => {
     if (images.length === 0) return;
-
-    // Show confirmation dialog
     if (
       confirm(
         `Are you sure you want to remove all ${images.length} images? This action cannot be undone.`
@@ -70,11 +68,10 @@ export const MainToolbar = () => {
         <Button onClick={handleEnterEditMode} variant="outline" className="h-9">
           <Pencil className="mr-2 h-4 w-4" /> Edit Image
         </Button>
+
         {/* Bulk Image Editor Button (disabled for now) */}
         <Button
-          onClick={() => {
-            /* TODO: Implement bulk editor */
-          }}
+          onClick={() => {}}
           variant="outline"
           className="h-9"
           disabled
@@ -85,9 +82,7 @@ export const MainToolbar = () => {
 
         {/* AI Editor Button (disabled for now) */}
         <Button
-          onClick={() => {
-            /* TODO: Implement AI editor */
-          }}
+          onClick={() => {}}
           variant="outline"
           className="h-9"
           disabled
@@ -102,7 +97,7 @@ export const MainToolbar = () => {
             <Button
               variant="outline"
               className="py-2 h-9 px-3"
-              onClick={() => onNavigatePage && onNavigatePage("prev")}
+              onClick={() => onNavigatePage?.("prev")}
               disabled={!onNavigatePage || currentPage <= 1}
               title="Previous 10 Images"
             >
@@ -111,7 +106,7 @@ export const MainToolbar = () => {
             <Button
               variant="outline"
               className="py-2 h-9 px-3"
-              onClick={() => navigateImage && navigateImage("prev")}
+              onClick={() => navigateImage?.("prev")}
               disabled={!navigateImage || images.length <= 1}
               title="Previous Image"
             >
@@ -123,7 +118,7 @@ export const MainToolbar = () => {
             <Button
               variant="outline"
               className="py-2 h-9 px-3"
-              onClick={() => navigateImage && navigateImage("next")}
+              onClick={() => navigateImage?.("next")}
               disabled={!navigateImage || images.length <= 1}
               title="Next Image"
             >
@@ -132,7 +127,7 @@ export const MainToolbar = () => {
             <Button
               variant="outline"
               className="py-2 h-9 px-3"
-              onClick={() => onNavigatePage && onNavigatePage("next")}
+              onClick={() => onNavigatePage?.("next")}
               disabled={!onNavigatePage || currentPage >= totalPages}
               title="Next 10 Images"
             >
@@ -148,7 +143,7 @@ export const MainToolbar = () => {
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Upload
         </Button>
 
-        {/* Remove All Button - only show if there are images */}
+        {/* Remove All Button */}
         {images.length > 0 && (
           <Button
             onClick={handleRemoveAll}

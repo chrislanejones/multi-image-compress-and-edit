@@ -7,11 +7,47 @@
  */
 export interface ImageFile {
   id: string;
-  file: File;
+  file: File; // ← keep required
   url: string;
-  width?: number;
-  height?: number;
+  name: string;
+  size: number;
+  width: number;
+  height: number;
+  compressedSize?: number;
+  compressedUrl?: string;
+  rotation?: number;
+  crop?: { x: number; y: number; width: number; height: number };
+  resize?: { width: number; height: number };
   metadata?: ImageMetadata;
+}
+
+interface FullImageContextType {
+  images: ImageFile[];
+  selectedImage: ImageFile | null;
+  paginatedImages: ImageFile[];
+  currentPage: number;
+  totalPages: number;
+  resizeDraft: ResizeDraft | null;
+  isCompressing: boolean;
+  compressionProgress: number;
+  itemsPerPage: number;
+  onDrop: (acceptedFiles: File[]) => void;
+  addImages: (images: ImageFile[]) => void;
+  onRemove: (id: string) => void;
+  removeAllImages: () => void;
+  navigateImage: (direction: NavigationDirection) => void;
+  onNavigatePage: (direction: "prev" | "next") => void;
+  onClose: () => void;
+  onSelect: (id: string | null) => void; // ← added
+  onRotate: (id: string, degrees: number) => void;
+  onCrop: (id: string, crop: ImageFile["crop"]) => void;
+  onResize: (id: string, resize: ImageFile["resize"]) => void;
+  onCompress: () => void;
+  onDownload: () => void;
+  onClear: () => void;
+  setResizeDraft: (draft: ResizeDraft | null) => void;
+  setCurrentPage: (page: number) => void;
+  setItemsPerPage: (count: number) => void;
 }
 
 /**

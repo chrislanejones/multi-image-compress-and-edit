@@ -1,11 +1,10 @@
+// app/components/photo-upload.tsx
 import React, { useState, useRef, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Upload } from "lucide-react";
 import { Card, CardHeader, CardContent, CardFooter } from "./ui/card";
 import { Button } from "./ui/button";
 import imageCompression from "browser-image-compression";
-
-// Import your context (you'll need to create this)
 import { useImageContext } from "../context/image-context";
 
 export default function PhotoUpload() {
@@ -14,10 +13,7 @@ export default function PhotoUpload() {
 
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [progress, setProgress] = useState({
-    current: 0,
-    total: 0,
-  });
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleFiles(files: FileList) {
@@ -29,18 +25,14 @@ export default function PhotoUpload() {
     try {
       const processed = await Promise.all(
         Array.from(files).map(async (file, index) => {
-          // Update progress
           setProgress((prev) => ({ ...prev, current: index + 1 }));
 
           const originalSize = file.size;
-
-          // set your compression options as needed
           const options = {
             maxSizeMB: 1,
             maxWidthOrHeight: 1920,
             useWebWorker: true,
           };
-
           const compressedFile = await imageCompression(file, options);
           const compressedSize = compressedFile.size;
           const compressionRatio = Math.round(
@@ -53,6 +45,12 @@ export default function PhotoUpload() {
             id: crypto.randomUUID(),
             file: compressedFile,
             url,
+            name: compressedFile.name,
+            size: compressedFile.size,
+            width: 0,
+            height: 0,
+            compressedSize,
+            compressedUrl: url,
             metadata: {
               originalSize,
               compressedSize,
@@ -63,8 +61,6 @@ export default function PhotoUpload() {
       );
 
       addImages(processed);
-
-      // Navigate to gallery after processing
       navigate({ to: "/resize-and-optimize" });
     } catch (error) {
       console.error("Error processing images:", error);
@@ -76,47 +72,38 @@ export default function PhotoUpload() {
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files) {
-        handleFiles(e.target.files);
-      }
+      if (e.target.files) handleFiles(e.target.files);
     },
     []
   );
 
-  const handleUploadClick = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
+  const handleUploadClick = useCallback(
+    () => fileInputRef.current?.click(),
+    []
+  );
+  const handleBackToImages = useCallback(
+    () => navigate({ to: "/resize-and-optimize" }),
+    [navigate]
+  );
 
-  const handleBackToImages = useCallback(() => {
-    navigate({ to: "/resize-and-optimize" });
-  }, [navigate]);
-
-  // Drag and drop handlers
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
     setIsDragging(true);
   }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
     setIsDragging(false);
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
-
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => e.preventDefault(),
+    []
+  );
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
     setIsDragging(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFiles(e.dataTransfer.files);
-    }
+    if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
   }, []);
 
   const hasImages = images.length > 0;
@@ -221,9 +208,7 @@ export default function PhotoUpload() {
               className="w-full"
               disabled={isProcessing}
             >
-              {isProcessing
-                ? `Processing ${progress.current}/${progress.total}...`
-                : "Select Images"}
+              {isProcessing ? `Processing...` : "Select Images"}
             </Button>
           )}
         </CardFooter>
