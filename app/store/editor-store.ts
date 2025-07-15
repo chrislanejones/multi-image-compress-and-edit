@@ -4,6 +4,7 @@ import type {
   ImageFormat,
   CompressionLevel,
 } from "../types/types";
+import type { Crop } from "react-image-crop";
 
 interface EditorStore {
   // Core editor state
@@ -20,6 +21,11 @@ interface EditorStore {
   blurRadius: number;
   brushSize: number;
   brushColor: string;
+  
+  // Crop state
+  crop: Crop | undefined;
+  completedCrop: Crop | undefined;
+  cropZoom: number;
 
   // UI state
   isProcessing: boolean;
@@ -41,6 +47,14 @@ interface EditorStore {
   setBlurRadius: (radius: number) => void;
   setBrushSize: (size: number) => void;
   setBrushColor: (color: string) => void;
+  
+  // Crop actions
+  setCrop: (crop: Crop | undefined) => void;
+  setCompletedCrop: (crop: Crop | undefined) => void;
+  setCropZoom: (zoom: number) => void;
+  onCropZoomIn: () => void;
+  onCropZoomOut: () => void;
+  resetCrop: () => void;
 
   // Processing state
   setIsProcessing: (processing: boolean) => void;
@@ -61,6 +75,7 @@ const DEFAULT_VALUES = {
   blurRadius: 10,
   brushSize: 10,
   brushColor: "#ff0000",
+  cropZoom: 100,
 };
 
 export const useEditorStore = create<EditorStore>((set, get) => ({
@@ -74,6 +89,9 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   blurRadius: DEFAULT_VALUES.blurRadius,
   brushSize: DEFAULT_VALUES.brushSize,
   brushColor: DEFAULT_VALUES.brushColor,
+  crop: undefined,
+  completedCrop: undefined,
+  cropZoom: DEFAULT_VALUES.cropZoom,
   isProcessing: false,
   hasUnsavedChanges: false,
 
@@ -145,6 +163,30 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     set({
       brushColor: color,
       hasUnsavedChanges: true,
+    }),
+
+  // Crop actions
+  setCrop: (crop) => set({ crop }),
+  
+  setCompletedCrop: (crop) => set({ completedCrop: crop }),
+  
+  setCropZoom: (zoom) => set({ cropZoom: Math.max(50, Math.min(300, zoom)) }),
+  
+  onCropZoomIn: () =>
+    set((state) => ({
+      cropZoom: Math.min(300, state.cropZoom + 10),
+    })),
+    
+  onCropZoomOut: () =>
+    set((state) => ({
+      cropZoom: Math.max(50, state.cropZoom - 10),
+    })),
+    
+  resetCrop: () =>
+    set({
+      crop: undefined,
+      completedCrop: undefined,
+      cropZoom: DEFAULT_VALUES.cropZoom,
     }),
 
   // Processing state

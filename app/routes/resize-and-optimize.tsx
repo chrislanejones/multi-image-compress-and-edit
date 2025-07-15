@@ -5,10 +5,12 @@ import { Card, CardContent } from "../components/ui/card";
 import { ImageEditorToolbar } from "../components/image-editor-toolbar";
 import ImageResizer from "../components/ImageResizer";
 import ImageStats from "../components/ImageStats";
-import ImageZoomView from "../components/ImageZoomView"; // Import the zoom component
+import ImageZoomView from "../components/ImageZoomView";
 import { useEffect, useState } from "react";
 import { Home, ImageIcon } from "lucide-react";
 import { Button } from "../components/ui/button";
+import ReactCrop from "react-image-crop";
+import "react-image-crop/dist/ReactCrop.css";
 
 export const Route = createFileRoute("/resize-and-optimize")({
   component: ResizeAndOptimizeLayout,
@@ -59,9 +61,22 @@ function NoImagesComponent() {
 
 function ResizeAndOptimizeLayout() {
   const { selectedImage, images } = useImageContext();
-  const { zoom, setEditorState } = useEditorStore();
+  const { 
+    zoom, 
+    setEditorState, 
+    editorState, 
+    crop, 
+    setCrop, 
+    completedCrop, 
+    setCompletedCrop,
+    cropZoom 
+  } = useEditorStore();
   const navigate = useNavigate();
   const [countdown, setCountdown] = useState<number | null>(null);
+
+  // Define the editing modes that should show full screen canvas
+  const fullScreenModes = ["editImage", "crop", "blur", "paint", "text"];
+  const isFullScreenMode = fullScreenModes.includes(editorState);
 
   // Countdown and redirect if no images exist
   useEffect(() => {
@@ -112,48 +127,125 @@ function ResizeAndOptimizeLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-4 flex flex-col">
+    <div className={`min-h-screen bg-background text-foreground ${isFullScreenMode ? 'p-2' : 'p-4'} flex flex-col`}>
       <Outlet />
-      <div className="mt-4">
+      <div className={isFullScreenMode ? "mt-2" : "mt-4"}>
         <ImageEditorToolbar />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-6">
-        {/* Main image view - takes up 3 columns on large screens */}
-        <section className="lg:col-span-3">
+      
+      {isFullScreenMode ? (
+        // Full screen mode for editing
+        <div className="flex-1 flex flex-col mt-6">
           {selectedImage && (
-            <Card>
-              <CardContent className="p-4">
-                <div
-                  className="flex items-center justify-center bg-muted rounded-lg overflow-hidden"
-                  style={{ minHeight: "400px" }}
-                >
+            <div className="flex-1 bg-gray-900 rounded-lg overflow-hidden relative">
+              {editorState === "crop" ? (
+                // Crop mode
+                <div className="absolute inset-0 flex items-center justify-center p-4">
+                  <div className="relative" style={{ 
+                    transform: `scale(${cropZoom / 100})`,
+                    transformOrigin: "center",
+                    maxWidth: "100%",
+                    maxHeight: "100%"
+                  }}>
+                    <ReactCrop
+                      crop={crop}
+                      onChange={(c) => setCrop(c)}
+                      onComplete={(c) => setCompletedCrop(c)}
+                      aspect={undefined}
+                      minWidth={10}
+                      minHeight={10}
+                      className="max-w-full max-h-full"
+                    >
+                      <img
+                        key={selectedImage.id}
+                        src={selectedImage.url}
+                        alt={selectedImage.file?.name || "Selected image"}
+                        className="block max-w-full max-h-full"
+                        style={{ 
+                          transform: `rotate(${selectedImage.rotation || 0}deg) scaleX(${selectedImage.flipHorizontal ? -1 : 1}) scaleY(${selectedImage.flipVertical ? -1 : 1})`,
+                          maxHeight: "calc(100vh - 300px)"
+                        }}
+                        onLoad={() => {
+                          // Initialize crop if not set
+                          if (!crop) {
+                            setCrop({
+                              unit: '%',
+                              x: 10,
+                              y: 10,
+                              width: 80,
+                              height: 80
+                            });
+                          }
+                        }}
+                      />
+                    </ReactCrop>
+                  </div>
+                </div>
+              ) : (
+                // Other editing modes
+                <div className="absolute inset-0 flex items-center justify-center p-8">
                   <img
                     key={selectedImage.id}
                     src={selectedImage.url}
                     alt={selectedImage.file?.name || "Selected image"}
-                    className="max-w-full max-h-full object-contain rounded transition-transform duration-200"
+                    className="max-w-full max-h-full object-contain transition-transform duration-200"
                     style={{ 
-                      transform: `scale(${zoom / 100}) rotate(${selectedImage.rotation || 0}deg) scaleX(${selectedImage.flipHorizontal ? -1 : 1}) scaleY(${selectedImage.flipVertical ? -1 : 1})` 
+                      transform: `scale(${zoom / 100}) rotate(${selectedImage.rotation || 0}deg) scaleX(${selectedImage.flipHorizontal ? -1 : 1}) scaleY(${selectedImage.flipVertical ? -1 : 1})`,
+                      filter: editorState === "blur" ? "blur(4px)" : "none"
                     }}
                   />
                 </div>
-              </CardContent>
-            </Card>
+              )}
+              {/* Canvas overlay for drawing tools */}
+              {(editorState === "paint" || editorState === "text") && (
+                <canvas 
+                  className="absolute inset-0 cursor-crosshair"
+                  style={{ pointerEvents: "auto" }}
+                />
+              )}
+            </div>
           )}
-        </section>
+        </div>
+      ) : (
+        // Normal mode with sidebar
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-6">
+          {/* Main image view - takes up 3 columns on large screens */}
+          <section className="lg:col-span-3">
+            {selectedImage && (
+              <Card>
+                <CardContent className="p-4">
+                  <div
+                    className="flex items-center justify-center bg-muted rounded-lg overflow-hidden"
+                    style={{ minHeight: "400px" }}
+                  >
+                    <img
+                      key={selectedImage.id}
+                      src={selectedImage.url}
+                      alt={selectedImage.file?.name || "Selected image"}
+                      className="max-w-full max-h-full object-contain rounded transition-transform duration-200"
+                      style={{ 
+                        transform: `scale(${zoom / 100}) rotate(${selectedImage.rotation || 0}deg) scaleX(${selectedImage.flipHorizontal ? -1 : 1}) scaleY(${selectedImage.flipVertical ? -1 : 1})` 
+                      }}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </section>
 
-        {/* Sidebar - takes up 1 column on large screens */}
-        <aside className="lg:col-span-1 space-y-6">
-          {/* Image Resizer */}
-          <ImageResizer />
+          {/* Sidebar - takes up 1 column on large screens */}
+          <aside className="lg:col-span-1 space-y-6">
+            {/* Image Resizer */}
+            <ImageResizer />
 
-          {/* Image Zoom View */}
-          {selectedImage && <ImageZoomView imageUrl={selectedImage.url} imageTransforms={selectedImage} />}
+            {/* Image Zoom View */}
+            {selectedImage && <ImageZoomView imageUrl={selectedImage.url} imageTransforms={selectedImage} />}
 
-          {/* Image Stats */}
-          <ImageStats selectedImage={selectedImage} />
-        </aside>
-      </div>
+            {/* Image Stats */}
+            <ImageStats selectedImage={selectedImage} />
+          </aside>
+        </div>
+      )}
     </div>
   );
 }

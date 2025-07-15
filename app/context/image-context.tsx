@@ -14,6 +14,7 @@ import { v4 as uuidv4 } from "uuid";
 import imageCompression from "browser-image-compression";
 import { imageDB } from "@/utils/indexed-db";
 import type { ImageFile } from "@/types/types";
+import { useEditorStore } from "@/store/editor-store";
 
 interface ResizeDraft {
   width: number;
@@ -57,6 +58,7 @@ interface FullImageContextType {
   onFlipHorizontal: (id: string) => void;
   onFlipVertical: (id: string) => void;
   onReset: (id: string) => void;
+  onApplyCrop: () => void;
 }
 
 const ImageContext = createContext<FullImageContextType | null>(null);
@@ -401,6 +403,105 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   }, []);
 
+  const onApplyCrop = useCallback(async () => {
+    const completedCrop = useEditorStore.getState().completedCrop;
+    const setEditorState = useEditorStore.getState().setEditorState;
+    const resetCrop = useEditorStore.getState().resetCrop;
+    
+    if (!selectedImage || !completedCrop || !completedCrop.width || !completedCrop.height) {
+      return;
+    }
+
+    try {
+      // Create a canvas to apply the crop
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      
+      if (!ctx) {
+        throw new Error("Could not get canvas context");
+      }
+
+      // Load the image
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Failed to load image"));
+        img.src = selectedImage.url;
+      });
+
+      // Calculate crop dimensions in pixels
+      const scaleX = img.naturalWidth / 100;
+      const scaleY = img.naturalHeight / 100;
+      
+      // Set canvas dimensions to the crop size
+      canvas.width = completedCrop.width * scaleX;
+      canvas.height = completedCrop.height * scaleY;
+
+      // Apply high-quality rendering settings
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
+      // Draw the cropped portion
+      ctx.drawImage(
+        img,
+        completedCrop.x * scaleX,
+        completedCrop.y * scaleY,
+        completedCrop.width * scaleX,
+        completedCrop.height * scaleY,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+      // Convert canvas to blob and create new URL
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("Failed to create blob"));
+        }, "image/png", 1.0);
+      });
+
+      const croppedUrl = URL.createObjectURL(blob);
+      
+      // Update the image with the cropped version
+      setImages((prev) =>
+        prev.map((img) =>
+          img.id === selectedImage.id
+            ? {
+                ...img,
+                url: croppedUrl,
+                width: Math.round(completedCrop.width * scaleX),
+                height: Math.round(completedCrop.height * scaleY),
+                file: new File([blob], img.file.name, { type: blob.type }),
+                size: blob.size,
+                crop: {
+                  x: completedCrop.x,
+                  y: completedCrop.y,
+                  width: completedCrop.width,
+                  height: completedCrop.height,
+                },
+              }
+            : img
+        )
+      );
+
+      // Clean up the old URL to prevent memory leaks
+      if (selectedImage.url !== selectedImage.compressedUrl) {
+        URL.revokeObjectURL(selectedImage.url);
+      }
+
+      // Reset crop state and go back to resize mode
+      resetCrop();
+      setEditorState("resizeAndOptimize");
+
+    } catch (error) {
+      console.error("Error applying crop:", error);
+    }
+  }, [selectedImage]);
+
   useEffect(() => {
     images.forEach((img) => {
       if (img.width === 0) {
@@ -484,6 +585,7 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       onFlipHorizontal: (id: string) => onFlipHorizontal(id),
       onFlipVertical: (id: string) => onFlipVertical(id),
       onReset: (id: string) => onResetImage(id),
+      onApplyCrop,
       addImages: (newImages: ImageFile[]) =>
         setImages((prev) => [...prev, ...newImages]),
       removeAllImages: () => setImages([]),
@@ -522,6 +624,7 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       onClear,
       handleApplyResize,
       handleReset,
+      onApplyCrop,
     ]
   );
 
