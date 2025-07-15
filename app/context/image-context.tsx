@@ -409,6 +409,7 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
     const resetCrop = useEditorStore.getState().resetCrop;
     
     if (!selectedImage || !completedCrop || !completedCrop.width || !completedCrop.height) {
+      console.log("No crop data available");
       return;
     }
 
@@ -431,13 +432,26 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
         img.src = selectedImage.url;
       });
 
-      // Calculate crop dimensions in pixels
-      const scaleX = img.naturalWidth / 100;
-      const scaleY = img.naturalHeight / 100;
+      // Calculate crop dimensions based on the unit
+      let cropX, cropY, cropWidth, cropHeight;
+      
+      if (completedCrop.unit === '%') {
+        // Convert percentage to pixels
+        cropX = (completedCrop.x / 100) * img.naturalWidth;
+        cropY = (completedCrop.y / 100) * img.naturalHeight;
+        cropWidth = (completedCrop.width / 100) * img.naturalWidth;
+        cropHeight = (completedCrop.height / 100) * img.naturalHeight;
+      } else {
+        // Already in pixels
+        cropX = completedCrop.x;
+        cropY = completedCrop.y;
+        cropWidth = completedCrop.width;
+        cropHeight = completedCrop.height;
+      }
       
       // Set canvas dimensions to the crop size
-      canvas.width = completedCrop.width * scaleX;
-      canvas.height = completedCrop.height * scaleY;
+      canvas.width = cropWidth;
+      canvas.height = cropHeight;
 
       // Apply high-quality rendering settings
       ctx.imageSmoothingEnabled = true;
@@ -446,14 +460,14 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       // Draw the cropped portion
       ctx.drawImage(
         img,
-        completedCrop.x * scaleX,
-        completedCrop.y * scaleY,
-        completedCrop.width * scaleX,
-        completedCrop.height * scaleY,
+        cropX,
+        cropY,
+        cropWidth,
+        cropHeight,
         0,
         0,
-        canvas.width,
-        canvas.height
+        cropWidth,
+        cropHeight
       );
 
       // Convert canvas to blob and create new URL
@@ -473,8 +487,8 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
             ? {
                 ...img,
                 url: croppedUrl,
-                width: Math.round(completedCrop.width * scaleX),
-                height: Math.round(completedCrop.height * scaleY),
+                width: Math.round(cropWidth),
+                height: Math.round(cropHeight),
                 file: new File([blob], img.file.name, { type: blob.type }),
                 size: blob.size,
                 crop: {

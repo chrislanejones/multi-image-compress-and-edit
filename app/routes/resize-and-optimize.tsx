@@ -78,6 +78,19 @@ function ResizeAndOptimizeLayout() {
   const fullScreenModes = ["editImage", "crop", "blur", "paint", "text"];
   const isFullScreenMode = fullScreenModes.includes(editorState);
 
+  // Initialize crop when entering crop mode
+  useEffect(() => {
+    if (editorState === "crop" && !crop) {
+      setCrop({
+        unit: '%',
+        x: 10,
+        y: 10,
+        width: 80,
+        height: 80
+      });
+    }
+  }, [editorState, crop, setCrop]);
+
   // Countdown and redirect if no images exist
   useEffect(() => {
     if (images.length === 0) {
@@ -140,13 +153,16 @@ function ResizeAndOptimizeLayout() {
             <div className="flex-1 bg-gray-900 rounded-lg overflow-hidden relative">
               {editorState === "crop" ? (
                 // Crop mode
-                <div className="absolute inset-0 flex items-center justify-center p-4">
-                  <div className="relative" style={{ 
-                    transform: `scale(${cropZoom / 100})`,
-                    transformOrigin: "center",
-                    maxWidth: "100%",
-                    maxHeight: "100%"
-                  }}>
+                <div className="absolute inset-0 flex items-center justify-center p-8">
+                  <div 
+                    className="relative flex items-center justify-center"
+                    style={{ 
+                      transform: `scale(${cropZoom / 100})`,
+                      transformOrigin: "center",
+                      maxWidth: "calc(100% - 64px)",
+                      maxHeight: "calc(100% - 64px)"
+                    }}
+                  >
                     <ReactCrop
                       crop={crop}
                       onChange={(c) => setCrop(c)}
@@ -154,28 +170,21 @@ function ResizeAndOptimizeLayout() {
                       aspect={undefined}
                       minWidth={10}
                       minHeight={10}
-                      className="max-w-full max-h-full"
+                      keepSelection={true}
+                      style={{ 
+                        maxWidth: "100%",
+                        maxHeight: "100%"
+                      }}
                     >
                       <img
                         key={selectedImage.id}
                         src={selectedImage.url}
                         alt={selectedImage.file?.name || "Selected image"}
-                        className="block max-w-full max-h-full"
+                        className="block max-w-full max-h-full object-contain"
                         style={{ 
                           transform: `rotate(${selectedImage.rotation || 0}deg) scaleX(${selectedImage.flipHorizontal ? -1 : 1}) scaleY(${selectedImage.flipVertical ? -1 : 1})`,
-                          maxHeight: "calc(100vh - 300px)"
-                        }}
-                        onLoad={() => {
-                          // Initialize crop if not set
-                          if (!crop) {
-                            setCrop({
-                              unit: '%',
-                              x: 10,
-                              y: 10,
-                              width: 80,
-                              height: 80
-                            });
-                          }
+                          maxHeight: "calc(100vh - 200px)",
+                          maxWidth: "100%"
                         }}
                       />
                     </ReactCrop>
