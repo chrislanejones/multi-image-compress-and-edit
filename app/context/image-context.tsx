@@ -6,13 +6,12 @@ import React, {
   useState,
   useCallback,
   useMemo,
-  useRef,
   useEffect,
 } from "react";
 import { useEditorStore } from "../store/editor-store";
 import { compressImageAggressively } from "../utils/image-processing";
 import { toast } from "sonner";
-import { ImageFile, IMAGES_PER_PAGE } from "../types/types";
+import { ImageFile, IMAGES_PER_PAGE, ImageMetadata } from "../types/types";
 
 interface ResizeDraft {
   width: number;
@@ -26,7 +25,6 @@ export interface FullImageContextType {
   currentPage: number;
   totalPages: number;
   resizeDraft: ResizeDraft | null;
-  setResizeDraft: (draft: ResizeDraft) => void;
   addImages: (files: ImageFile[]) => void;
   removeImage: (id: string) => void;
   removeAllImages: () => void;
@@ -38,10 +36,10 @@ export interface FullImageContextType {
   onClose: () => void;
   onApplyCrop?: () => void;
   onApplyBlur?: () => void;
-  onRotateLeft?: () => void;
-  onRotateRight?: () => void;
-  onFlipHorizontal?: () => void;
-  onFlipVertical?: () => void;
+  onRotateLeft: () => void;
+  onRotateRight: () => void;
+  onFlipHorizontal: () => void;
+  onFlipVertical: () => void;
   onDownload?: () => void;
   [key: string]: any;
 }
@@ -66,18 +64,78 @@ function formatBytes(bytes: number, decimals = 1): string {
   );
 }
 
+// Helper function for image transformations
+const transformImage = async (
+  imageUrl: string,
+  transformation: {
+    rotate?: 90 | -90;
+    flipH?: boolean;
+    flipV?: boolean;
+  }
+): Promise<{ url: string; width: number; height: number; size: number }> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("Canvas context not available"));
+
+      const { width, height } = img;
+      const { rotate = 0, flipH = false, flipV = false } = transformation;
+
+      // Set canvas dimensions based on rotation
+      if (rotate === 90 || rotate === -90) {
+        canvas.width = height;
+        canvas.height = width;
+      } else {
+        canvas.width = width;
+        canvas.height = height;
+      }
+
+      // Translate to center, scale for flips, rotate, and draw the image
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
+      ctx.rotate((rotate * Math.PI) / 180);
+      ctx.drawImage(img, -width / 2, -height / 2);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return reject(new Error("Failed to create blob"));
+          const newUrl = URL.createObjectURL(blob);
+          resolve({
+            url: newUrl,
+            width: canvas.width,
+            height: canvas.height,
+            size: blob.size,
+          });
+        },
+        "image/png",
+        1 // Use PNG for lossless transformations
+      );
+    };
+    img.onerror = (err) => reject(err);
+    img.src = imageUrl;
+  });
+};
+
 export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [images, setImages] = useState<ImageFile[]>([]);
-  const [originalImageUrls, setOriginalImageUrls] = useState<
-    Map<string, string>
-  >(new Map());
+  const [originalImages, setOriginalImages] = useState<Map<string, ImageFile>>(
+    new Map()
+  );
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
-  const [resizeDraft, setResizeDraft] = useState<ResizeDraft | null>(null);
 
-  const { format, compressionLevel } = useEditorStore.getState();
+  const { format, compressionLevel, setHasUnsavedChanges } = useEditorStore(
+    (state) => ({
+      format: state.format,
+      compressionLevel: state.compressionLevel,
+      setHasUnsavedChanges: state.setHasUnsavedChanges,
+    })
+  );
 
   const selectedImage = useMemo(
     () => images.find((img) => img.id === selectedImageId) || null,
@@ -93,31 +151,47 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, [images, currentPage]);
 
-  useEffect(() => {
-    if (selectedImage) {
-      setResizeDraft({
-        width: selectedImage.width || 0,
-        height: selectedImage.height || 0,
-      });
-    } else {
-      setResizeDraft(null);
-    }
-  }, [selectedImage]);
+  // ✅ Derived resizeDraft — no useState or useEffect
+  const resizeDraft = useMemo(() => {
+    if (!selectedImage) return null;
+    return {
+      width: selectedImage.width || 0,
+      height: selectedImage.height || 0,
+    };
+  }, [selectedImage?.width, selectedImage?.height]);
 
   const addImages = useCallback(
     (newImages: ImageFile[]) => {
       setImages((prev) => [...prev, ...newImages]);
-      const newOriginals = new Map(originalImageUrls);
+      const newOriginals = new Map(originalImages);
       newImages.forEach((img) => {
-        newOriginals.set(img.id, img.url);
+        newOriginals.set(img.id, { ...img });
       });
-      setOriginalImageUrls(newOriginals);
+      setOriginalImages(newOriginals);
       if (!selectedImageId && newImages.length > 0) {
         setSelectedImageId(newImages[0].id);
       }
     },
-    [selectedImageId, originalImageUrls]
+    [selectedImageId, originalImages]
   );
+
+  const updateImage = useCallback((id: string, updates: Partial<ImageFile>) => {
+    setImages((prev) =>
+      prev.map((img) => {
+        if (img.id === id) {
+          if (updates.url && img.url.startsWith("blob:")) {
+            URL.revokeObjectURL(img.url);
+          }
+          const newMetadata = {
+            ...img.metadata,
+            ...updates.metadata,
+          } as ImageMetadata;
+          return { ...img, ...updates, metadata: newMetadata };
+        }
+        return img;
+      })
+    );
+  }, []);
 
   const removeImage = useCallback(
     (id: string) => {
@@ -125,16 +199,14 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
         const imageToRemove = prev.find((img) => img.id === id);
         const updatedImages = prev.filter((image) => image.id !== id);
 
-        // Clean up the URL to prevent memory leaks
-        if (imageToRemove?.url) {
-          URL.revokeObjectURL(imageToRemove.url);
-        }
+        if (imageToRemove?.url) URL.revokeObjectURL(imageToRemove.url);
 
-        // Remove from original URLs map
-        setOriginalImageUrls((prevUrls) => {
-          const newUrls = new Map(prevUrls);
-          newUrls.delete(id);
-          return newUrls;
+        setOriginalImages((prevOriginals) => {
+          const newOriginals = new Map(prevOriginals);
+          const original = newOriginals.get(id);
+          if (original?.url) URL.revokeObjectURL(original.url);
+          newOriginals.delete(id);
+          return newOriginals;
         });
 
         if (selectedImageId === id) {
@@ -149,7 +221,6 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
         return updatedImages;
       });
 
-      // Show removal confirmation toast
       toast.success("Image removed", {
         description: "Image has been removed from the gallery.",
         duration: 2000,
@@ -158,89 +229,40 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
     [selectedImageId]
   );
 
-  // Add the removeAllImages function
   const removeAllImages = useCallback(() => {
     const imageCount = images.length;
+    images.forEach((img) => URL.revokeObjectURL(img.url));
+    originalImages.forEach((img) => URL.revokeObjectURL(img.url));
 
-    // Clean up all URLs to prevent memory leaks
-    images.forEach((img) => {
-      if (img.url) {
-        URL.revokeObjectURL(img.url);
-      }
-    });
-
-    // Clean up original URLs
-    originalImageUrls.forEach((url) => {
-      if (url) {
-        URL.revokeObjectURL(url);
-      }
-    });
-
-    // Reset all state
     setImages([]);
-    setOriginalImageUrls(new Map());
+    setOriginalImages(new Map());
     setSelectedImageId(null);
     setCurrentPage(0);
-    setResizeDraft(null);
 
-    // Show success message with better styling
     toast.success("All images removed", {
       description: `Successfully removed ${imageCount} images from the gallery.`,
       duration: 3000,
     });
-  }, [images, originalImageUrls]);
-
-  const updateImageUrl = useCallback(
-    (
-      id: string,
-      newUrl: string,
-      newMetadata: Partial<ImageFile["metadata"]>
-    ) => {
-      setImages((prev) =>
-        prev.map((img) => {
-          if (img.id === id) {
-            return {
-              ...img,
-              url: newUrl,
-              metadata: {
-                ...img.metadata,
-                ...newMetadata,
-              } as ImageFile["metadata"],
-            };
-          }
-          return img;
-        })
-      );
-    },
-    []
-  );
+  }, [images, originalImages]);
 
   const handleReset = useCallback(() => {
     if (!selectedImage) return;
-    const originalUrl = originalImageUrls.get(selectedImage.id);
-    if (originalUrl && originalUrl !== selectedImage.url) {
-      updateImageUrl(selectedImage.id, originalUrl, {
-        compressedSize: selectedImage.metadata?.originalSize,
-        compressionRatio: 0,
-      });
-      setResizeDraft({
-        width: selectedImage.width || 0,
-        height: selectedImage.height || 0,
-      });
-
+    const originalImage = originalImages.get(selectedImage.id);
+    if (originalImage) {
+      updateImage(selectedImage.id, { ...originalImage });
+      setHasUnsavedChanges(false);
       toast.success("Image reset", {
         description: "Image has been restored to its original state.",
         duration: 2000,
       });
     }
-  }, [selectedImage, originalImageUrls, updateImageUrl]);
+  }, [selectedImage, originalImages, updateImage, setHasUnsavedChanges]);
 
   const handleApplyResize = useCallback(async () => {
     if (!selectedImage || !resizeDraft) return;
     const originalUrl =
-      originalImageUrls.get(selectedImage.id) || selectedImage.url;
+      originalImages.get(selectedImage.id)?.url || selectedImage.url;
 
-    // Show processing toast with better styling
     const loadingToast = toast.loading("Compressing image...", {
       description: "Please wait while we optimize your image.",
       duration: Infinity,
@@ -254,24 +276,26 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
         500,
         compressionLevel
       );
-      const savings =
-        100 -
-        (result.size / (selectedImage.metadata?.originalSize || result.size)) *
-          100;
+      const originalSize =
+        selectedImage.metadata?.originalSize || selectedImage.file.size;
+      const savings = 100 - (result.size / originalSize) * 100;
 
-      updateImageUrl(selectedImage.id, result.url, {
-        compressedSize: result.size,
-        compressionRatio: Math.round(savings),
+      updateImage(selectedImage.id, {
+        url: result.url,
+        metadata: {
+          originalSize: originalSize,
+          compressedSize: result.size,
+          compressionRatio: Math.round(savings),
+        },
       });
+      setHasUnsavedChanges(true);
 
-      // Dismiss loading toast and show success
       toast.dismiss(loadingToast);
       toast.success("Compression Complete!", {
         description: `Saved ${Math.round(savings)}% • ${formatBytes(result.size)} total`,
         duration: 4000,
       });
     } catch (error) {
-      // Dismiss loading toast and show error
       toast.dismiss(loadingToast);
       toast.error("Compression Failed", {
         description:
@@ -284,8 +308,9 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
     resizeDraft,
     format,
     compressionLevel,
-    updateImageUrl,
-    originalImageUrls,
+    updateImage,
+    originalImages,
+    setHasUnsavedChanges,
   ]);
 
   const selectImage = useCallback(
@@ -324,13 +349,8 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
     [totalPages, images]
   );
 
-  // Add navigation function to go back to upload
-  const onClose = useCallback(() => {
-    // This will be handled by the router navigation in the MainToolbar
-    // but we can add any cleanup logic here if needed
-  }, []);
+  const onClose = useCallback(() => {}, []);
 
-  // Placeholder editing functions (these would be implemented for actual editing features)
   const onApplyCrop = useCallback(() => {
     toast.info("Crop feature", {
       description: "Crop functionality will be implemented soon.",
@@ -345,33 +365,92 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   }, []);
 
-  const onRotateLeft = useCallback(() => {
-    toast.info("Rotate left", {
-      description: "Rotation functionality will be implemented soon.",
-      duration: 3000,
-    });
-  }, []);
+  const handleTransformation = useCallback(
+    async (
+      transformation: Parameters<typeof transformImage>[1],
+      toastMessages: { loading: string; success: string; error: string }
+    ) => {
+      if (!selectedImage) return;
+      const loadingToast = toast.loading(toastMessages.loading);
+      try {
+        const result = await transformImage(selectedImage.url, transformation);
+        const originalSize =
+          selectedImage.metadata?.originalSize || selectedImage.file.size;
+        const savings = 100 - (result.size / originalSize) * 100;
 
-  const onRotateRight = useCallback(() => {
-    toast.info("Rotate right", {
-      description: "Rotation functionality will be implemented soon.",
-      duration: 3000,
-    });
-  }, []);
+        updateImage(selectedImage.id, {
+          url: result.url,
+          width: result.width,
+          height: result.height,
+          metadata: {
+            originalSize: originalSize,
+            compressedSize: result.size,
+            compressionRatio: Math.round(savings),
+          },
+        });
+        setHasUnsavedChanges(true);
+        toast.dismiss(loadingToast);
+        toast.success(toastMessages.success);
+      } catch (error) {
+        console.error(error);
+        toast.dismiss(loadingToast);
+        toast.error(toastMessages.error);
+      }
+    },
+    [selectedImage, updateImage, setHasUnsavedChanges]
+  );
 
-  const onFlipHorizontal = useCallback(() => {
-    toast.info("Flip horizontal", {
-      description: "Flip functionality will be implemented soon.",
-      duration: 3000,
-    });
-  }, []);
+  const onRotateLeft = useCallback(
+    () =>
+      handleTransformation(
+        { rotate: -90 },
+        {
+          loading: "Rotating image left...",
+          success: "Image rotated",
+          error: "Failed to rotate image",
+        }
+      ),
+    [handleTransformation]
+  );
 
-  const onFlipVertical = useCallback(() => {
-    toast.info("Flip vertical", {
-      description: "Flip functionality will be implemented soon.",
-      duration: 3000,
-    });
-  }, []);
+  const onRotateRight = useCallback(
+    () =>
+      handleTransformation(
+        { rotate: 90 },
+        {
+          loading: "Rotating image right...",
+          success: "Image rotated",
+          error: "Failed to rotate image",
+        }
+      ),
+    [handleTransformation]
+  );
+
+  const onFlipHorizontal = useCallback(
+    () =>
+      handleTransformation(
+        { flipH: true },
+        {
+          loading: "Flipping image...",
+          success: "Image flipped horizontally",
+          error: "Failed to flip image",
+        }
+      ),
+    [handleTransformation]
+  );
+
+  const onFlipVertical = useCallback(
+    () =>
+      handleTransformation(
+        { flipV: true },
+        {
+          loading: "Flipping image...",
+          success: "Image flipped vertically",
+          error: "Failed to flip image",
+        }
+      ),
+    [handleTransformation]
+  );
 
   const onDownload = useCallback(() => {
     if (!selectedImage) return;
@@ -397,7 +476,6 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       currentPage: currentPage + 1,
       totalPages,
       resizeDraft,
-      setResizeDraft,
       addImages,
       removeImage,
       removeAllImages,

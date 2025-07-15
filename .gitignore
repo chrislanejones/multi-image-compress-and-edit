@@ -47,3 +47,5 @@ Thumbs.db
 .*
 !.gitignore
 !.env.example
+
+CLAUDE.md
