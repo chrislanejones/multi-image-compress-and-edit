@@ -1,11 +1,15 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import { RouterProvider } from '@tanstack/react-router'
-import { router } from './router'
-import './globals.css'
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { RouterProvider } from "@tanstack/react-router";
+import { router } from "./router";
+import { ThemeProvider } from "./components/theme-provider";
+import { cn } from "./lib/utils";
+import "./globals.css";
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
-  </React.StrictMode>,
-)
+    <ThemeProvider attribute="class" defaultTheme="system">
+      <RouterProvider router={router} />
+    </ThemeProvider>
+  </React.StrictMode>
+);

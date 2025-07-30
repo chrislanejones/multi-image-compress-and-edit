@@ -1,5 +1,11 @@
 "use client";
 
+export interface ThemeProviderProps {
+  children: React.ReactNode;
+  attribute?: string;
+  defaultTheme?: string;
+}
+
 // ===== CORE IMAGE TYPES =====
 
 /**

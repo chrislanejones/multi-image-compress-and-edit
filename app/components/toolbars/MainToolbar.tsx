@@ -1,4 +1,3 @@
-// app/components/main-toolbar.tsx
 import React from "react";
 import {
   Minus,
@@ -17,10 +16,10 @@ import {
   User,
 } from "lucide-react";
 import { Button } from "../ui/button";
-import { useTheme } from "next-themes";
 import { useEditorStore } from "../../store/editor-store";
 import { useImageContext } from "../../context/image-context";
 import { useNavigate } from "@tanstack/react-router";
+import { ThemeProvider as NextThemeProvider, useTheme } from "next-themes";
 
 export const MainToolbar = () => {
   const { onZoomIn, onZoomOut, setEditorState } = useEditorStore();
@@ -33,7 +32,7 @@ export const MainToolbar = () => {
     onNavigatePage,
     onClose,
   } = useImageContext();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme } = useTheme(); // ✅ local theme context
   const navigate = useNavigate();
 
   const handleEnterEditMode = () => {
@@ -68,8 +67,6 @@ export const MainToolbar = () => {
         <Button onClick={handleEnterEditMode} variant="outline" className="h-9">
           <Pencil className="mr-2 h-4 w-4" /> Edit Image
         </Button>
-
-        {/* Bulk Image Editor Button (disabled for now) */}
         <Button
           onClick={() => {}}
           variant="outline"
@@ -79,8 +76,6 @@ export const MainToolbar = () => {
         >
           <Images className="mr-2 h-4 w-4" /> Bulk Edit
         </Button>
-
-        {/* AI Editor Button (disabled for now) */}
         <Button
           onClick={() => {}}
           variant="outline"
@@ -90,8 +85,6 @@ export const MainToolbar = () => {
         >
           <Sparkles className="mr-2 h-4 w-4" /> AI Editor
         </Button>
-
-        {/* Navigation Controls */}
         {images.length > 0 && (
           <div className="flex items-center gap-1 ml-2">
             <Button
@@ -138,12 +131,10 @@ export const MainToolbar = () => {
       </div>
 
       <div className="flex items-center gap-2">
-        {/* Back to Upload Button */}
         <Button onClick={handleBackToUpload} variant="outline" className="h-9">
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Upload
         </Button>
 
-        {/* Remove All Button */}
         {images.length > 0 && (
           <Button
             onClick={handleRemoveAll}
@@ -155,7 +146,6 @@ export const MainToolbar = () => {
           </Button>
         )}
 
-        {/* Theme Toggle */}
         <Button
           variant="outline"
           size="icon"
@@ -169,7 +159,6 @@ export const MainToolbar = () => {
           )}
         </Button>
 
-        {/* User Button (disabled for now) */}
         <Button variant="outline" size="icon" disabled className="h-9 w-9">
           <User className="h-4 w-4" />
         </Button>

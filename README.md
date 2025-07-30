@@ -1,17 +1,17 @@
 # ImageHorse - TanStack Start Edition 🐎
 
-A powerful image editing and compression tool built with TanStack Start and supercharged by Bun.
+A powerful image editing and compression tool built with [TanStack Start](https://tanstack.com/start) and supercharged by [Bun](https://bun.sh) — no Next.js, no nonsense.
 
 ## ✨ Features
 
 - 🖼️ **Multiple image upload** with drag & drop, paste, and file browser
-- 📦 **Smart compression** with web worker support for non-blocking processing
-- 🎨 **Advanced editing tools** - crop, paint, blur, text overlay
-- 📊 **Bulk operations** for processing multiple images at once
-- 🎯 **Modern responsive UI** with dark/light/system theme support
-- ⚡ **Lightning-fast performance** optimized with Bun runtime
-- 💾 **Memory-efficient** with proper cleanup and thumbnail generation
-- 🌈 **Premium AI Editor** interface (coming soon)
+- 📦 **Smart compression** using web workers for smooth performance
+- 🎨 **Advanced editing tools** – crop, paint, blur, add text
+- 📊 **Bulk operations** – apply actions across multiple images
+- 🎨 **Modern UI** – responsive with light, dark, and system theme support
+- ⚡ **Lightning-fast dev experience** thanks to Bun
+- 🧠 **Memory-efficient** – cleanups and previews done right
+- 🌈 **AI Editor** interface (coming soon!)
 
 ## 🚀 Quick Start
 
@@ -19,139 +19,132 @@ A powerful image editing and compression tool built with TanStack Start and supe
 
 Make sure you have [Bun](https://bun.sh) installed:
 
-\`\`\`bash
+```bash
 curl -fsSL https://bun.sh/install | bash
-\`\`\`
+```
 
 ### Installation
 
-\`\`\`bash
-# Clone the repository
+```bash
+# Clone the repo
 git clone https://github.com/chrislanejones/multi-image-compress-and-edit.git
 cd multi-image-compress-and-edit
 
-# Install dependencies with Bun (ultra-fast!)
+# Install dependencies (blazing fast)
 bun install
 
-# Start development server
+# Start dev server
 bun run dev
-\`\`\`
+```
 
 ## 📋 Available Scripts
 
-\`\`\`bash
-bun run dev      # Start development server with hot reload
-bun run build    # Build optimized production bundle
-bun run start    # Start production server (after build)
-bun run lint     # Run ESLint checks
-bun run clean    # Clean all build artifacts
-bun run fresh    # Clean install (removes node_modules and reinstalls)
-\`\`\`
+```bash
+bun run dev      # Start dev server with hot reload
+bun run build    # Build for production
+bun run start    # Serve built app
+bun run lint     # Lint code
+bun run clean    # Delete build artifacts
+bun run fresh    # Clean install (deletes node_modules, reinstalls)
+```
 
 ## 🏗️ Project Structure
 
-\`\`\`
+```
 imagehorse/
-├── app/                    # Main application directory
+├── app/
 │   ├── components/         # Reusable UI components
-│   │   ├── ui/             # Base UI components (Button, Card, etc.)
-│   │   └── toolbars/       # Toolbar components
-│   ├── constants/          # App-wide constants
-│   ├── context/            # React context providers
-│   ├── hooks/              # Custom React hooks
+│   │   ├── ui/             # Base UI (Button, Card, etc.)
+│   │   └── toolbars/       # Image editing toolbars
+│   ├── constants/          # Constants for the app
+│   ├── context/            # React Contexts
+│   ├── hooks/              # Custom hooks
 │   ├── routes/             # TanStack Router pages
-│   ├── store/              # Zustand global state stores
-│   ├── types/              # TypeScript type definitions
-│   └── utils/              # Image processing utilities
+│   ├── store/              # Zustand stores
+│   ├── types/              # TypeScript definitions
+│   └── utils/              # Utility functions
 ├── public/                 # Static assets
-└── bunfig.toml             # Bun configuration
-\`\`\`
+├── bunfig.toml             # Bun config
+└── tailwind.config.js      # Tailwind config
+```
 
-## 🎨 Key Components
+## 🎨 Editing Pipeline
 
-### Image Processing Pipeline
+### Key Pages
 
-- **PhotoUpload** (`/`) - Multi-format upload with initial compression.
-- **Gallery & Resizer** (`/resize-and-optimize`) - Main gallery with smart thumbnails and the optimization sidebar.
-- **Edit Mode** (`/resize-and-optimize/edit-image`) - Focused editing interface.
+- `/` – Upload images
+- `/resize-and-optimize` – Gallery view + resize/compress sidebar
+- `/resize-and-optimize/edit-image` – Full editing mode
 
-### Performance Features
+### Tools & Features
 
-- **Web Worker Compression** - Non-blocking image processing.
-- **Smart Thumbnails** - Fast preview generation.
-- **Memory Management** - Automatic cleanup of blob URLs.
-- **Centralized State** - Zustand and React Context for efficient state updates.
+- React Image Cropper
+- Canvas overlay for painting & blur
+- Zustand + Context for hybrid state management
+- Zoom, Flip, Rotate, and upcoming text tools
 
-## 🔥 Why Bun?
+## 🔥 Why Bun + TanStack Start?
 
-ImageHorse leverages Bun for superior performance:
+- ✅ No Next.js bloat
+- ⚡ Instant dev startup
+- 🧠 Fewer configs
+- ✨ Everything’s TypeScript-first
+- 🧹 Clean SSR-friendly routing & rendering
+- 🚀 Bundled with modern JS and native performance
 
-- 🚀 **3x faster** package installs compared to npm
-- ⚡ **Hot reload** that feels instant (< 50ms)
-- 🔧 **Built-in bundler** optimized for modern JavaScript
-- 💾 **Lower memory usage** during development
-- 🎯 **Native TypeScript** support out of the box
+## 🛠️ Development Tips
 
-## 🛠️ Development
+### Add UI or Logic
 
-### Adding New Features
+- Add UI components → `app/components/ui/`
+- Add image logic → `app/utils/image-processing.ts`
+- Add new routes → `app/routes/` (TanStack file-based routing)
 
-1. **UI Components**: Extend base components in `app/components/ui/`
-2. **Image Processing**: Add utilities in `app/utils/image-processing.ts`
-3. **Routes**: Add new pages in `app/routes/` following TanStack Router conventions.
+### Check Code Quality
 
-### Code Quality
+```bash
+bun run lint        # Lint checks
+bun run type-check  # Type safety
+```
 
-\`\`\`bash
-# Run linting
-bun run lint
+## 🧱 Architecture
 
-# Type checking
-bun run type-check
-\`\`\`
+- **TanStack Start** – React app framework w/ routing
+- **TanStack Router** – Search param + route-based layouting
+- **Zustand + Context** – Hybrid state architecture
+- **Tailwind CSS** – Utility-based styling
+- **Radix UI** – Accessible, unstyled component primitives
+- **Bun** – Fast runtime, bundler, and package manager
 
-## 🎯 Architecture
+## 📦 Status
 
-- **TanStack Start** - Full-stack React framework with file-based routing
-- **TanStack Router** - Type-safe routing with search params
-- **Zustand & Context API** - Hybrid global state management
-- **TypeScript** - Full type safety across the application
-- **Tailwind CSS** - Utility-first styling with design system
-- **Radix UI** - Accessible component primitives
-- **Bun** - JavaScript runtime and package manager
+✅ **Stable & Working**
 
-## 📈 Migration Status
+- Upload & image preview
+- Image resize + compression
+- Full editing toolbars (Crop, Blur, Paint)
+- Zustand state, theme system, and routing
 
-✅ **Completed**
+🧪 **In Progress**
 
-- Core structure and type-safe routing
-- Image upload and gallery view
-- Centralized state management (Zustand/Context)
-- Bun optimization and configuration
-- Theme system (light/dark)
-- Resize & Optimize sidebar integration
+- Toolbar refinements
+- History + undo/redo stack
+- Better keyboard controls
 
-🚧 **In Progress**
+🔮 **Coming Soon**
 
-- Individual editing tools refinement (Crop, Blur, etc.)
-- Advanced image processing features
-
-🔮 **Planned**
-
-- Bulk editing features
-- AI-powered image enhancement
-- Cloud storage integration
+- AI-assisted editing tools
+- Bulk crop preview & sync
+- Cloud storage & export options
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch: \`git checkout -b feature/amazing-feature\`
-3. Install dependencies: \`bun install\`
-4. Make your changes
-5. Test with: \`bun run lint\` and \`bun run build\`
-6. Commit: \`git commit -m 'Add amazing feature'\`
-7. Push: \`git push origin feature/amazing-feature\`
-8. Submit a pull request
+1. Fork the repo
+2. Create a feature branch: `git checkout -b feature/awesome-tool`
+3. Install deps: `bun install`
+4. Run `bun run dev` and code away
+5. Test & push: `bun run lint && git push`
+6. Open a pull request
 
 ## 📄 License
 
@@ -159,6 +152,6 @@ MIT License
 
 ---
 
-_Powered by Bun 🔥 - The fast all-in-one JavaScript runtime_
+_Powered by **Bun** + **TanStack**. No Next.js. No regrets._
 
-**⭐ Star this repo if ImageHorse helped you process images faster!**
+**⭐ Star this repo if ImageHorse saved you time!**
