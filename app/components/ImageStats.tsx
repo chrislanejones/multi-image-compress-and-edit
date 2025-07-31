@@ -15,7 +15,7 @@ export default function ImageStats({ selectedImage }: ImageStatsProps) {
     selectedImage.metadata;
 
   return (
-    <Card className="rounded-lg border shadow-sm bg-gray-800 text-white border-gray-700">
+    <Card className="rounded-lg bg-gray-800 text-white border-0 shadow-lg">
       <CardHeader className="p-3 pb-0">
         <CardTitle className="text-lg font-semibold">
           Compression Stats

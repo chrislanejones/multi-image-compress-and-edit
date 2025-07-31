@@ -1,7 +1,8 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useImageContext } from "../context/image-context";
 import { useEditorStore } from "../store/editor-store";
-import { Card, CardContent } from "../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "../components/ui/card";
+import { ComputerWindow, ComputerWindowHeader, ComputerWindowLogo, ComputerWindowTitle } from "../components/ui/computer-window";
 import { ImageEditorToolbar } from "../components/image-editor-toolbar";
 import ImageResizer from "../components/ImageResizer";
 import ImageStats from "../components/ImageStats";
@@ -37,24 +38,35 @@ function NoImagesComponent() {
   }, [navigate]);
 
   return (
-    <div className="container mx-auto px-4 py-8 flex-grow flex items-center justify-center">
-      <div className="text-center">
-        <ImageIcon className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-        <h2 className="text-2xl font-semibold mb-2">No images found</h2>
-        {countdown !== null && (
-          <div className="mb-6">
-            <p className="text-muted-foreground">
-              Redirecting to upload page in...
-            </p>
-            <div className="text-4xl font-bold text-primary mt-2">
-              {countdown}
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+      <ComputerWindow size="lg">
+        <ComputerWindowHeader>
+          <ComputerWindowLogo src="/Image-Horse-Logo.svg" alt="ImageHorse Logo" />
+          <ComputerWindowTitle 
+            title="ImageHorse" 
+            subtitle="No images found in your gallery"
+          />
+        </ComputerWindowHeader>
+        
+        <div className="text-center space-y-6">
+          <ImageIcon className="mx-auto h-16 w-16 text-gray-400" />
+          
+          {countdown !== null && (
+            <div className="space-y-2">
+              <p className="text-gray-300">
+                Redirecting to upload page in...
+              </p>
+              <div className="text-4xl font-bold text-sky-400">
+                {countdown}
+              </div>
             </div>
-          </div>
-        )}
-        <Button onClick={() => navigate({ to: "/" })} size="lg">
-          <Home className="mr-2 h-4 w-4" /> Go to Upload
-        </Button>
-      </div>
+          )}
+          
+          <Button onClick={() => navigate({ to: "/" })} size="lg" className="w-full bg-gray-200 dark:bg-white text-black hover:bg-gray-300 dark:hover:bg-gray-100">
+            <Home className="mr-2 h-4 w-4" /> Go to Upload
+          </Button>
+        </div>
+      </ComputerWindow>
     </div>
   );
 }
@@ -117,24 +129,35 @@ function ResizeAndOptimizeLayout() {
 
   if (images.length === 0) {
     return (
-      <div className="container mx-auto px-4 py-8 flex-grow flex items-center justify-center">
-        <div className="text-center">
-          <ImageIcon className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-          <h2 className="text-2xl font-semibold mb-2">No images found</h2>
-          {countdown !== null && (
-            <div className="mb-6">
-              <p className="text-muted-foreground">
-                Redirecting to upload page in...
-              </p>
-              <div className="text-4xl font-bold text-primary mt-2">
-                {countdown}
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+        <ComputerWindow size="lg">
+          <ComputerWindowHeader>
+            <ComputerWindowLogo src="/Image-Horse-Logo.svg" alt="ImageHorse Logo" />
+            <ComputerWindowTitle 
+              title="ImageHorse" 
+              subtitle="No images found in your gallery"
+            />
+          </ComputerWindowHeader>
+          
+          <div className="text-center space-y-6">
+            <ImageIcon className="mx-auto h-16 w-16 text-gray-400" />
+            
+            {countdown !== null && (
+              <div className="space-y-2">
+                <p className="text-gray-300">
+                  Redirecting to upload page in...
+                </p>
+                <div className="text-4xl font-bold text-sky-400">
+                  {countdown}
+                </div>
               </div>
-            </div>
-          )}
-          <Button onClick={() => navigate({ to: "/" })} size="lg">
-            <Home className="mr-2 h-4 w-4" /> Go to Upload
-          </Button>
-        </div>
+            )}
+            
+            <Button onClick={() => navigate({ to: "/" })} size="lg" className="w-full bg-gray-200 dark:bg-white text-black hover:bg-gray-300 dark:hover:bg-gray-100">
+              <Home className="mr-2 h-4 w-4" /> Go to Upload
+            </Button>
+          </div>
+        </ComputerWindow>
       </div>
     );
   }
@@ -221,7 +244,7 @@ function ResizeAndOptimizeLayout() {
           {/* Main image view - takes up 3 columns on large screens */}
           <section className="lg:col-span-3">
             {selectedImage && (
-              <Card>
+              <Card className="bg-gray-800 border-0 shadow-lg">
                 <CardContent className="p-4">
                   <div
                     className="flex items-center justify-center bg-muted rounded-lg overflow-hidden"

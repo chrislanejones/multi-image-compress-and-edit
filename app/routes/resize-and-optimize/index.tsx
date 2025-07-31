@@ -24,7 +24,7 @@ const FastThumbnail = React.memo(
   }) => (
     <div
       onClick={onClick}
-      className={`relative aspect-square cursor-pointer rounded-lg overflow-hidden group border-2 transition-all duration-300 ease-in-out ${isSelected ? "border-primary ring-2 ring-primary/50 scale-105" : "border-border hover:border-primary/50"}`}
+      className={`relative aspect-square cursor-pointer rounded-lg overflow-hidden group transition-all duration-300 ease-in-out ${isSelected ? "ring-4 ring-sky-400 ring-offset-2 ring-offset-gray-800 scale-105" : "hover:scale-100"}`}
     >
       <div className="relative w-full h-full">
         {isLoading && (
@@ -42,11 +42,11 @@ const FastThumbnail = React.memo(
           }}
         />
       </div>
-      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200">
         <Button
           variant="destructive"
           size="sm"
-          className="h-6 w-6 p-0"
+          className="h-6 w-6 p-0 bg-red-500 hover:bg-red-600 text-white shadow-lg"
           onClick={onRemove}
         >
           <X className="h-3 w-3" />
@@ -70,17 +70,12 @@ export const Route = createFileRoute("/resize-and-optimize/")({
 });
 
 function GalleryComponent() {
-  const { 
-    paginatedImages, 
-    selectedImage, 
-    onSelect, 
-    onRemove,
-    loadingImages
-  } = useImageContext();
+  const { paginatedImages, selectedImage, onSelect, onRemove, loadingImages } =
+    useImageContext();
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-5 md:grid-cols-10 gap-2 p-2 bg-gray-800 rounded-lg">
+      <div className="grid grid-cols-6 md:grid-cols-10 gap-2 p-2 bg-gray-800 rounded-lg">
         {paginatedImages.map((img) => (
           <FastThumbnail
             key={img.id}

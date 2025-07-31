@@ -1,3 +1,5 @@
+// editor-store.ts  (complete replacement)
+
 import { create } from "zustand";
 import type {
   EditorState,
@@ -6,49 +8,61 @@ import type {
 } from "../types/types";
 import type { Crop } from "react-image-crop";
 
-interface EditorStore {
-  // Core editor state
-  editorState: EditorState;
-  zoom: number;
-
-  // Image processing settings
+/* ------------------------------------------------------------------ */
+/* 1.  History snapshot type                                           */
+/* ------------------------------------------------------------------ */
+interface HistorySnapshot {
+  url: string;
+  width: number;
+  height: number;
+  crop?: Crop;
+  rotation?: number;
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
   quality: number;
   format: ImageFormat;
   compressionLevel: CompressionLevel;
+}
 
-  // Tool-specific settings
+/* ------------------------------------------------------------------ */
+/* 2.  Store interface                                                 */
+/* ------------------------------------------------------------------ */
+interface EditorStore {
+  /* --- existing fields --- */
+  editorState: EditorState;
+  zoom: number;
+  quality: number;
+  format: ImageFormat;
+  compressionLevel: CompressionLevel;
   blurAmount: number;
   blurRadius: number;
   brushSize: number;
   brushColor: string;
-  
-  // Crop state
   crop: Crop | undefined;
   completedCrop: Crop | undefined;
   cropZoom: number;
-
-  // UI state
   isProcessing: boolean;
   hasUnsavedChanges: boolean;
 
-  // Actions
+  /* --- history --- */
+  history: HistorySnapshot[];
+  historyIndex: number;
+
+  /* --- actions --- */
   setEditorState: (state: EditorState) => void;
   setZoom: (zoom: number) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
 
-  // Settings actions
   setQuality: (quality: number) => void;
   setFormat: (format: ImageFormat) => void;
   setCompressionLevel: (level: CompressionLevel) => void;
 
-  // Tool actions
   setBlurAmount: (amount: number) => void;
   setBlurRadius: (radius: number) => void;
   setBrushSize: (size: number) => void;
   setBrushColor: (color: string) => void;
-  
-  // Crop actions
+
   setCrop: (crop: Crop | undefined) => void;
   setCompletedCrop: (crop: Crop | undefined) => void;
   setCropZoom: (zoom: number) => void;
@@ -56,16 +70,26 @@ interface EditorStore {
   onCropZoomOut: () => void;
   resetCrop: () => void;
 
-  // Processing state
   setIsProcessing: (processing: boolean) => void;
   setHasUnsavedChanges: (hasChanges: boolean) => void;
 
-  // Reset functions
   handleReset: () => void;
   resetToDefaults: () => void;
+
+  /* --- history actions --- */
+  pushHistory: (snapshot: HistorySnapshot) => void;
+  undo: () => void;
+  redo: () => void;
+  clearHistory: () => void;
+
+  /* --- convenience selectors --- */
+  canUndo: () => boolean;
+  canRedo: () => boolean;
 }
 
-// Default values
+/* ------------------------------------------------------------------ */
+/* 3.  Default values                                                  */
+/* ------------------------------------------------------------------ */
 const DEFAULT_VALUES = {
   zoom: 100,
   quality: 85,
@@ -78,8 +102,11 @@ const DEFAULT_VALUES = {
   cropZoom: 100,
 };
 
+/* ------------------------------------------------------------------ */
+/* 4.  Store creator                                                   */
+/* ------------------------------------------------------------------ */
 export const useEditorStore = create<EditorStore>((set, get) => ({
-  // Initial state
+  /* --- existing initial state --- */
   editorState: "resizeAndOptimize",
   zoom: DEFAULT_VALUES.zoom,
   quality: DEFAULT_VALUES.quality,
@@ -95,36 +122,23 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   isProcessing: false,
   hasUnsavedChanges: false,
 
-  // Basic actions
+  /* --- history --- */
+  history: [],
+  historyIndex: -1,
+
+  /* --- basic actions (unchanged) --- */
   setEditorState: (newState) => set({ editorState: newState }),
-
   setZoom: (zoom) => set({ zoom: Math.max(25, Math.min(400, zoom)) }),
+  onZoomIn: () => set((s) => ({ zoom: Math.min(400, s.zoom + 25) })),
+  onZoomOut: () => set((s) => ({ zoom: Math.max(25, s.zoom - 25) })),
 
-  onZoomIn: () =>
-    set((state) => ({
-      zoom: Math.min(400, state.zoom + 25),
-    })),
-
-  onZoomOut: () =>
-    set((state) => ({
-      zoom: Math.max(25, state.zoom - 25),
-    })),
-
-  // Settings actions
   setQuality: (quality) =>
     set({
       quality: Math.max(1, Math.min(100, quality)),
       hasUnsavedChanges: true,
     }),
-
-  setFormat: (format) =>
-    set({
-      format,
-      hasUnsavedChanges: true,
-    }),
-
+  setFormat: (format) => set({ format, hasUnsavedChanges: true }),
   setCompressionLevel: (level) => {
-    // Auto-update quality based on compression level
     const qualityMap: Record<CompressionLevel, number> = {
       low: 95,
       medium: 85,
@@ -132,7 +146,6 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       extremeSmall: 60,
       extremeBW: 30,
     };
-
     set({
       compressionLevel: level,
       quality: qualityMap[level],
@@ -140,48 +153,30 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     });
   },
 
-  // Tool actions
   setBlurAmount: (amount) =>
     set({
       blurAmount: Math.max(1, Math.min(20, amount)),
       hasUnsavedChanges: true,
     }),
-
   setBlurRadius: (radius) =>
     set({
       blurRadius: Math.max(5, Math.min(50, radius)),
       hasUnsavedChanges: true,
     }),
-
   setBrushSize: (size) =>
     set({
       brushSize: Math.max(1, Math.min(50, size)),
       hasUnsavedChanges: true,
     }),
+  setBrushColor: (color) => set({ brushColor: color, hasUnsavedChanges: true }),
 
-  setBrushColor: (color) =>
-    set({
-      brushColor: color,
-      hasUnsavedChanges: true,
-    }),
-
-  // Crop actions
   setCrop: (crop) => set({ crop }),
-  
   setCompletedCrop: (crop) => set({ completedCrop: crop }),
-  
   setCropZoom: (zoom) => set({ cropZoom: Math.max(50, Math.min(300, zoom)) }),
-  
   onCropZoomIn: () =>
-    set((state) => ({
-      cropZoom: Math.min(300, state.cropZoom + 10),
-    })),
-    
+    set((s) => ({ cropZoom: Math.min(300, s.cropZoom + 10) })),
   onCropZoomOut: () =>
-    set((state) => ({
-      cropZoom: Math.max(50, state.cropZoom - 10),
-    })),
-    
+    set((s) => ({ cropZoom: Math.max(50, s.cropZoom - 10) })),
   resetCrop: () =>
     set({
       crop: undefined,
@@ -189,12 +184,9 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       cropZoom: DEFAULT_VALUES.cropZoom,
     }),
 
-  // Processing state
   setIsProcessing: (processing) => set({ isProcessing: processing }),
-
   setHasUnsavedChanges: (hasChanges) => set({ hasUnsavedChanges: hasChanges }),
 
-  // Reset functions
   handleReset: () =>
     set({
       quality: DEFAULT_VALUES.quality,
@@ -217,4 +209,71 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       isProcessing: false,
       hasUnsavedChanges: false,
     }),
+
+  /* --- history actions --- */
+  pushHistory: (snapshot: HistorySnapshot) =>
+    set((state) => {
+      const newHistory = state.history.slice(0, state.historyIndex + 1);
+      newHistory.push(snapshot);
+      return {
+        history: newHistory,
+        historyIndex: newHistory.length - 1,
+      };
+    }),
+
+  undo: () =>
+    set((state) => {
+      if (state.historyIndex > 0) {
+        const idx = state.historyIndex - 1;
+        const snap = state.history[idx];
+        return {
+          historyIndex: idx,
+          url: snap.url,
+          width: snap.width,
+          height: snap.height,
+          crop: snap.crop,
+          rotation: snap.rotation,
+          flipHorizontal: snap.flipHorizontal,
+          flipVertical: snap.flipVertical,
+          quality: snap.quality,
+          format: snap.format,
+          compressionLevel: snap.compressionLevel,
+          hasUnsavedChanges: true,
+        };
+      }
+      return {};
+    }),
+
+  redo: () =>
+    set((state) => {
+      if (state.historyIndex < state.history.length - 1) {
+        const idx = state.historyIndex + 1;
+        const snap = state.history[idx];
+        return {
+          historyIndex: idx,
+          url: snap.url,
+          width: snap.width,
+          height: snap.height,
+          crop: snap.crop,
+          rotation: snap.rotation,
+          flipHorizontal: snap.flipHorizontal,
+          flipVertical: snap.flipVertical,
+          quality: snap.quality,
+          format: snap.format,
+          compressionLevel: snap.compressionLevel,
+          hasUnsavedChanges: true,
+        };
+      }
+      return {};
+    }),
+
+  clearHistory: () =>
+    set({
+      history: [],
+      historyIndex: -1,
+    }),
+
+  /* --- convenience selectors --- */
+  canUndo: () => get().historyIndex > 0,
+  canRedo: () => get().historyIndex < get().history.length - 1,
 }));

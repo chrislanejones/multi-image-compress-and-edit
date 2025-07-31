@@ -27,7 +27,7 @@ const PadlockIndicator: React.FC<{
         padlockAnimation ? "animate-pulse" : ""
       }`}
     >
-      <div className="inline-flex items-center gap-2 justify-center px-4 py-2 rounded-full bg-gray-600 border border-gray-500">
+      <div className="inline-flex items-center gap-2 justify-center px-4 py-2 rounded-full bg-gray-600">
         {editorState === "bulkImageEdit" ? (
           <>
             <Images

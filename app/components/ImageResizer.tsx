@@ -247,7 +247,7 @@ export default function ImageResizer() {
 
   if (!selectedImage) {
     return (
-      <Card className="rounded-lg border shadow-sm bg-gray-800 text-white border-gray-700 flex items-center justify-center p-6 min-h-[400px]">
+      <Card className="rounded-lg bg-gray-800 text-white border-0 shadow-lg flex items-center justify-center p-6 min-h-[400px]">
         <p className="text-muted-foreground text-center">
           Select an image to see resize options.
         </p>
@@ -257,7 +257,7 @@ export default function ImageResizer() {
 
   if (isLoadingDimensions || imageDimensions.width === 0) {
     return (
-      <Card className="rounded-lg border shadow-sm bg-gray-800 text-white border-gray-700 flex items-center justify-center p-6 min-h-[400px]">
+      <Card className="rounded-lg bg-gray-800 text-white border-0 shadow-lg flex items-center justify-center p-6 min-h-[400px]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
           <p className="text-muted-foreground">Loading image dimensions...</p>
@@ -273,7 +273,7 @@ export default function ImageResizer() {
   const maxHeight = Math.round(imageDimensions.height * 3);
 
   return (
-    <Card className="rounded-lg border shadow-sm bg-gray-800 text-white border-gray-700">
+    <Card className="rounded-lg bg-gray-800 text-white border-0 shadow-lg">
       <CardHeader className="p-3 pb-0">
         <CardTitle className="flex items-center text-base font-semibold">
           <ImgIcon className="h-4 w-4 mr-2" /> Resize & Optimize
@@ -339,7 +339,7 @@ export default function ImageResizer() {
         <div className="space-y-2">
           <label className="text-sm font-medium">Compression Level</label>
           <Select value={compressionLevel} onValueChange={handleLevelChange}>
-            <SelectTrigger className="bg-gray-700 border-gray-600">
+            <SelectTrigger className="bg-gray-700">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -396,7 +396,7 @@ export default function ImageResizer() {
         <div className="space-y-2">
           <label className="text-sm font-medium">Output Format</label>
           <Select value={format} onValueChange={handleFormatChange}>
-            <SelectTrigger className="w-full bg-gray-700 border-gray-600">
+            <SelectTrigger className="w-full bg-gray-700">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -411,7 +411,10 @@ export default function ImageResizer() {
         <div className="space-y-2">
           <Button
             onClick={handleApplyResize}
-            className="w-full bg-primary hover:bg-primary/90"
+            className={`w-full ${hasChanges 
+              ? "bg-gray-800 hover:bg-gray-700 text-white" 
+              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
             disabled={!hasChanges}
           >
             <Maximize2 className="h-4 w-4 mr-2" />
@@ -433,7 +436,7 @@ export default function ImageResizer() {
 
         {/* Current Status */}
         {hasChanges && (
-          <div className="mt-4 p-3 bg-gr-400/20 border border-black-700 rounded-lg">
+          <div className="mt-4 p-3 bg-gray-400/20 rounded-lg">
             <div className="text-xs text-white-300">
               <p>
                 Original: {imageDimensions.width} × {imageDimensions.height}px

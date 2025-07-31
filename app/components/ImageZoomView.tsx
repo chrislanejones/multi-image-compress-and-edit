@@ -70,7 +70,7 @@ export default function ImageZoomView({ imageUrl, imageTransforms }: ImageZoomVi
   }, []);
 
   return (
-    <Card className="bg-gray-800 text-white border-gray-700 shadow-md">
+    <Card className="bg-gray-800 text-white border-0 shadow-lg">
       <CardHeader className="p-3 pb-0">
         <CardTitle className="flex items-center justify-between text-base">
           <span>Zoom Preview</span>
@@ -116,7 +116,7 @@ export default function ImageZoomView({ imageUrl, imageTransforms }: ImageZoomVi
 
           {/* Magnifier preview */}
           <div
-            className="relative w-full aspect-video rounded-lg overflow-hidden border border-gray-700 shadow-md cursor-crosshair"
+            className="relative w-full aspect-video rounded-lg overflow-hidden shadow-md cursor-crosshair"
             ref={containerRef}
             onMouseMove={handleMouseMove}
             onMouseEnter={handleMouseEnter}
