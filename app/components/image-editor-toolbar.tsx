@@ -4,6 +4,7 @@ import { MainToolbar } from "./toolbars/MainToolbar";
 import { EditModeToolbar } from "./toolbars/EditModeToolbar";
 import { CropToolbar } from "./toolbars/CropToolbar";
 import { BlurToolbar } from "./toolbars/BlurToolbar";
+import { PaintToolbar } from "./toolbars/PaintToolbar";
 import { Lock, Images } from "lucide-react";
 import { EditorState } from "../types/types";
 
@@ -12,6 +13,7 @@ const toolbarMap: Partial<Record<EditorState, React.ReactNode>> = {
   editImage: <EditModeToolbar />,
   crop: <CropToolbar />,
   blur: <BlurToolbar />,
+  paint: <PaintToolbar />,
 };
 
 const PadlockIndicator: React.FC<{
@@ -58,19 +60,10 @@ export const ImageEditorToolbar: React.FC<{ padlockAnimation?: boolean }> = ({
   const editorState = useEditorStore((state) => state.editorState);
 
   const CurrentToolbar = toolbarMap[editorState] ?? null;
-  const CurrentSecondaryToolbar =
-    editorState === "blur" ? <BlurToolbar.Secondary /> : null;
 
   return (
-    <>
-      <PadlockIndicator
-        editorState={editorState}
-        padlockAnimation={padlockAnimation}
-      />
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-4 bg-gray-700 p-2 rounded-lg z-10 relative">
-        {CurrentToolbar}
-      </div>
-      {CurrentSecondaryToolbar}
-    </>
+    <div className="flex flex-wrap items-center justify-between gap-4 mb-4 bg-gray-700 p-2 rounded-lg z-10 relative">
+      {CurrentToolbar}
+    </div>
   );
 };

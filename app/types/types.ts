@@ -9,6 +9,29 @@ export interface ThemeProviderProps {
 // ===== CORE IMAGE TYPES =====
 
 /**
+ * Represents a blur brush stroke for selective blurring
+ */
+export interface BlurStroke {
+  id: string;
+  points: { x: number; y: number }[];
+  blurAmount: number;
+  brushSize: number;
+  timestamp: number;
+}
+
+/**
+ * Represents a paint stroke for drawing/painting
+ */
+export interface PaintStroke {
+  id: string;
+  tool: "brush" | "eraser" | "emoji" | "arrow" | "double";
+  points: { x: number; y: number }[];
+  color: string;
+  brushSize: number;
+  timestamp: number;
+}
+
+/**
  * Represents the core data structure for an image file within the application.
  */
 export interface ImageFile {
@@ -558,7 +581,6 @@ export interface ImageContextType {
   setEditMode: (isEditMode: boolean) => void;
   // Specific editing actions that toolbars will call
   onApplyCrop?: () => void;
-  onApplyBlur?: () => void;
   onRotateLeft?: () => void;
   onRotateRight?: () => void;
   onFlipHorizontal?: () => void;
@@ -769,6 +791,22 @@ export interface HistoryState {
   imageData: string; // Base64 or URL of the image state
   description: string; // Description of the action that led to this state
   timestamp: number;
+}
+
+/**
+ * Specific history snapshot for the editor store with image data.
+ */
+export interface HistorySnapshot {
+  url: string;
+  width: number;
+  height: number;
+  crop?: any; // react-image-crop Crop type - using any for compatibility
+  rotation?: number;
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
+  quality: number;
+  format: ImageFormat;
+  compressionLevel: CompressionLevel;
 }
 
 // ===== TYPE GUARDS =====

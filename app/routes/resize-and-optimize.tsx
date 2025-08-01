@@ -1,8 +1,25 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Outlet,
+  useNavigate,
+  useLocation,
+} from "@tanstack/react-router";
 import { useImageContext } from "../context/image-context";
 import { useEditorStore } from "../store/editor-store";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "../components/ui/card";
-import { ComputerWindow, ComputerWindowHeader, ComputerWindowLogo, ComputerWindowTitle } from "../components/ui/computer-window";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "../components/ui/card";
+import {
+  ComputerWindow,
+  ComputerWindowHeader,
+  ComputerWindowLogo,
+  ComputerWindowTitle,
+} from "../components/ui/computer-window";
 import { ImageEditorToolbar } from "../components/image-editor-toolbar";
 import ImageResizer from "../components/ImageResizer";
 import ImageStats from "../components/ImageStats";
@@ -12,6 +29,9 @@ import { Home, ImageIcon } from "lucide-react";
 import { Button } from "../components/ui/button";
 import ReactCrop from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
+import { BlurCanvas } from "../components/BlurCanvas";
+import { PaintCanvas } from "../components/PaintCanvas";
+import { NonGalleryHeader } from "../components/non-gallery-header";
 
 export const Route = createFileRoute("/resize-and-optimize")({
   component: ResizeAndOptimizeLayout,
@@ -41,28 +61,31 @@ function NoImagesComponent() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <ComputerWindow size="lg">
         <ComputerWindowHeader>
-          <ComputerWindowLogo src="/Image-Horse-Logo.svg" alt="ImageHorse Logo" />
-          <ComputerWindowTitle 
-            title="ImageHorse" 
+          <ComputerWindowLogo
+            src="/Image-Horse-Logo.svg"
+            alt="ImageHorse Logo"
+          />
+          <ComputerWindowTitle
+            title="ImageHorse"
             subtitle="No images found in your gallery"
           />
         </ComputerWindowHeader>
-        
+
         <div className="text-center space-y-6">
           <ImageIcon className="mx-auto h-16 w-16 text-gray-400" />
-          
+
           {countdown !== null && (
             <div className="space-y-2">
-              <p className="text-gray-300">
-                Redirecting to upload page in...
-              </p>
-              <div className="text-4xl font-bold text-sky-400">
-                {countdown}
-              </div>
+              <p className="text-gray-300">Redirecting to upload page in...</p>
+              <div className="text-4xl font-bold text-sky-400">{countdown}</div>
             </div>
           )}
-          
-          <Button onClick={() => navigate({ to: "/" })} size="lg" className="w-full bg-gray-200 dark:bg-white text-black hover:bg-gray-300 dark:hover:bg-gray-100">
+
+          <Button
+            onClick={() => navigate({ to: "/" })}
+            size="lg"
+            className="w-full bg-gray-200 dark:bg-white text-black hover:bg-gray-300 dark:hover:bg-gray-100"
+          >
             <Home className="mr-2 h-4 w-4" /> Go to Upload
           </Button>
         </div>
@@ -73,17 +96,20 @@ function NoImagesComponent() {
 
 function ResizeAndOptimizeLayout() {
   const { selectedImage, images } = useImageContext();
-  const { 
-    zoom, 
-    setEditorState, 
-    editorState, 
-    crop, 
-    setCrop, 
-    completedCrop, 
+  const {
+    zoom,
+    setEditorState,
+    editorState,
+    crop,
+    setCrop,
+    completedCrop,
     setCompletedCrop,
-    cropZoom 
+    cropZoom,
+    setImages: setStoreImages,
+    selectImage: setStoreSelectedImage,
   } = useEditorStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const [countdown, setCountdown] = useState<number | null>(null);
 
   // Define the editing modes that should show full screen canvas
@@ -94,11 +120,11 @@ function ResizeAndOptimizeLayout() {
   useEffect(() => {
     if (editorState === "crop" && !crop) {
       setCrop({
-        unit: '%',
+        unit: "%",
         x: 10,
         y: 10,
         width: 80,
-        height: 80
+        height: 80,
       });
     }
   }, [editorState, crop, setCrop]);
@@ -123,25 +149,44 @@ function ResizeAndOptimizeLayout() {
     }
   }, [images.length, navigate]);
 
+  // Sync image context with zustand store  
   useEffect(() => {
-    setEditorState("resizeAndOptimize");
-  }, [setEditorState]);
+    setStoreImages(images);
+  }, [images, setStoreImages]);
+
+  // Sync selected image with zustand store
+  useEffect(() => {
+    if (selectedImage) {
+      setStoreSelectedImage(selectedImage.id);
+    }
+  }, [selectedImage, setStoreSelectedImage]);
+
+  // Only set resizeAndOptimize state when we're at the base route
+  // Sub-routes will handle their own editor state
+  useEffect(() => {
+    if (location.pathname === "/resize-and-optimize") {
+      setEditorState("resizeAndOptimize");
+    }
+  }, [setEditorState, location.pathname]);
 
   if (images.length === 0) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
         <ComputerWindow size="lg">
           <ComputerWindowHeader>
-            <ComputerWindowLogo src="/Image-Horse-Logo.svg" alt="ImageHorse Logo" />
-            <ComputerWindowTitle 
-              title="ImageHorse" 
+            <ComputerWindowLogo
+              src="/Image-Horse-Logo.svg"
+              alt="ImageHorse Logo"
+            />
+            <ComputerWindowTitle
+              title="ImageHorse"
               subtitle="No images found in your gallery"
             />
           </ComputerWindowHeader>
-          
+
           <div className="text-center space-y-6">
             <ImageIcon className="mx-auto h-16 w-16 text-gray-400" />
-            
+
             {countdown !== null && (
               <div className="space-y-2">
                 <p className="text-gray-300">
@@ -152,8 +197,12 @@ function ResizeAndOptimizeLayout() {
                 </div>
               </div>
             )}
-            
-            <Button onClick={() => navigate({ to: "/" })} size="lg" className="w-full bg-gray-200 dark:bg-white text-black hover:bg-gray-300 dark:hover:bg-gray-100">
+
+            <Button
+              onClick={() => navigate({ to: "/" })}
+              size="lg"
+              className="w-full bg-gray-200 dark:bg-white text-black hover:bg-gray-300 dark:hover:bg-gray-100"
+            >
               <Home className="mr-2 h-4 w-4" /> Go to Upload
             </Button>
           </div>
@@ -163,12 +212,22 @@ function ResizeAndOptimizeLayout() {
   }
 
   return (
-    <div className={`min-h-screen bg-background text-foreground ${isFullScreenMode ? 'p-2' : 'p-4'} flex flex-col`}>
-      <Outlet />
+    <div
+      className={`min-h-screen bg-background text-foreground ${isFullScreenMode ? "p-2" : "p-4"} flex flex-col`}
+    >
+      {isFullScreenMode ? (
+        // Show header for full screen edit modes
+        <NonGalleryHeader
+          mode={editorState === "editImage" ? "edit" : editorState}
+        />
+      ) : (
+        // Always show child route content (gallery) for non-editing modes
+        <Outlet />
+      )}
       <div className={isFullScreenMode ? "mt-2" : "mt-4"}>
         <ImageEditorToolbar />
       </div>
-      
+
       {isFullScreenMode ? (
         // Full screen mode for editing
         <div className="flex-1 flex flex-col mt-6">
@@ -177,13 +236,13 @@ function ResizeAndOptimizeLayout() {
               {editorState === "crop" ? (
                 // Crop mode
                 <div className="absolute inset-0 flex items-center justify-center p-8">
-                  <div 
+                  <div
                     className="relative flex items-center justify-center"
-                    style={{ 
+                    style={{
                       transform: `scale(${cropZoom / 100})`,
                       transformOrigin: "center",
                       maxWidth: "calc(100% - 64px)",
-                      maxHeight: "calc(100% - 64px)"
+                      maxHeight: "calc(100% - 64px)",
                     }}
                   >
                     <ReactCrop
@@ -194,9 +253,9 @@ function ResizeAndOptimizeLayout() {
                       minWidth={10}
                       minHeight={10}
                       keepSelection={true}
-                      style={{ 
+                      style={{
                         maxWidth: "100%",
-                        maxHeight: "100%"
+                        maxHeight: "100%",
                       }}
                     >
                       <img
@@ -204,15 +263,31 @@ function ResizeAndOptimizeLayout() {
                         src={selectedImage.url}
                         alt={selectedImage.file?.name || "Selected image"}
                         className="block max-w-full max-h-full object-contain"
-                        style={{ 
+                        style={{
                           transform: `rotate(${selectedImage.rotation || 0}deg) scaleX(${selectedImage.flipHorizontal ? -1 : 1}) scaleY(${selectedImage.flipVertical ? -1 : 1})`,
                           maxHeight: "calc(100vh - 200px)",
-                          maxWidth: "100%"
+                          maxWidth: "100%",
                         }}
                       />
                     </ReactCrop>
                   </div>
                 </div>
+              ) : editorState === "blur" ? (
+                // Blur mode with interactive canvas
+                <BlurCanvas
+                  imageUrl={selectedImage.url}
+                  imageWidth={selectedImage.width}
+                  imageHeight={selectedImage.height}
+                  zoom={zoom}
+                />
+              ) : editorState === "paint" ? (
+                // Paint mode with interactive canvas
+                <PaintCanvas
+                  imageUrl={selectedImage.url}
+                  imageWidth={selectedImage.width}
+                  imageHeight={selectedImage.height}
+                  zoom={zoom}
+                />
               ) : (
                 // Other editing modes
                 <div className="absolute inset-0 flex items-center justify-center p-8">
@@ -221,19 +296,18 @@ function ResizeAndOptimizeLayout() {
                     src={selectedImage.url}
                     alt={selectedImage.file?.name || "Selected image"}
                     className="max-w-full max-h-full object-contain transition-transform duration-200"
-                    style={{ 
+                    style={{
                       transform: `scale(${zoom / 100}) rotate(${selectedImage.rotation || 0}deg) scaleX(${selectedImage.flipHorizontal ? -1 : 1}) scaleY(${selectedImage.flipVertical ? -1 : 1})`,
-                      filter: editorState === "blur" ? "blur(4px)" : "none"
                     }}
                   />
+                  {/* Canvas overlay for drawing tools */}
+                  {(editorState === "paint" || editorState === "text") && (
+                    <canvas
+                      className="absolute inset-0 cursor-crosshair"
+                      style={{ pointerEvents: "auto" }}
+                    />
+                  )}
                 </div>
-              )}
-              {/* Canvas overlay for drawing tools */}
-              {(editorState === "paint" || editorState === "text") && (
-                <canvas 
-                  className="absolute inset-0 cursor-crosshair"
-                  style={{ pointerEvents: "auto" }}
-                />
               )}
             </div>
           )}
@@ -255,8 +329,8 @@ function ResizeAndOptimizeLayout() {
                       src={selectedImage.url}
                       alt={selectedImage.file?.name || "Selected image"}
                       className="max-w-full max-h-full object-contain rounded transition-transform duration-200"
-                      style={{ 
-                        transform: `scale(${zoom / 100}) rotate(${selectedImage.rotation || 0}deg) scaleX(${selectedImage.flipHorizontal ? -1 : 1}) scaleY(${selectedImage.flipVertical ? -1 : 1})` 
+                      style={{
+                        transform: `scale(${zoom / 100}) rotate(${selectedImage.rotation || 0}deg) scaleX(${selectedImage.flipHorizontal ? -1 : 1}) scaleY(${selectedImage.flipVertical ? -1 : 1})`,
                       }}
                     />
                   </div>
@@ -271,7 +345,12 @@ function ResizeAndOptimizeLayout() {
             <ImageResizer />
 
             {/* Image Zoom View */}
-            {selectedImage && <ImageZoomView imageUrl={selectedImage.url} imageTransforms={selectedImage} />}
+            {selectedImage && (
+              <ImageZoomView
+                imageUrl={selectedImage.url}
+                imageTransforms={selectedImage}
+              />
+            )}
 
             {/* Image Stats */}
             <ImageStats selectedImage={selectedImage} />

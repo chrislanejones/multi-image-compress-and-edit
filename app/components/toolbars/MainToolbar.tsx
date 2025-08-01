@@ -22,13 +22,20 @@ import { useNavigate } from "@tanstack/react-router";
 import { ThemeProvider as NextThemeProvider, useTheme } from "next-themes";
 
 export const MainToolbar = () => {
-  const { onZoomIn, onZoomOut, setEditorState } = useEditorStore();
+  const { 
+    onZoomIn, 
+    onZoomOut, 
+    setEditorState, 
+    getSelectedImage, 
+    selectedImageId,
+    selectImage 
+  } = useEditorStore();
   const {
     images,
+    selectedImage: contextSelectedImage,
     removeAllImages,
     currentPage,
     totalPages,
-    navigateImage,
     onNavigatePage,
     onClose,
   } = useImageContext();
@@ -36,8 +43,44 @@ export const MainToolbar = () => {
   const navigate = useNavigate();
 
   const handleEnterEditMode = () => {
-    setEditorState("editImage");
-    navigate({ to: "/resize-and-optimize/edit-image" });
+    // Use context selected image as the primary source
+    let selectedImage = contextSelectedImage;
+    
+    // If no image is selected in context, use the first available image
+    if (!selectedImage && images && images.length > 0) {
+      selectedImage = images[0];
+    }
+    
+    if (selectedImage) {
+      // Sync the selection to the store
+      selectImage(selectedImage.id);
+      setEditorState("editImage");
+      navigate({ to: `/resize-and-optimize/${selectedImage.id}/edit-image` });
+    } else {
+      console.warn("No image selected and no images available");
+    }
+  };
+
+  const handleNavigateImage = (direction: "next" | "prev") => {
+    // Use images from context as the source of truth for navigation
+    if (!images || images.length === 0) return;
+    
+    const currentSelectedId = contextSelectedImage?.id;
+    const currentIndex = images.findIndex((img) => img.id === currentSelectedId);
+    if (currentIndex === -1) return;
+    
+    let newIndex = currentIndex;
+    if (direction === "next") {
+      newIndex = Math.min(currentIndex + 1, images.length - 1);
+    } else {
+      newIndex = Math.max(currentIndex - 1, 0);
+    }
+    
+    const newImage = images[newIndex];
+    if (newImage) {
+      selectImage(newImage.id);
+      navigate({ to: `/resize-and-optimize/${newImage.id}` });
+    }
   };
 
   const handleRemoveAll = () => {
@@ -99,8 +142,8 @@ export const MainToolbar = () => {
             <Button
               variant="outline"
               className="py-2 h-9 px-3"
-              onClick={() => navigateImage?.("prev")}
-              disabled={!navigateImage || images.length <= 1}
+              onClick={() => handleNavigateImage("prev")}
+              disabled={!images || images.length <= 1}
               title="Previous Image"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -111,8 +154,8 @@ export const MainToolbar = () => {
             <Button
               variant="outline"
               className="py-2 h-9 px-3"
-              onClick={() => navigateImage?.("next")}
-              disabled={!navigateImage || images.length <= 1}
+              onClick={() => handleNavigateImage("next")}
+              disabled={!images || images.length <= 1}
               title="Next Image"
             >
               <ChevronRight className="h-4 w-4" />

@@ -1,77 +1,136 @@
 import React from "react";
-import { Check, X, Minus, Plus } from "lucide-react";
+import { Check, X, Minus, Plus, RotateCcw, RotateCw } from "lucide-react";
 import { Button } from "../ui/button";
 import { Slider } from "../ui/slider";
 import { useEditorStore } from "../../store/editor-store";
-import { useImageContext } from "../../context/image-context"; // Adjust path if needed
-
-const BlurSecondaryToolbar = () => {
-  const { blurAmount, blurRadius, setBlurAmount, setBlurRadius } =
-    useEditorStore();
-
-  return (
-    <div className="flex items-center gap-4 p-2 bg-gray-700 rounded-lg mb-4 w-full">
-      <div className="flex-1">
-        <label
-          htmlFor="blur-amount"
-          className="text-sm font-medium block mb-1 text-white"
-        >
-          Blur Amount: {blurAmount}px
-        </label>
-        <Slider
-          id="blur-amount"
-          min={1}
-          max={20}
-          step={1}
-          value={[blurAmount]}
-          onValueChange={(v) => setBlurAmount(v[0])}
-        />
-      </div>
-      <div className="flex-1">
-        <label
-          htmlFor="blur-radius"
-          className="text-sm font-medium block mb-1 text-white"
-        >
-          Brush Size: {blurRadius}px
-        </label>
-        <Slider
-          id="blur-radius"
-          min={5}
-          max={50}
-          step={1}
-          value={[blurRadius]}
-          onValueChange={(v) => setBlurRadius(v[0])}
-        />
-      </div>
-    </div>
-  );
-};
+import { useImageContext } from "../../context/image-context";
+import { useNavigate } from "@tanstack/react-router";
 
 export const BlurToolbar = () => {
-  const { onZoomIn, onZoomOut, setEditorState } = useEditorStore();
-  const { onApplyBlur } = useImageContext(); // Get action from context
+  const {
+    onZoomIn,
+    onZoomOut,
+    setEditorState,
+    blurAmount,
+    brushSize,
+    setBlurAmount,
+    setBrushSize,
+    blurBrushStrokes,
+    clearBlurStrokes,
+    undoLastBlurStroke,
+  } = useEditorStore();
+  const { selectedImage, onApplyBlur } = useImageContext();
+  const navigate = useNavigate();
+  
+  const currentImageId = selectedImage?.id;
+
+  const handleApplyBlur = async () => {
+    if (currentImageId) {
+      // Apply blur strokes to the image permanently
+      await onApplyBlur();
+      setEditorState("editImage");
+      navigate({ to: `/resize-and-optimize/${currentImageId}/edit-image` });
+    } else {
+      console.warn("No currentImageId available for apply blur");
+    }
+  };
+
+  const handleCancel = () => {
+    if (currentImageId) {
+      clearBlurStrokes(); // Clear unsaved blur strokes
+      setEditorState("editImage");
+      navigate({ to: `/resize-and-optimize/${currentImageId}/edit-image` });
+    } else {
+      console.warn("No currentImageId available for cancel blur");
+    }
+  };
 
   return (
-    <div className="flex items-center gap-2">
-      <Button onClick={onZoomOut} variant="outline" className="h-9 w-9 p-0">
-        <Minus className="h-4 w-4" />
-      </Button>
-      <Button onClick={onZoomIn} variant="outline" className="h-9 w-9 p-0">
-        <Plus className="h-4 w-4" />
-      </Button>
-      <Button onClick={onApplyBlur} variant="default" className="h-9">
-        <Check className="mr-2 h-4 w-4" /> Apply Blur
-      </Button>
-      <Button
-        onClick={() => setEditorState("editImage")}
-        variant="outline"
-        className="h-9"
-      >
-        <X className="mr-2 h-4 w-4" /> Cancel
-      </Button>
+    <div className="flex flex-wrap items-center justify-between gap-4 w-full">
+      {/* Left: Zoom controls and Undo/Redo */}
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={onZoomOut}
+          variant="outline"
+          className="h-9 w-9 p-0"
+          title="Zoom Out"
+        >
+          <Minus className="h-4 w-4" />
+        </Button>
+        <Button
+          onClick={onZoomIn}
+          variant="outline"
+          className="h-9 w-9 p-0"
+          title="Zoom In"
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+        <Button
+          onClick={undoLastBlurStroke}
+          variant="outline"
+          className="h-9 w-9 p-0"
+          disabled={blurBrushStrokes.length === 0}
+          title="Undo Last Stroke"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
+        <Button
+          onClick={clearBlurStrokes}
+          variant="outline"
+          className="h-9 w-9 p-0"
+          disabled={blurBrushStrokes.length === 0}
+          title="Clear All Strokes"
+        >
+          <RotateCw className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Center: Blur controls */}
+      <div className="flex-1 flex items-center gap-6 px-8">
+        <div className="flex-1 flex flex-col gap-1">
+          <label className="text-sm font-medium text-white">
+            Blur Intensity: {blurAmount}px
+          </label>
+          <div className="bg-gray-800 p-2 rounded">
+            <Slider
+              className="w-full"
+              min={1}
+              max={20}
+              step={1}
+              value={[blurAmount]}
+              onValueChange={(v) => setBlurAmount(v[0])}
+            />
+          </div>
+        </div>
+        <div className="flex-1 flex flex-col gap-1">
+          <label className="text-sm font-medium text-white">
+            Brush Size: {brushSize}px
+          </label>
+          <div className="bg-gray-800 p-2 rounded">
+            <Slider
+              className="w-full"
+              min={10}
+              max={100}
+              step={5}
+              value={[brushSize]}
+              onValueChange={(v) => setBrushSize(v[0])}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Right: Apply / Cancel */}
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={handleApplyBlur}
+          className="h-9 bg-gray-800 hover:bg-gray-700 text-white"
+        >
+          <Check className="mr-2 h-4 w-4" /> Apply Blur
+        </Button>
+        <Button onClick={handleCancel} variant="outline" className="h-9">
+          <X className="mr-2 h-4 w-4" /> Cancel Blur
+        </Button>
+      </div>
     </div>
   );
 };
-
-// Attach the secondary toolbar as a static property for clean access
-BlurToolbar.Secondary = BlurSecondaryToolbar;

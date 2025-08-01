@@ -1,5 +1,5 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
-import { ThemeProvider } from "../components/theme-provider";
+import { ThemeProvider } from "../components/theme-providerl";
 import { ImageProvider } from "../context/image-context";
 import { Toaster } from "sonner";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";

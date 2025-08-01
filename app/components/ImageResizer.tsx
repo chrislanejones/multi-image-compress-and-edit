@@ -355,12 +355,12 @@ export default function ImageResizer() {
         {/* Core Web Vitals Indicator */}
         <div className="space-y-2">
           <span className="text-xs text-gray-300">Core Web Vitals Score:</span>
-          <div className="relative w-full h-4 rounded-full overflow-hidden bg-gradient-to-r from-green-500 via-yellow-400 to-red-500">
+          <div className="relative w-full h-5 rounded-full overflow-hidden bg-gradient-to-r from-green-500 via-yellow-400 to-red-500">
             <div
               className="absolute top-1/2 -translate-y-1/2 transition-all duration-300 ease-in-out"
               style={{ left: getIndicatorPosition() }}
             >
-              <div className="w-3 h-3 rounded-full bg-white shadow-lg border-2 border-gray-800" />
+              <div className="w-3 h-3 rounded-full bg-white shadow-lg border-1 border-gray-800" />
             </div>
           </div>
           <div className="flex justify-between text-[10px] text-gray-400 px-1">
@@ -411,9 +411,10 @@ export default function ImageResizer() {
         <div className="space-y-2">
           <Button
             onClick={handleApplyResize}
-            className={`w-full ${hasChanges 
-              ? "bg-gray-800 hover:bg-gray-700 text-white" 
-              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            className={`w-full ${
+              hasChanges
+                ? "bg-gray-800 hover:bg-gray-700 text-white"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
             }`}
             disabled={!hasChanges}
           >

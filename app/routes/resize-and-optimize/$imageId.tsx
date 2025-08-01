@@ -1,12 +1,11 @@
-// app/routes/resize-and-optimize/index.tsx
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import React from "react";
+import { useEditorStore } from "../../store/editor-store";
 import { useImageContext } from "../../context/image-context";
-import { X, Zap, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect } from "react";
+import React from "react";
+import { X, Zap } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import type { ImageFile } from "../../types/types";
-
-const ITEMS_PER_PAGE = 10;
 
 const FastThumbnail = React.memo(
   ({
@@ -24,7 +23,7 @@ const FastThumbnail = React.memo(
   }) => (
     <div
       onClick={onClick}
-      className={`relative aspect-square cursor-pointer rounded-lg overflow-hidden group transition-all duration-300 ease-in-out ${isSelected ? "ring-4 ring-sky-400 ring-offset-2 ring-offset-gray-800 scale-105" : "hover:scale-100"}`}
+      className={`relative aspect-square cursor-pointer rounded-lg overflow-hidden group transition-all duration-300 ease-in-out ${isSelected ? "ring-4 ring-sky-400 ring-offset-2 ring-offset-gray-800 scale-105" : "hover:scale-105"}`}
     >
       <div className="relative w-full h-full">
         {isLoading && (
@@ -68,20 +67,30 @@ const FastThumbnail = React.memo(
 );
 FastThumbnail.displayName = "FastThumbnail";
 
-export const Route = createFileRoute("/resize-and-optimize/")({
-  component: GalleryComponent,
+export const Route = createFileRoute("/resize-and-optimize/$imageId")({
+  component: OptimizeImageComponent,
 });
 
-function GalleryComponent() {
-  const { paginatedImages, selectedImage, onSelect, onRemove, loadingImages } =
-    useImageContext();
+function OptimizeImageComponent() {
+  const { imageId } = Route.useParams();
+  const { selectImage, setEditorState } = useEditorStore();
+  const { paginatedImages, selectedImage, onSelect, onRemove, loadingImages } = useImageContext();
   const navigate = useNavigate();
 
-  const handleImageClick = (imageId: string) => {
-    onSelect(imageId);
-    navigate({ to: `/resize-and-optimize/${imageId}` });
+  // Select the image and set to optimize mode when this component mounts
+  useEffect(() => {
+    selectImage(imageId);
+    onSelect(imageId); // Also select in context for compatibility
+    setEditorState("resizeAndOptimize");
+  }, [selectImage, onSelect, setEditorState, imageId]);
+
+  const handleImageClick = (clickedImageId: string) => {
+    onSelect(clickedImageId);
+    selectImage(clickedImageId);
+    navigate({ to: `/resize-and-optimize/${clickedImageId}` });
   };
 
+  // Render the same gallery as the index route
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-6 md:grid-cols-10 gap-4 p-2 bg-gray-800 rounded-lg">

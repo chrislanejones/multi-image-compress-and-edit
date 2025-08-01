@@ -13,15 +13,8 @@ import { useDropzone } from "react-dropzone";
 import { v4 as uuidv4 } from "uuid";
 import imageCompression from "browser-image-compression";
 import { imageDB } from "@/utils/indexed-db";
-import type { ImageFile } from "@/types/types";
+import type { ImageFile, ResizeDraft, NavigationDirection } from "@/types/types";
 import { useEditorStore } from "@/store/editor-store";
-
-interface ResizeDraft {
-  width: number;
-  height: number;
-}
-
-export type NavigationDirection = "next" | "prev" | "next10" | "prev10";
 
 interface FullImageContextType {
   images: ImageFile[];
@@ -59,6 +52,7 @@ interface FullImageContextType {
   onFlipVertical: (id: string) => void;
   onReset: (id: string) => void;
   onApplyCrop: () => void;
+  onApplyBlur: () => void;
 }
 
 const ImageContext = createContext<FullImageContextType | null>(null);
@@ -516,6 +510,127 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [selectedImage]);
 
+  const onApplyBlur = useCallback(async () => {
+    const blurBrushStrokes = useEditorStore.getState().blurBrushStrokes;
+    const clearBlurStrokes = useEditorStore.getState().clearBlurStrokes;
+    const setEditorState = useEditorStore.getState().setEditorState;
+    
+    if (!selectedImage || blurBrushStrokes.length === 0) {
+      console.log("No blur strokes to apply");
+      return;
+    }
+
+    try {
+      // Create a canvas to apply the blur
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      
+      if (!ctx) {
+        throw new Error("Could not get canvas context");
+      }
+
+      // Load the image
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Failed to load image"));
+        img.src = selectedImage.url;
+      });
+
+      // Set canvas dimensions to match the image
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+
+      // Apply high-quality rendering settings
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
+      // Draw the original image
+      ctx.drawImage(img, 0, 0);
+
+      // Apply each blur stroke
+      for (const stroke of blurBrushStrokes) {
+        // Create a temporary canvas for the blurred version
+        const tempCanvas = document.createElement("canvas");
+        const tempCtx = tempCanvas.getContext("2d");
+        if (!tempCtx) continue;
+
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        
+        // Draw the original image with blur filter
+        tempCtx.filter = `blur(${stroke.blurAmount}px)`;
+        tempCtx.drawImage(img, 0, 0);
+        tempCtx.filter = "none";
+
+        // Create a mask for the stroke path
+        ctx.save();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.beginPath();
+        
+        // Draw the brush stroke path
+        if (stroke.points.length === 1) {
+          // Single point - draw a circle
+          ctx.arc(stroke.points[0].x, stroke.points[0].y, stroke.brushSize / 2, 0, Math.PI * 2);
+        } else {
+          // Multiple points - draw connected strokes
+          for (let i = 0; i < stroke.points.length; i++) {
+            const point = stroke.points[i];
+            ctx.arc(point.x, point.y, stroke.brushSize / 2, 0, Math.PI * 2);
+          }
+        }
+        
+        ctx.clip();
+        
+        // Draw the blurred image only within the clipped area
+        ctx.drawImage(tempCanvas, 0, 0);
+        
+        ctx.restore();
+      }
+
+      // Convert canvas to blob and create new URL
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("Failed to create blob"));
+        }, "image/png", 1.0);
+      });
+
+      const blurredUrl = URL.createObjectURL(blob);
+      
+      // Update the image with the blurred version
+      setImages((prev) =>
+        prev.map((img) =>
+          img.id === selectedImage.id
+            ? {
+                ...img,
+                url: blurredUrl,
+                width: img.width,
+                height: img.height,
+                file: new File([blob], img.file.name, { type: blob.type }),
+                size: blob.size,
+              }
+            : img
+        )
+      );
+
+      // Clean up the old URL to prevent memory leaks
+      if (selectedImage.url !== selectedImage.compressedUrl) {
+        URL.revokeObjectURL(selectedImage.url);
+      }
+
+      // Clear blur strokes and go back to edit mode
+      clearBlurStrokes();
+      setEditorState("editImage");
+
+    } catch (error) {
+      console.error("Error applying blur:", error);
+    }
+  }, [selectedImage]);
+
+
   useEffect(() => {
     images.forEach((img) => {
       if (img.width === 0) {
@@ -600,6 +715,7 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       onFlipVertical: (id: string) => onFlipVertical(id),
       onReset: (id: string) => onResetImage(id),
       onApplyCrop,
+      onApplyBlur,
       addImages: (newImages: ImageFile[]) =>
         setImages((prev) => [...prev, ...newImages]),
       removeAllImages: () => setImages([]),
@@ -639,6 +755,7 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       handleApplyResize,
       handleReset,
       onApplyCrop,
+      onApplyBlur,
     ]
   );
 
