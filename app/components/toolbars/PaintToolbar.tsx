@@ -1,5 +1,5 @@
 import React from "react";
-import { Check, X, Minus, Plus, Undo, Redo } from "lucide-react";
+import { Check, X, Minus, Plus, Undo, Redo, ArrowUp, ArrowLeftRight, Paintbrush, Eraser, Smile } from "lucide-react";
 import { Button } from "../ui/button";
 import { useEditorStore } from "../../store/editor-store";
 import { useImageContext } from "../../context/image-context";
@@ -11,6 +11,15 @@ export const PaintToolbar = () => {
     onZoomOut,
     setEditorState,
     clearPaintStrokes,
+    clearShapes,
+    undoLastPaintStroke,
+    undoLastShape,
+    paintStrokes,
+    shapes,
+    paintTool,
+    setPaintTool,
+    currentEmoji,
+    setCurrentEmoji,
   } = useEditorStore();
   const { selectedImage, onApplyPaint } = useImageContext();
   const navigate = useNavigate();
@@ -30,10 +39,20 @@ export const PaintToolbar = () => {
   const handleCancel = () => {
     if (currentImageId) {
       clearPaintStrokes();
+      clearShapes();
       setEditorState("editImage");
       navigate({ to: `/resize-and-optimize/${currentImageId}/edit` });
     } else {
       console.warn("No currentImageId available for cancel paint");
+    }
+  };
+
+  const handleUndo = () => {
+    // Undo shapes first (they're drawn on top), then strokes
+    if (shapes.length > 0) {
+      undoLastShape();
+    } else if (paintStrokes.length > 0) {
+      undoLastPaintStroke();
     }
   };
 
@@ -58,9 +77,10 @@ export const PaintToolbar = () => {
           <Plus className="h-4 w-4" />
         </Button>
         <Button
-          onClick={() => {/* TODO: Implement undo */}}
+          onClick={handleUndo}
           variant="outline"
           className="h-9 w-9 p-0"
+          disabled={paintStrokes.length === 0 && shapes.length === 0}
           title="Undo"
         >
           <Undo className="h-4 w-4" />
@@ -73,6 +93,50 @@ export const PaintToolbar = () => {
           title="Redo"
         >
           <Redo className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Center: Paint Tools */}
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={() => setPaintTool("brush")}
+          variant={paintTool === "brush" ? "default" : "outline"}
+          className="h-9 w-9 p-0"
+          title="Brush"
+        >
+          <Paintbrush className="h-4 w-4" />
+        </Button>
+        <Button
+          onClick={() => setPaintTool("eraser")}
+          variant={paintTool === "eraser" ? "default" : "outline"}
+          className="h-9 w-9 p-0"
+          title="Eraser"
+        >
+          <Eraser className="h-4 w-4" />
+        </Button>
+        <Button
+          onClick={() => setPaintTool("emoji")}
+          variant={paintTool === "emoji" ? "default" : "outline"}
+          className="h-9 w-9 p-0"
+          title={`Emoji (${currentEmoji})`}
+        >
+          <Smile className="h-4 w-4" />
+        </Button>
+        <Button
+          onClick={() => setPaintTool("arrow")}
+          variant={paintTool === "arrow" ? "default" : "outline"}
+          className="h-9 w-9 p-0"
+          title="Arrow"
+        >
+          <ArrowUp className="h-4 w-4" />
+        </Button>
+        <Button
+          onClick={() => setPaintTool("double")}
+          variant={paintTool === "double" ? "default" : "outline"}
+          className="h-9 w-9 p-0"
+          title="Double Arrow"
+        >
+          <ArrowLeftRight className="h-4 w-4" />
         </Button>
       </div>
 

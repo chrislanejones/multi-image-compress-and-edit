@@ -758,21 +758,12 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const paintedUrl = URL.createObjectURL(blob);
 
-      // Update the image with the painted version
-      setImages((prev) =>
-        prev.map((img) =>
-          img.id === selectedImage.id
-            ? {
-                ...img,
-                url: paintedUrl,
-                width: img.width,
-                height: img.height,
-                file: new File([blob], img.file.name, { type: blob.type }),
-                size: blob.size,
-              }
-            : img
-        )
-      );
+      // Update the image using context method
+      updateImage(selectedImage.id, {
+        url: paintedUrl,
+        file: new File([blob], selectedImage.file.name, { type: blob.type }),
+        size: blob.size,
+      });
 
       // Clean up the old URL to prevent memory leaks
       if (selectedImage.url !== selectedImage.compressedUrl) {
@@ -787,7 +778,7 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch (error) {
       console.error("Error applying paint:", error);
     }
-  }, [selectedImage]);
+  }, [selectedImage, updateImage]);
 
   const onApplyText = useCallback(async () => {
     // For text tool, we don't need to implement the actual text rendering here

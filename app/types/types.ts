@@ -24,7 +24,7 @@ export interface BlurStroke {
  */
 export interface PaintStroke {
   id: string;
-  tool: "brush" | "eraser" | "emoji" | "arrow" | "double";
+  tool: "brush" | "eraser";
   points: { x: number; y: number }[];
   color: string;
   brushSize: number;

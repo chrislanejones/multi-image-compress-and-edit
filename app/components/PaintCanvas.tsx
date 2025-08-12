@@ -4,13 +4,10 @@ import { Slider } from "./ui/slider";
 import { useEditorStore } from "../store/editor-store";
 import { PaintStroke } from "../types/types";
 import { 
-  Paintbrush, 
-  Eraser, 
-  Smile, 
-  MoveUpRight, 
   Undo, 
   Redo 
 } from "lucide-react";
+import EmojiPicker from 'emoji-picker-react';
 
 interface PaintCanvasProps {
   imageUrl: string;
@@ -18,8 +15,6 @@ interface PaintCanvasProps {
   imageHeight: number;
   zoom: number;
 }
-
-type PaintTool = "brush" | "eraser" | "emoji" | "arrow" | "double";
 
 const PRESET_COLORS = [
   "#ff0000", "#e51e25", "#a61b29", "#8d4bbb",
@@ -33,26 +28,31 @@ const PRESET_COLORS = [
 
 export const PaintCanvas: React.FC<PaintCanvasProps> = ({
   imageUrl,
-  imageWidth,
-  imageHeight,
-  zoom,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentStroke, setCurrentStroke] = useState<PaintStroke | null>(null);
+  const [isDrawingArrow, setIsDrawingArrow] = useState(false);
+  const [arrowStart, setArrowStart] = useState<{ x: number; y: number } | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
   // Get paint state from zustand store
   const {
     paintStrokes: strokes,
+    shapes,
     paintTool: selectedTool,
     brushSize,
     brushColor: selectedColor,
     addPaintStroke,
+    addShape,
     clearPaintStrokes,
-    setPaintTool,
     setBrushSize,
     setBrushColor,
+    currentEmoji,
+    setCurrentEmoji,
+    arrowColor,
+    arrowWidth,
   } = useEditorStore();
   
   // Local undo/redo state (could be moved to store later)
@@ -87,6 +87,28 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
   }, [imageUrl]);
 
   // Redraw strokes
+  // Helper function for drawing arrowheads
+  const drawArrowhead = (
+    ctx: CanvasRenderingContext2D,
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    width: number
+  ) => {
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    const headLen = Math.max(10, width * 3);
+    const a1 = angle - Math.PI / 7;
+    const a2 = angle + Math.PI / 7;
+
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - headLen * Math.cos(a1), y2 - headLen * Math.sin(a1));
+    ctx.lineTo(x2 - headLen * Math.cos(a2), y2 - headLen * Math.sin(a2));
+    ctx.closePath();
+    ctx.fill();
+  };
+
   const redrawStrokes = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -96,6 +118,7 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Draw paint strokes
     strokes.forEach((stroke) => {
       if (stroke.points.length === 0) return;
 
@@ -119,7 +142,57 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
       
       ctx.stroke();
     });
-  }, [strokes]);
+
+    // Draw shapes (emoji + arrows)
+    shapes.forEach((shape) => {
+      if (shape.type === "emoji") {
+        ctx.save();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.font =
+          `${shape.size}px system-ui, apple color emoji, ` +
+          `segoe ui emoji, sans-serif`;
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "center";
+        ctx.fillText(shape.text, shape.x, shape.y);
+        ctx.restore();
+      } else if (shape.type === "arrow") {
+        ctx.save();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.strokeStyle = shape.color;
+        ctx.fillStyle = shape.color;
+        ctx.lineWidth = shape.width;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+
+        // shaft
+        ctx.beginPath();
+        ctx.moveTo(shape.x1, shape.y1);
+        ctx.lineTo(shape.x2, shape.y2);
+        ctx.stroke();
+
+        // head(s)
+        drawArrowhead(
+          ctx,
+          shape.x1,
+          shape.y1,
+          shape.x2,
+          shape.y2,
+          shape.width
+        );
+        if (shape.double) {
+          drawArrowhead(
+            ctx,
+            shape.x2,
+            shape.y2,
+            shape.x1,
+            shape.y1,
+            shape.width
+          );
+        }
+        ctx.restore();
+      }
+    });
+  }, [strokes, shapes]);
 
   useEffect(() => {
     redrawStrokes();
@@ -141,75 +214,108 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const coords = getCanvasCoordinates(e);
-    const newStroke: PaintStroke = {
-      tool: selectedTool,
-      points: [coords],
-      color: selectedColor,
-      brushSize: brushSize,
-    };
+    
+    if (selectedTool === "emoji") {
+      // Handle emoji placement
+      addShape({
+        id: Date.now().toString(),
+        type: "emoji",
+        x: coords.x,
+        y: coords.y,
+        text: currentEmoji,
+        size: brushSize * 2, // Scale emoji size based on brush size
+      });
+    } else if (selectedTool === "arrow" || selectedTool === "double") {
+      // Start arrow drawing
+      setArrowStart(coords);
+      setIsDrawingArrow(true);
+    } else {
+      // Handle brush/eraser strokes
+      const newStroke: PaintStroke = {
+        id: Date.now().toString(),
+        tool: selectedTool,
+        points: [coords],
+        color: selectedColor,
+        brushSize: brushSize,
+        timestamp: Date.now(),
+      };
 
-    setCurrentStroke(newStroke);
-    setIsDrawing(true);
+      setCurrentStroke(newStroke);
+      setIsDrawing(true);
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !currentStroke) return;
+    if (isDrawing && currentStroke) {
+      // Handle brush/eraser drawing
+      const coords = getCanvasCoordinates(e);
+      const updatedStroke = {
+        ...currentStroke,
+        points: [...currentStroke.points, coords],
+      };
 
-    const coords = getCanvasCoordinates(e);
-    const updatedStroke = {
-      ...currentStroke,
-      points: [...currentStroke.points, coords],
-    };
+      setCurrentStroke(updatedStroke);
+      
+      // Draw current stroke in real-time
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-    setCurrentStroke(updatedStroke);
-    
-    // Draw current stroke in real-time
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+      // Redraw all strokes plus current stroke
+      redrawStrokes();
+      
+      // Draw current stroke
+      if (updatedStroke.points.length > 1) {
+        ctx.strokeStyle = updatedStroke.color;
+        ctx.lineWidth = updatedStroke.brushSize;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
 
-    // Redraw all strokes plus current stroke
-    redrawStrokes();
-    
-    // Draw current stroke
-    if (updatedStroke.points.length > 1) {
-      ctx.strokeStyle = updatedStroke.color;
-      ctx.lineWidth = updatedStroke.brushSize;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
+        if (updatedStroke.tool === "eraser") {
+          ctx.globalCompositeOperation = "destination-out";
+        } else {
+          ctx.globalCompositeOperation = "source-over";
+        }
 
-      if (updatedStroke.tool === "eraser") {
-        ctx.globalCompositeOperation = "destination-out";
-      } else {
-        ctx.globalCompositeOperation = "source-over";
+        ctx.beginPath();
+        const lastPoint = updatedStroke.points[updatedStroke.points.length - 2];
+        const currentPoint = updatedStroke.points[updatedStroke.points.length - 1];
+        ctx.moveTo(lastPoint.x, lastPoint.y);
+        ctx.lineTo(currentPoint.x, currentPoint.y);
+        ctx.stroke();
       }
-
-      ctx.beginPath();
-      const lastPoint = updatedStroke.points[updatedStroke.points.length - 2];
-      const currentPoint = updatedStroke.points[updatedStroke.points.length - 1];
-      ctx.moveTo(lastPoint.x, lastPoint.y);
-      ctx.lineTo(currentPoint.x, currentPoint.y);
-      ctx.stroke();
     }
+    // Note: Arrow preview during drawing could be added here if desired
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (currentStroke && isDrawing) {
-      // Save current state for undo
-      setUndoStack(prev => [...prev, strokes]);
-      setRedoStack([]); // Clear redo stack when new action is performed
-      
-      // Add completed stroke to store
+      // Handle brush/eraser completion
       addPaintStroke({
         ...currentStroke,
-        id: Date.now().toString(), // Simple ID generation
+        id: Date.now().toString(),
         timestamp: Date.now(),
       });
+      setCurrentStroke(null);
+      setIsDrawing(false);
+    } else if (isDrawingArrow && arrowStart) {
+      // Handle arrow completion
+      const coords = getCanvasCoordinates(e);
+      addShape({
+        id: Date.now().toString(),
+        type: "arrow",
+        x1: arrowStart.x,
+        y1: arrowStart.y,
+        x2: coords.x,
+        y2: coords.y,
+        double: selectedTool === "double",
+        color: arrowColor,
+        width: arrowWidth,
+      });
+      setArrowStart(null);
+      setIsDrawingArrow(false);
     }
-    
-    setCurrentStroke(null);
-    setIsDrawing(false);
   };
 
   const handleUndo = () => {
@@ -234,13 +340,6 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
     clearPaintStrokes();
   };
 
-  const tools = [
-    { id: "brush" as PaintTool, icon: Paintbrush, label: "Brush" },
-    { id: "eraser" as PaintTool, icon: Eraser, label: "Eraser" },
-    { id: "emoji" as PaintTool, icon: Smile, label: "Emoji" },
-    { id: "arrow" as PaintTool, icon: MoveUpRight, label: "Arrow" },
-    { id: "double" as PaintTool, icon: MoveUpRight, label: "Double", style: { transform: "rotate(180deg)" } },
-  ];
 
   return (
     <div className="grid grid-cols-2 gap-4">
@@ -286,20 +385,6 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
           </div>
         </div>
 
-        {/* Tool Selection */}
-        <div className="grid grid-cols-5 gap-2">
-          {tools.map((tool) => (
-            <Button
-              key={tool.id}
-              onClick={() => setPaintTool(tool.id)}
-              variant={selectedTool === tool.id ? "default" : "outline"}
-              className="h-12 flex items-center justify-center gap-2"
-            >
-              <tool.icon className="h-4 w-4" style={tool.style} />
-              {tool.label}
-            </Button>
-          ))}
-        </div>
 
         {/* Brush Size */}
         <div className="space-y-2">
@@ -339,6 +424,35 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
             <span className="ml-2 font-mono text-xs">{selectedColor}</span>
           </div>
         </div>
+
+        {/* Emoji Picker */}
+        {selectedTool === "emoji" && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block">Current Emoji</label>
+              <span className="text-2xl">{currentEmoji}</span>
+            </div>
+            <Button
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              variant="outline"
+              className="w-full"
+            >
+              {showEmojiPicker ? "Hide Emoji Picker" : "Show Emoji Picker"}
+            </Button>
+            {showEmojiPicker && (
+              <div className="mt-2">
+                <EmojiPicker
+                  onEmojiClick={(emojiData) => {
+                    setCurrentEmoji(emojiData.emoji);
+                    setShowEmojiPicker(false);
+                  }}
+                  width={300}
+                  height={300}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Clear Button */}
         <div className="mt-4">
