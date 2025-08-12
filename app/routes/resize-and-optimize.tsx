@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-router";
 import { useImageContext } from "../context/image-context";
 import { useEditorStore } from "../store/editor-store";
+import { TextToolRef } from "../types/types";
 import {
   Card,
   CardContent,
@@ -24,13 +25,14 @@ import { ImageEditorToolbar } from "../components/image-editor-toolbar";
 import ImageResizer from "../components/ImageResizer";
 import ImageStats from "../components/ImageStats";
 import ImageZoomView from "../components/ImageZoomView";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Home, ImageIcon } from "lucide-react";
 import { Button } from "../components/ui/button";
 import ReactCrop from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import { BlurCanvas } from "../components/BlurCanvas";
 import { PaintCanvas } from "../components/PaintCanvas";
+import TextTool from "../components/TextTool";
 import { NonGalleryHeader } from "../components/non-gallery-header";
 
 export const Route = createFileRoute("/resize-and-optimize")({
@@ -41,7 +43,6 @@ function NoImagesComponent() {
   const navigate = useNavigate();
   const [countdown, setCountdown] = useState<number | null>(null);
 
-  // Countdown and redirect if no images exist
   useEffect(() => {
     setCountdown(3);
     const timer = setInterval(() => {
@@ -95,11 +96,14 @@ function NoImagesComponent() {
 }
 
 function ResizeAndOptimizeLayout() {
-  const { selectedImage, images } = useImageContext();
+  const { selectedImage, images, updateImage } = useImageContext();
+  const textToolRef = useRef<TextToolRef>(null);
+  
   const {
     zoom,
     setEditorState,
     editorState,
+    setTextSaveTrigger,
     crop,
     setCrop,
     completedCrop,
@@ -108,17 +112,44 @@ function ResizeAndOptimizeLayout() {
     setImages: setStoreImages,
     selectImage: setStoreSelectedImage,
   } = useEditorStore();
+  
+  // Create a trigger function for text tool save
+  const triggerTextSave = () => {
+    if (textToolRef.current) {
+      textToolRef.current.applyText();
+    }
+  };
+
+  // Set the trigger function in the store when component mounts
+  useEffect(() => {
+    setTextSaveTrigger(triggerTextSave);
+    return () => setTextSaveTrigger(null); // Clean up on unmount
+  }, [setTextSaveTrigger]);
+
   const navigate = useNavigate();
   const location = useLocation();
   const [countdown, setCountdown] = useState<number | null>(null);
 
-  // Define the editing modes that should show full screen canvas
-  const fullScreenModes = ["editImage", "crop", "blur", "paint", "text"];
-  const isFullScreenMode = fullScreenModes.includes(editorState);
+  // Extract mode from route path and query params
+  const pathSegments = location.pathname.split('/').filter(Boolean);
+  const searchParams = new URLSearchParams(location.search);
+  const toolParam = searchParams.get('tool');
+  
+  // Check if we're in edit mode with a tool
+  const isEditRoute = location.pathname.includes('/edit');
+  const routeMode = toolParam || pathSegments[pathSegments.length - 1];
+  const editModes = ['crop', 'blur', 'paint', 'text'];
+  const bulkModes = ['crop', 'text'];
+  const isBulkRoute = pathSegments.includes('bulk');
+  const isEditModeRoute = isEditRoute && toolParam && editModes.includes(toolParam);
+
+  // Determine which editing modes should show full screen
+  const fullScreenModes = ["editImage", "bulkImageEdit"];
+  const isFullScreenMode = fullScreenModes.includes(editorState) || isEditModeRoute || isBulkRoute;
 
   // Initialize crop when entering crop mode
   useEffect(() => {
-    if (editorState === "crop" && !crop) {
+    if (isEditModeRoute && routeMode === 'crop' && !crop) {
       setCrop({
         unit: "%",
         x: 10,
@@ -127,7 +158,7 @@ function ResizeAndOptimizeLayout() {
         height: 80,
       });
     }
-  }, [editorState, crop, setCrop]);
+  }, [isEditModeRoute, routeMode, crop, setCrop]);
 
   // Countdown and redirect if no images exist
   useEffect(() => {
@@ -161,13 +192,38 @@ function ResizeAndOptimizeLayout() {
     }
   }, [selectedImage, setStoreSelectedImage]);
 
-  // Only set resizeAndOptimize state when we're at the base route
-  // Sub-routes will handle their own editor state
+  // Set editor state based on route
   useEffect(() => {
     if (location.pathname === "/resize-and-optimize") {
       setEditorState("resizeAndOptimize");
+    } else if (isBulkRoute) {
+      setEditorState("bulkImageEdit");
+    } else if (isEditRoute) {
+      if (toolParam === 'crop') {
+        setEditorState("crop");
+      } else if (toolParam === 'blur') {
+        setEditorState("blur");
+      } else if (toolParam === 'paint') {
+        setEditorState("paint");
+      } else if (toolParam === 'text') {
+        setEditorState("text");
+      } else {
+        setEditorState("editImage");
+      }
     }
-  }, [setEditorState, location.pathname]);
+  }, [setEditorState, location.pathname, isBulkRoute, isEditRoute, toolParam]);
+
+  // Get current mode for display purposes
+  const getCurrentMode = () => {
+    if (isBulkRoute) {
+      return routeMode === 'crop' ? 'bulkCrop' : 'bulkText';
+    }
+    if (isEditModeRoute) return routeMode;
+    if (editorState === "editImage") return "edit";
+    return editorState;
+  };
+
+  const currentMode = getCurrentMode();
 
   if (images.length === 0) {
     return (
@@ -216,14 +272,11 @@ function ResizeAndOptimizeLayout() {
       className={`min-h-screen bg-background text-foreground ${isFullScreenMode ? "p-2" : "p-4"} flex flex-col`}
     >
       {isFullScreenMode ? (
-        // Show header for full screen edit modes
-        <NonGalleryHeader
-          mode={editorState === "editImage" ? "edit" : editorState}
-        />
+        <NonGalleryHeader mode={currentMode as any} />
       ) : (
-        // Always show child route content (gallery) for non-editing modes
         <Outlet />
       )}
+      
       <div className={isFullScreenMode ? "mt-2" : "mt-4"}>
         <ImageEditorToolbar />
       </div>
@@ -233,7 +286,7 @@ function ResizeAndOptimizeLayout() {
         <div className="flex-1 flex flex-col mt-6">
           {selectedImage && (
             <div className="flex-1 bg-gray-900 rounded-lg overflow-hidden relative">
-              {editorState === "crop" ? (
+              {isEditModeRoute && routeMode === "crop" ? (
                 // Crop mode
                 <div className="absolute inset-0 flex items-center justify-center p-8">
                   <div
@@ -272,7 +325,7 @@ function ResizeAndOptimizeLayout() {
                     </ReactCrop>
                   </div>
                 </div>
-              ) : editorState === "blur" ? (
+              ) : isEditModeRoute && routeMode === "blur" ? (
                 // Blur mode with interactive canvas
                 <BlurCanvas
                   imageUrl={selectedImage.url}
@@ -280,7 +333,7 @@ function ResizeAndOptimizeLayout() {
                   imageHeight={selectedImage.height}
                   zoom={zoom}
                 />
-              ) : editorState === "paint" ? (
+              ) : isEditModeRoute && routeMode === "paint" ? (
                 // Paint mode with interactive canvas
                 <PaintCanvas
                   imageUrl={selectedImage.url}
@@ -288,20 +341,68 @@ function ResizeAndOptimizeLayout() {
                   imageHeight={selectedImage.height}
                   zoom={zoom}
                 />
+              ) : isEditModeRoute && routeMode === "text" ? (
+                // Text mode with text tool
+                <TextTool
+                  ref={textToolRef}
+                  imageUrl={selectedImage.url}
+                  onApplyText={async (textedImageUrl) => {
+                    try {
+                      // Convert data URL to blob
+                      const response = await fetch(textedImageUrl);
+                      const blob = await response.blob();
+                      const newUrl = URL.createObjectURL(blob);
+                      
+                      // Update the image in the context
+                      updateImage(selectedImage.id, {
+                        url: newUrl,
+                        file: new File([blob], selectedImage.file.name, { type: blob.type }),
+                        size: blob.size,
+                      });
+                      
+                      // Clean up old URL to prevent memory leaks
+                      if (selectedImage.url !== selectedImage.compressedUrl) {
+                        URL.revokeObjectURL(selectedImage.url);
+                      }
+                      
+                      // Go back to edit mode
+                      setEditorState("editImage");
+                      navigate({ to: `/resize-and-optimize/${selectedImage.id}/edit` });
+                    } catch (error) {
+                      console.error("Error applying text:", error);
+                    }
+                  }}
+                  onCancel={() => {
+                    setEditorState("editImage");
+                    navigate({ to: `/resize-and-optimize/${selectedImage.id}/edit` });
+                  }}
+                  setEditorState={setEditorState}
+                  setBold={() => {}}
+                  setItalic={() => {}}
+                />
               ) : (
-                // Other editing modes
+                // Other editing modes or bulk modes
                 <div className="absolute inset-0 flex items-center justify-center p-8">
-                  <img
-                    key={selectedImage.id}
-                    src={selectedImage.url}
-                    alt={selectedImage.file?.name || "Selected image"}
-                    className="max-w-full max-h-full object-contain transition-transform duration-200"
-                    style={{
-                      transform: `scale(${zoom / 100}) rotate(${selectedImage.rotation || 0}deg) scaleX(${selectedImage.flipHorizontal ? -1 : 1}) scaleY(${selectedImage.flipVertical ? -1 : 1})`,
-                    }}
-                  />
+                  {isBulkRoute ? (
+                    // Bulk editing placeholder
+                    <div className="text-center text-white">
+                      <h2 className="text-xl mb-4">Bulk {routeMode} Editor</h2>
+                      <p>This feature is coming soon!</p>
+                    </div>
+                  ) : (
+                    // Regular edit image mode
+                    <img
+                      key={selectedImage.id}
+                      src={selectedImage.url}
+                      alt={selectedImage.file?.name || "Selected image"}
+                      className="max-w-full max-h-full object-contain transition-transform duration-200"
+                      style={{
+                        transform: `scale(${zoom / 100}) rotate(${selectedImage.rotation || 0}deg) scaleX(${selectedImage.flipHorizontal ? -1 : 1}) scaleY(${selectedImage.flipVertical ? -1 : 1})`,
+                      }}
+                    />
+                  )}
                   {/* Canvas overlay for drawing tools */}
-                  {(editorState === "paint" || editorState === "text") && (
+                  {isEditModeRoute && routeMode === "paint" && (
                     <canvas
                       className="absolute inset-0 cursor-crosshair"
                       style={{ pointerEvents: "auto" }}

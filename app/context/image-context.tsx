@@ -31,6 +31,7 @@ interface FullImageContextType {
   addImages: (images: ImageFile[]) => void;
   onRemove: (id: string) => void;
   onSelect: (id: string | null) => void;
+  updateImage: (id: string, updates: Partial<ImageFile>) => void;
   onRotate: (id: string, degrees: number) => void;
   onCrop: (id: string, crop: ImageFile["crop"]) => void;
   onResize: (id: string, resize?: { width: number; height: number }) => void;
@@ -53,6 +54,8 @@ interface FullImageContextType {
   onReset: (id: string) => void;
   onApplyCrop: () => void;
   onApplyBlur: () => void;
+  onApplyPaint: () => void;
+  onApplyText: () => void;
 }
 
 const ImageContext = createContext<FullImageContextType | null>(null);
@@ -129,6 +132,12 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
     (id: string | null) => setSelectedImageId(id),
     []
   );
+
+  const updateImage = useCallback((id: string, updates: Partial<ImageFile>) => {
+    setImages((prev) =>
+      prev.map((img) => (img.id === id ? { ...img, ...updates } : img))
+    );
+  }, []);
 
   const onRotate = useCallback((id: string, degrees: number) => {
     setImages((prev) =>
@@ -630,6 +639,163 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [selectedImage]);
 
+  const onApplyPaint = useCallback(async () => {
+    const paintStrokes = useEditorStore.getState().paintStrokes;
+    const shapes = useEditorStore.getState().shapes;
+    const clearPaintStrokes = useEditorStore.getState().clearPaintStrokes;
+    const clearShapes = useEditorStore.getState().clearShapes;
+    const setEditorState = useEditorStore.getState().setEditorState;
+    
+    const hasStrokes = paintStrokes.length > 0;
+    const hasShapes = shapes.length > 0;
+    
+    if (!selectedImage || (!hasStrokes && !hasShapes)) {
+      console.log("Nothing to apply");
+      return;
+    }
+
+    try {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Could not get canvas context");
+
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Failed to load image"));
+        img.src = selectedImage.url;
+      });
+
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
+      // Draw base image
+      ctx.drawImage(img, 0, 0);
+
+      // Draw freehand strokes (paint + eraser)
+      for (const stroke of paintStrokes) {
+        if (stroke.points.length === 0) continue;
+
+        ctx.strokeStyle = stroke.color;
+        ctx.lineWidth = stroke.brushSize;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        if (stroke.tool === "eraser") {
+          ctx.globalCompositeOperation = "destination-out";
+        } else {
+          ctx.globalCompositeOperation = "source-over";
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+        for (let i = 1; i < stroke.points.length; i++) {
+          ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+        }
+        ctx.stroke();
+      }
+
+      // Draw shapes (emoji + arrows)
+      for (const shape of shapes) {
+        if (shape.type === "emoji") {
+          ctx.save();
+          ctx.globalCompositeOperation = "source-over";
+          ctx.font =
+            `${shape.size}px system-ui, apple color emoji, ` +
+            `segoe ui emoji, sans-serif`;
+          ctx.textBaseline = "middle";
+          ctx.textAlign = "center";
+          ctx.fillText(shape.text, shape.x, shape.y);
+          ctx.restore();
+        } else if (shape.type === "arrow") {
+          ctx.save();
+          ctx.globalCompositeOperation = "source-over";
+          ctx.strokeStyle = shape.color;
+          ctx.fillStyle = shape.color;
+          ctx.lineWidth = shape.width;
+          ctx.lineJoin = "round";
+          ctx.lineCap = "round";
+
+          // shaft
+          ctx.beginPath();
+          ctx.moveTo(shape.x1, shape.y1);
+          ctx.lineTo(shape.x2, shape.y2);
+          ctx.stroke();
+
+          // head(s)
+          drawArrowhead(
+            ctx,
+            shape.x1,
+            shape.y1,
+            shape.x2,
+            shape.y2,
+            shape.width
+          );
+          if (shape.double) {
+            drawArrowhead(
+              ctx,
+              shape.x2,
+              shape.y2,
+              shape.x1,
+              shape.y1,
+              shape.width
+            );
+          }
+          ctx.restore();
+        }
+      }
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (b) => (b ? resolve(b) : reject(new Error("Failed to create blob"))),
+          "image/png",
+          1.0
+        );
+      });
+
+      const paintedUrl = URL.createObjectURL(blob);
+
+      // Update the image with the painted version
+      setImages((prev) =>
+        prev.map((img) =>
+          img.id === selectedImage.id
+            ? {
+                ...img,
+                url: paintedUrl,
+                width: img.width,
+                height: img.height,
+                file: new File([blob], img.file.name, { type: blob.type }),
+                size: blob.size,
+              }
+            : img
+        )
+      );
+
+      // Clean up the old URL to prevent memory leaks
+      if (selectedImage.url !== selectedImage.compressedUrl) {
+        URL.revokeObjectURL(selectedImage.url);
+      }
+
+      // Clear paint strokes and shapes, go back to edit mode
+      clearPaintStrokes();
+      clearShapes();
+      setEditorState("editImage");
+
+    } catch (error) {
+      console.error("Error applying paint:", error);
+    }
+  }, [selectedImage]);
+
+  const onApplyText = useCallback(async () => {
+    // For text tool, we don't need to implement the actual text rendering here
+    // because the TextTool component handles its own rendering and calls onApplyText
+    // from the route with the already-rendered image URL
+    const setEditorState = useEditorStore.getState().setEditorState;
+    setEditorState("editImage");
+  }, []);
 
   useEffect(() => {
     images.forEach((img) => {
@@ -698,6 +864,7 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       onDrop,
       onRemove,
       onSelect,
+      updateImage,
       onRotate,
       onCrop,
       onResize,
@@ -716,6 +883,8 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       onReset: (id: string) => onResetImage(id),
       onApplyCrop,
       onApplyBlur,
+      onApplyPaint,
+      onApplyText,
       addImages: (newImages: ImageFile[]) =>
         setImages((prev) => [...prev, ...newImages]),
       removeAllImages: () => setImages([]),
@@ -746,6 +915,7 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       loadingImages,
       onRemove,
       onSelect,
+      updateImage,
       onRotate,
       onCrop,
       onResize,
@@ -756,6 +926,8 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       handleReset,
       onApplyCrop,
       onApplyBlur,
+      onApplyPaint,
+      onApplyText,
     ]
   );
 
@@ -774,3 +946,25 @@ export const useImageContext = () => {
   }
   return ctx;
 };
+
+// Helper function for drawing arrowheads
+function drawArrowhead(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  width: number
+) {
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const headLen = Math.max(10, width * 3);
+  const a1 = angle - Math.PI / 7;
+  const a2 = angle + Math.PI / 7;
+
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - headLen * Math.cos(a1), y2 - headLen * Math.sin(a1));
+  ctx.lineTo(x2 - headLen * Math.cos(a2), y2 - headLen * Math.sin(a2));
+  ctx.closePath();
+  ctx.fill();
+}

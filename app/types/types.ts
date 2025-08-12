@@ -164,19 +164,28 @@ export interface MousePosition {
 // ===== EDITOR STATE AND NAVIGATION =====
 
 /**
- * Defines the various states or active tools within the image editor UI.
+ * Defines the high-level states within the image editor UI.
+ * Route-based modes (crop, blur, paint, text) are handled via URL params.
  */
 export type EditorState =
   | "resizeAndOptimize"
   | "editImage" // Generic state for main editing
   | "bulkImageEdit"
+  | "aiEditor"
   | "crop"
   | "blur"
   | "paint"
-  | "text"
-  | "bulkCrop"
-  | "bulkTextEditor"
-  | "aiEditor";
+  | "text";
+
+/**
+ * Route-based editing modes (no longer in EditorState)
+ */
+export type EditMode = "crop" | "blur" | "paint" | "text";
+
+/**
+ * Route-based bulk editing modes
+ */
+export type BulkMode = "crop" | "text";
 
 /**
  * Defines directions for navigating between images in a gallery or list.
@@ -853,3 +862,25 @@ export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 export const DEFAULT_COMPRESSION_QUALITY = 85;
 export const DEFAULT_THUMBNAIL_SIZE = 200;
 export const IMAGES_PER_PAGE = 10;
+
+// ===== TEXT TOOL TYPES =====
+
+/**
+ * Interface for TextTool component props.
+ */
+export interface TextToolProps {
+  imageUrl: string;
+  onApplyText: (textedImageUrl: string) => void;
+  onCancel: () => void;
+  setEditorState: (state: string) => void;
+  setBold: (bold: boolean) => void;
+  setItalic: (italic: boolean) => void;
+}
+
+/**
+ * Interface for TextTool component ref methods.
+ */
+export interface TextToolRef {
+  applyText: () => void;
+  getCanvasDataUrl: () => string | null;
+}

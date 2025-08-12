@@ -19,7 +19,7 @@ import { Button } from "../ui/button";
 import { useEditorStore } from "../../store/editor-store";
 import { useImageContext } from "../../context/image-context";
 import { useNavigate } from "@tanstack/react-router";
-import { ThemeProvider as NextThemeProvider, useTheme } from "next-themes";
+import { useTheme } from "next-themes";
 
 export const MainToolbar = () => {
   const { 
@@ -39,20 +39,17 @@ export const MainToolbar = () => {
     onNavigatePage,
     onClose,
   } = useImageContext();
-  const { theme, setTheme } = useTheme(); // ✅ local theme context
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
 
   const handleEnterEditMode = () => {
-    // Use context selected image as the primary source
     let selectedImage = contextSelectedImage;
     
-    // If no image is selected in context, use the first available image
     if (!selectedImage && images && images.length > 0) {
       selectedImage = images[0];
     }
     
     if (selectedImage) {
-      // Sync the selection to the store
       selectImage(selectedImage.id);
       setEditorState("editImage");
       navigate({ to: `/resize-and-optimize/${selectedImage.id}/edit-image` });
@@ -61,8 +58,16 @@ export const MainToolbar = () => {
     }
   };
 
+  const handleBulkEdit = (mode: 'crop' | 'text') => {
+    if (images.length === 0) {
+      console.warn("No images available for bulk editing");
+      return;
+    }
+    setEditorState("bulkImageEdit");
+    navigate({ to: `/resize-and-optimize/bulk/${mode}` });
+  };
+
   const handleNavigateImage = (direction: "next" | "prev") => {
-    // Use images from context as the source of truth for navigation
     if (!images || images.length === 0) return;
     
     const currentSelectedId = contextSelectedImage?.id;
@@ -110,15 +115,32 @@ export const MainToolbar = () => {
         <Button onClick={handleEnterEditMode} variant="outline" className="h-9">
           <Pencil className="mr-2 h-4 w-4" /> Edit Image
         </Button>
-        <Button
-          onClick={() => {}}
-          variant="outline"
-          className="h-9"
-          disabled
-          title="Bulk Image Editor (Coming Soon)"
-        >
-          <Images className="mr-2 h-4 w-4" /> Bulk Edit
-        </Button>
+        
+        {/* Bulk Edit Dropdown */}
+        <div className="relative group">
+          <Button
+            variant="outline"
+            className="h-9"
+            disabled={images.length === 0}
+          >
+            <Images className="mr-2 h-4 w-4" /> Bulk Edit
+          </Button>
+          <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+            <button
+              onClick={() => handleBulkEdit('crop')}
+              className="block w-full px-4 py-2 text-left text-white hover:bg-gray-700 rounded-t-md"
+            >
+              Bulk Crop
+            </button>
+            <button
+              onClick={() => handleBulkEdit('text')}
+              className="block w-full px-4 py-2 text-left text-white hover:bg-gray-700 rounded-b-md"
+            >
+              Bulk Text
+            </button>
+          </div>
+        </div>
+
         <Button
           onClick={() => {}}
           variant="outline"
@@ -128,6 +150,7 @@ export const MainToolbar = () => {
         >
           <Sparkles className="mr-2 h-4 w-4" /> AI Editor
         </Button>
+
         {images.length > 0 && (
           <div className="flex items-center gap-1 ml-2">
             <Button

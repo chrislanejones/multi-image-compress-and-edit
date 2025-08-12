@@ -1,5 +1,6 @@
 // app/components/toolbars/EditModeToolbar.tsx
 import React from "react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   Minus,
   Plus,
@@ -17,7 +18,6 @@ import {
 import { Button } from "../ui/button";
 import { useEditorStore } from "../../store/editor-store";
 import { useImageContext } from "../../context/image-context";
-import { useNavigate } from "@tanstack/react-router";
 
 export const EditModeToolbar = () => {
   const { onZoomIn, onZoomOut, setEditorState } = useEditorStore();
@@ -31,6 +31,17 @@ export const EditModeToolbar = () => {
   const navigate = useNavigate();
   
   const currentImageId = selectedImage?.id;
+
+  const handleToolClick = (mode: 'crop' | 'blur' | 'paint' | 'text') => {
+    if (currentImageId) {
+      navigate({ 
+        to: `/resize-and-optimize/${currentImageId}/edit`,
+        search: { tool: mode }
+      });
+    } else {
+      console.warn("No currentImageId available for tool navigation");
+    }
+  };
 
   const handleExitEditMode = () => {
     setEditorState("resizeAndOptimize");
@@ -87,14 +98,7 @@ export const EditModeToolbar = () => {
       {/* Center: tools */}
       <div className="flex items-center gap-2 justify-self-center">
         <Button
-          onClick={() => {
-            if (currentImageId) {
-              setEditorState("crop");
-              navigate({ to: `/resize-and-optimize/${currentImageId}/edit-image/crop` });
-            } else {
-              console.warn("No currentImageId available for crop navigation");
-            }
-          }}
+          onClick={() => handleToolClick('crop')}
           variant="outline"
           className="h-9"
           disabled={!currentImageId}
@@ -102,14 +106,7 @@ export const EditModeToolbar = () => {
           <Crop className="mr-2 h-4 w-4" /> Crop
         </Button>
         <Button
-          onClick={() => {
-            if (currentImageId) {
-              setEditorState("blur");
-              navigate({ to: `/resize-and-optimize/${currentImageId}/edit-image/blur` });
-            } else {
-              console.warn("No currentImageId available for blur navigation");
-            }
-          }}
+          onClick={() => handleToolClick('blur')}
           variant="outline"
           className="h-9"
           disabled={!currentImageId}
@@ -117,14 +114,7 @@ export const EditModeToolbar = () => {
           <Droplets className="mr-2 h-4 w-4" /> Blur
         </Button>
         <Button
-          onClick={() => {
-            if (currentImageId) {
-              setEditorState("paint");
-              navigate({ to: `/resize-and-optimize/${currentImageId}/edit-image/paint` });
-            } else {
-              console.warn("No currentImageId available for paint navigation");
-            }
-          }}
+          onClick={() => handleToolClick('paint')}
           variant="outline"
           className="h-9"
           disabled={!currentImageId}
@@ -132,14 +122,7 @@ export const EditModeToolbar = () => {
           <Paintbrush className="mr-2 h-4 w-4" /> Paint
         </Button>
         <Button
-          onClick={() => {
-            if (currentImageId) {
-              setEditorState("text");
-              navigate({ to: `/resize-and-optimize/${currentImageId}/edit-image/text` });
-            } else {
-              console.warn("No currentImageId available for text navigation");
-            }
-          }}
+          onClick={() => handleToolClick('text')}
           variant="outline"
           className="h-9"
           disabled={!currentImageId}

@@ -24,22 +24,21 @@ export const BlurToolbar = () => {
   
   const currentImageId = selectedImage?.id;
 
-  const handleApplyBlur = async () => {
+  const handleSaveAndExit = async () => {
     if (currentImageId) {
-      // Apply blur strokes to the image permanently
       await onApplyBlur();
       setEditorState("editImage");
-      navigate({ to: `/resize-and-optimize/${currentImageId}/edit-image` });
+      navigate({ to: `/resize-and-optimize/${currentImageId}/edit` });
     } else {
-      console.warn("No currentImageId available for apply blur");
+      console.warn("No currentImageId available for save and exit blur");
     }
   };
 
   const handleCancel = () => {
     if (currentImageId) {
-      clearBlurStrokes(); // Clear unsaved blur strokes
+      clearBlurStrokes();
       setEditorState("editImage");
-      navigate({ to: `/resize-and-optimize/${currentImageId}/edit-image` });
+      navigate({ to: `/resize-and-optimize/${currentImageId}/edit` });
     } else {
       console.warn("No currentImageId available for cancel blur");
     }
@@ -119,16 +118,16 @@ export const BlurToolbar = () => {
         </div>
       </div>
 
-      {/* Right: Apply / Cancel */}
+      {/* Right: Cancel / Save & Exit */}
       <div className="flex items-center gap-2">
-        <Button
-          onClick={handleApplyBlur}
-          className="h-9 bg-gray-800 hover:bg-gray-700 text-white"
-        >
-          <Check className="mr-2 h-4 w-4" /> Apply Blur
-        </Button>
         <Button onClick={handleCancel} variant="outline" className="h-9">
-          <X className="mr-2 h-4 w-4" /> Cancel Blur
+          <X className="mr-2 h-4 w-4" /> Cancel
+        </Button>
+        <Button
+          onClick={handleSaveAndExit}
+          className="h-9 bg-green-700 hover:bg-green-600 text-white"
+        >
+          <Check className="mr-2 h-4 w-4" /> Save & Exit Blur
         </Button>
       </div>
     </div>

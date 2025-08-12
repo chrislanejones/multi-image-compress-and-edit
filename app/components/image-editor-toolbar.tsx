@@ -5,8 +5,10 @@ import { EditModeToolbar } from "./toolbars/EditModeToolbar";
 import { CropToolbar } from "./toolbars/CropToolbar";
 import { BlurToolbar } from "./toolbars/BlurToolbar";
 import { PaintToolbar } from "./toolbars/PaintToolbar";
+import { TextToolbar } from "./toolbars/TextToolbar";
 import { Lock, Images } from "lucide-react";
 import { EditorState } from "../types/types";
+import { useLocation } from "@tanstack/react-router";
 
 const toolbarMap: Partial<Record<EditorState, React.ReactNode>> = {
   resizeAndOptimize: <MainToolbar />,
@@ -14,6 +16,7 @@ const toolbarMap: Partial<Record<EditorState, React.ReactNode>> = {
   crop: <CropToolbar />,
   blur: <BlurToolbar />,
   paint: <PaintToolbar />,
+  text: <TextToolbar />,
 };
 
 const PadlockIndicator: React.FC<{
@@ -58,8 +61,26 @@ export const ImageEditorToolbar: React.FC<{ padlockAnimation?: boolean }> = ({
   padlockAnimation,
 }) => {
   const editorState = useEditorStore((state) => state.editorState);
-
-  const CurrentToolbar = toolbarMap[editorState] ?? null;
+  const location = useLocation();
+  
+  // Check if we're on an edit route with a tool query parameter
+  const searchParams = new URLSearchParams(location.search);
+  const toolParam = searchParams.get('tool');
+  
+  // Determine which toolbar to show based on editorState and tool param
+  let CurrentToolbar: React.ReactNode = null;
+  
+  if (toolParam === 'crop') {
+    CurrentToolbar = <CropToolbar />;
+  } else if (toolParam === 'blur') {
+    CurrentToolbar = <BlurToolbar />;
+  } else if (toolParam === 'paint') {
+    CurrentToolbar = <PaintToolbar />;
+  } else if (toolParam === 'text') {
+    CurrentToolbar = <TextToolbar />;
+  } else {
+    CurrentToolbar = toolbarMap[editorState] ?? null;
+  }
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 mb-4 bg-gray-700 p-2 rounded-lg z-10 relative">

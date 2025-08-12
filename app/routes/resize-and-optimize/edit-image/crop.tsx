@@ -12,7 +12,7 @@ function CropImageComponent() {
 
   // Set the editor state when this component mounts
   useEffect(() => {
-    setEditorState("crop");
+    setEditorState("editImage");
   }, [setEditorState]);
 
   return <NonGalleryHeader mode="crop" />;

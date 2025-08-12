@@ -213,21 +213,19 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
   };
 
   const handleUndo = () => {
-    if (undoStack.length === 0) return;
+    if (strokes.length === 0) return;
     
-    const previousState = undoStack[undoStack.length - 1];
-    setRedoStack(prev => [...prev, strokes]);
-    setStrokes(previousState);
-    setUndoStack(prev => prev.slice(0, -1));
+    // For now, just remove the last stroke
+    // TODO: Implement proper undo/redo in the store
+    clearPaintStrokes();
+    strokes.slice(0, -1).forEach(stroke => {
+      addPaintStroke(stroke);
+    });
   };
 
   const handleRedo = () => {
-    if (redoStack.length === 0) return;
-    
-    const nextState = redoStack[redoStack.length - 1];
-    setUndoStack(prev => [...prev, strokes]);
-    setStrokes(nextState);
-    setRedoStack(prev => prev.slice(0, -1));
+    // TODO: Implement redo functionality
+    console.log("Redo not yet implemented");
   };
 
   const handleClear = () => {
@@ -342,15 +340,11 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex justify-between mt-4">
-          <Button onClick={handleClear} variant="destructive">
-            Clear
+        {/* Clear Button */}
+        <div className="mt-4">
+          <Button onClick={handleClear} variant="destructive" className="w-full">
+            Clear All
           </Button>
-          <div className="space-x-2">
-            <Button variant="outline">Cancel</Button>
-            <Button>Apply</Button>
-          </div>
         </div>
       </div>
     </div>

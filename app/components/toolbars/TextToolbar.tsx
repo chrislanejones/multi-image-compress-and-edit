@@ -5,44 +5,43 @@ import { useEditorStore } from "../../store/editor-store";
 import { useImageContext } from "../../context/image-context";
 import { useNavigate } from "@tanstack/react-router";
 
-export const CropToolbar = () => {
+export const TextToolbar = () => {
   const {
-    onCropZoomIn,
-    onCropZoomOut,
+    onZoomIn,
+    onZoomOut,
     setEditorState,
-    resetCrop,
+    triggerTextSave,
   } = useEditorStore();
-  const { selectedImage, onApplyCrop } = useImageContext();
+  const { selectedImage, onApplyText } = useImageContext();
   const navigate = useNavigate();
   
   const currentImageId = selectedImage?.id;
 
   const handleSaveAndExit = async () => {
     if (currentImageId) {
-      await onApplyCrop();
-      setEditorState("editImage");
-      navigate({ to: `/resize-and-optimize/${currentImageId}/edit` });
+      // Trigger text save through the store trigger
+      triggerTextSave();
+      // Navigation will be handled by the onApplyText callback in the route
     } else {
-      console.warn("No currentImageId available for save and exit crop");
+      console.warn("No currentImageId available for save and exit text");
     }
   };
 
   const handleCancel = () => {
     if (currentImageId) {
-      resetCrop();
       setEditorState("editImage");
       navigate({ to: `/resize-and-optimize/${currentImageId}/edit` });
     } else {
-      console.warn("No currentImageId available for cancel crop");
+      console.warn("No currentImageId available for cancel text");
     }
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 bg-gray-700 rounded-lg z-10 relative">
+    <div className="flex flex-wrap items-center justify-between gap-4 w-full">
       {/* Left: Zoom controls */}
       <div className="flex items-center gap-2">
         <Button
-          onClick={onCropZoomOut}
+          onClick={onZoomOut}
           variant="outline"
           className="h-9 w-9 p-0"
           title="Zoom Out"
@@ -50,7 +49,7 @@ export const CropToolbar = () => {
           <Minus className="h-4 w-4" />
         </Button>
         <Button
-          onClick={onCropZoomIn}
+          onClick={onZoomIn}
           variant="outline"
           className="h-9 w-9 p-0"
           title="Zoom In"
@@ -59,20 +58,21 @@ export const CropToolbar = () => {
         </Button>
       </div>
 
+      {/* Center: Text editing info */}
+      <div className="flex-1 text-center text-white">
+        <span className="text-sm">Edit text properties in the sidebar</span>
+      </div>
+
       {/* Right: Cancel / Save & Exit */}
       <div className="flex items-center gap-2">
-        <Button 
-          onClick={handleCancel} 
-          variant="outline" 
-          className="h-9"
-        >
+        <Button onClick={handleCancel} variant="outline" className="h-9">
           <X className="mr-2 h-4 w-4" /> Cancel
         </Button>
-        <Button 
+        <Button
           onClick={handleSaveAndExit}
           className="h-9 bg-green-700 hover:bg-green-600 text-white"
         >
-          <Check className="mr-2 h-4 w-4" /> Save & Exit Crop
+          <Check className="mr-2 h-4 w-4" /> Save & Exit Text
         </Button>
       </div>
     </div>

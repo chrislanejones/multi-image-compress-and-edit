@@ -1,10 +1,10 @@
 import React from "react";
-import { Lock, Crop, Droplets, Paintbrush, Type, Image } from "lucide-react";
+import { Lock, Crop, Droplets, Paintbrush, Type, Image, Images } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NonGalleryHeaderProps {
-  mode: "edit" | "crop" | "blur" | "paint" | "text";
+  mode: "edit" | "crop" | "blur" | "paint" | "text" | "bulkCrop" | "bulkText";
   className?: string;
 }
 
@@ -37,6 +37,16 @@ const modeConfig: Record<NonGalleryHeaderProps["mode"], {
     icon: Type,
     title: "Text Image Mode",
     description: "The gallery is hidden. Use the toolbar below to add text to your image.",
+  },
+  bulkCrop: {
+    icon: Images,
+    title: "Bulk Crop Mode",
+    description: "Apply crop settings to multiple images at once.",
+  },
+  bulkText: {
+    icon: Images,
+    title: "Bulk Text Mode",
+    description: "Add text overlays to multiple images at once.",
   },
 };
 
