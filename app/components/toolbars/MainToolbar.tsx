@@ -47,7 +47,7 @@ export const MainToolbar = () => {
     if (selectedImage) {
       selectImage(selectedImage.id);
       setEditorState("editImage");
-      navigate({ to: `/resize-and-optimize/${selectedImage.id}/edit-image` });
+      navigate({ to: `/resize-and-optimize/${selectedImage.id}/edit` });
     } else {
       console.warn("No image selected and no images available");
     }

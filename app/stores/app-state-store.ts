@@ -7,6 +7,7 @@ interface AppStateStore {
   isProcessing: boolean;
   hasUnsavedChanges: boolean;
   textSaveTrigger: (() => void) | null;
+  showShortcutHints: boolean;
 
   // App state actions
   setEditorState: (state: EditorState) => void;
@@ -14,6 +15,7 @@ interface AppStateStore {
   setHasUnsavedChanges: (hasChanges: boolean) => void;
   setTextSaveTrigger: (trigger: (() => void) | null) => void;
   triggerTextSave: () => void;
+  setShowShortcutHints: (show: boolean) => void;
 }
 
 export const useAppStateStore = create<AppStateStore>((set, get) => ({
@@ -22,6 +24,7 @@ export const useAppStateStore = create<AppStateStore>((set, get) => ({
   isProcessing: false,
   hasUnsavedChanges: false,
   textSaveTrigger: null,
+  showShortcutHints: false,
 
   // App state actions
   setEditorState: (newState) => set({ editorState: newState }),
@@ -38,4 +41,6 @@ export const useAppStateStore = create<AppStateStore>((set, get) => ({
       state.textSaveTrigger();
     }
   },
+
+  setShowShortcutHints: (show) => set({ showShortcutHints: show }),
 }));
