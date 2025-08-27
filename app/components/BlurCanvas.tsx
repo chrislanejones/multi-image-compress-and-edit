@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { useEditorStore } from '../store/editor-store';
+import { useBlurStore } from '../stores';
 import type { BlurStroke } from '../types/types';
 
 interface BlurCanvasProps {
@@ -26,7 +26,7 @@ export const BlurCanvas: React.FC<BlurCanvasProps> = ({
     blurBrushStrokes,
     addBlurStroke,
     setIsBlurBrushing
-  } = useEditorStore();
+  } = useBlurStore();
 
   // Initialize canvas and image
   useEffect(() => {

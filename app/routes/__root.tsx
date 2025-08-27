@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 import { useEffect, useState, useContext, createContext } from "react";
 import { ThemeProviderProps } from "../types/types";
+import { useViewStore, useImageStore } from "../stores";
 
 // ---- Theme Context ----
 
@@ -70,8 +71,30 @@ function ThemedToaster() {
 
 // ---- Root Route ----
 
-export const Route = createRootRoute({
-  component: () => (
+const RootComponent = () => {
+  const { globalZoomIn, globalZoomOut } = useViewStore();
+  const { getSelectedImage } = useImageStore();
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle zoom shortcuts when there's a selected image
+      const selectedImage = getSelectedImage();
+      if (!selectedImage) return;
+
+      if (event.altKey && (event.key === '-' || event.key === '_')) {
+        event.preventDefault();
+        globalZoomOut();
+      } else if (event.altKey && (event.key === '=' || event.key === '+')) {
+        event.preventDefault();
+        globalZoomIn();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [globalZoomIn, globalZoomOut, getSelectedImage]);
+
+  return (
     <LocalThemeProvider>
       <ThemeProvider attribute="class" defaultTheme="light">
         <ImageProvider>
@@ -85,5 +108,9 @@ export const Route = createRootRoute({
         </ImageProvider>
       </ThemeProvider>
     </LocalThemeProvider>
-  ),
+  );
+};
+
+export const Route = createRootRoute({
+  component: RootComponent,
 });

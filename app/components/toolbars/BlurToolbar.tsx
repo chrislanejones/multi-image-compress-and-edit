@@ -2,15 +2,13 @@ import React from "react";
 import { Check, X, Minus, Plus, RotateCcw, RotateCw } from "lucide-react";
 import { Button } from "../ui/button";
 import { Slider } from "../ui/slider";
-import { useEditorStore } from "../../store/editor-store";
+import { useViewStore, useBlurStore, useAppStateStore } from "../../stores";
 import { useImageContext } from "../../context/image-context";
 import { useNavigate } from "@tanstack/react-router";
 
 export const BlurToolbar = () => {
+  const { globalZoomIn, globalZoomOut } = useViewStore();
   const {
-    onZoomIn,
-    onZoomOut,
-    setEditorState,
     blurAmount,
     brushSize,
     setBlurAmount,
@@ -18,7 +16,8 @@ export const BlurToolbar = () => {
     blurBrushStrokes,
     clearBlurStrokes,
     undoLastBlurStroke,
-  } = useEditorStore();
+  } = useBlurStore();
+  const { setEditorState } = useAppStateStore();
   const { selectedImage, onApplyBlur } = useImageContext();
   const navigate = useNavigate();
   
@@ -49,7 +48,7 @@ export const BlurToolbar = () => {
       {/* Left: Zoom controls and Undo/Redo */}
       <div className="flex items-center gap-2">
         <Button
-          onClick={onZoomOut}
+          onClick={globalZoomOut}
           variant="outline"
           className="h-9 w-9 p-0"
           title="Zoom Out"
@@ -57,7 +56,7 @@ export const BlurToolbar = () => {
           <Minus className="h-4 w-4" />
         </Button>
         <Button
-          onClick={onZoomIn}
+          onClick={globalZoomIn}
           variant="outline"
           className="h-9 w-9 p-0"
           title="Zoom In"

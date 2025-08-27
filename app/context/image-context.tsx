@@ -14,7 +14,12 @@ import { v4 as uuidv4 } from "uuid";
 import imageCompression from "browser-image-compression";
 import { imageDB } from "@/utils/indexed-db";
 import type { ImageFile, ResizeDraft, NavigationDirection } from "@/types/types";
-import { useEditorStore } from "@/store/editor-store";
+import { 
+  useAppStateStore,
+  useCropStore,
+  useBlurStore,
+  usePaintStore 
+} from "@/stores";
 
 interface FullImageContextType {
   images: ImageFile[];
@@ -407,9 +412,9 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const onApplyCrop = useCallback(async () => {
-    const completedCrop = useEditorStore.getState().completedCrop;
-    const setEditorState = useEditorStore.getState().setEditorState;
-    const resetCrop = useEditorStore.getState().resetCrop;
+    const completedCrop = useCropStore.getState().completedCrop;
+    const setEditorState = useAppStateStore.getState().setEditorState;
+    const resetCrop = useCropStore.getState().resetCrop;
     
     if (!selectedImage || !completedCrop || !completedCrop.width || !completedCrop.height) {
       console.log("No crop data available");
@@ -520,9 +525,9 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [selectedImage]);
 
   const onApplyBlur = useCallback(async () => {
-    const blurBrushStrokes = useEditorStore.getState().blurBrushStrokes;
-    const clearBlurStrokes = useEditorStore.getState().clearBlurStrokes;
-    const setEditorState = useEditorStore.getState().setEditorState;
+    const blurBrushStrokes = useBlurStore.getState().blurBrushStrokes;
+    const clearBlurStrokes = useBlurStore.getState().clearBlurStrokes;
+    const setEditorState = useAppStateStore.getState().setEditorState;
     
     if (!selectedImage || blurBrushStrokes.length === 0) {
       console.log("No blur strokes to apply");
@@ -640,11 +645,11 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [selectedImage]);
 
   const onApplyPaint = useCallback(async () => {
-    const paintStrokes = useEditorStore.getState().paintStrokes;
-    const shapes = useEditorStore.getState().shapes;
-    const clearPaintStrokes = useEditorStore.getState().clearPaintStrokes;
-    const clearShapes = useEditorStore.getState().clearShapes;
-    const setEditorState = useEditorStore.getState().setEditorState;
+    const paintStrokes = usePaintStore.getState().paintStrokes;
+    const shapes = usePaintStore.getState().shapes;
+    const clearPaintStrokes = usePaintStore.getState().clearPaintStrokes;
+    const clearShapes = usePaintStore.getState().clearShapes;
+    const setEditorState = useAppStateStore.getState().setEditorState;
     
     const hasStrokes = paintStrokes.length > 0;
     const hasShapes = shapes.length > 0;
@@ -784,7 +789,7 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
     // For text tool, we don't need to implement the actual text rendering here
     // because the TextTool component handles its own rendering and calls onApplyText
     // from the route with the already-rendered image URL
-    const setEditorState = useEditorStore.getState().setEditorState;
+    const setEditorState = useAppStateStore.getState().setEditorState;
     setEditorState("editImage");
   }, []);
 

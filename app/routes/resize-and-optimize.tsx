@@ -5,7 +5,7 @@ import {
   useLocation,
 } from "@tanstack/react-router";
 import { useImageContext } from "../context/image-context";
-import { useEditorStore } from "../store/editor-store";
+import { useViewStore, useAppStateStore, useCropStore, useImageStore } from "../stores";
 import { TextToolRef } from "../types/types";
 import {
   Card,
@@ -99,19 +99,10 @@ function ResizeAndOptimizeLayout() {
   const { selectedImage, images, updateImage } = useImageContext();
   const textToolRef = useRef<TextToolRef>(null);
   
-  const {
-    zoom,
-    setEditorState,
-    editorState,
-    setTextSaveTrigger,
-    crop,
-    setCrop,
-    completedCrop,
-    setCompletedCrop,
-    cropZoom,
-    setImages: setStoreImages,
-    selectImage: setStoreSelectedImage,
-  } = useEditorStore();
+  const { globalZoom: zoom, cropZoom } = useViewStore();
+  const { editorState, setEditorState, setTextSaveTrigger } = useAppStateStore();
+  const { crop, setCrop, completedCrop, setCompletedCrop } = useCropStore();
+  const { setImages: setStoreImages, selectImage: setStoreSelectedImage } = useImageStore();
   
   // Create a trigger function for text tool save
   const triggerTextSave = () => {

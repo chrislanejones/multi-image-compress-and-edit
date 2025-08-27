@@ -1,17 +1,14 @@
 import React from "react";
 import { Check, X, Minus, Plus } from "lucide-react";
 import { Button } from "../ui/button";
-import { useEditorStore } from "../../store/editor-store";
+import { useViewStore, useCropStore, useAppStateStore } from "../../stores";
 import { useImageContext } from "../../context/image-context";
 import { useNavigate } from "@tanstack/react-router";
 
 export const CropToolbar = () => {
-  const {
-    onCropZoomIn,
-    onCropZoomOut,
-    setEditorState,
-    resetCrop,
-  } = useEditorStore();
+  const { onCropZoomIn, onCropZoomOut } = useViewStore();
+  const { resetCrop } = useCropStore();
+  const { setEditorState } = useAppStateStore();
   const { selectedImage, onApplyCrop } = useImageContext();
   const navigate = useNavigate();
   

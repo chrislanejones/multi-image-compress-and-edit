@@ -16,20 +16,15 @@ import {
   User,
 } from "lucide-react";
 import { Button } from "../ui/button";
-import { useEditorStore } from "../../store/editor-store";
+import { useViewStore, useAppStateStore, useImageStore } from "../../stores";
 import { useImageContext } from "../../context/image-context";
 import { useNavigate } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
 
 export const MainToolbar = () => {
-  const { 
-    onZoomIn, 
-    onZoomOut, 
-    setEditorState, 
-    getSelectedImage, 
-    selectedImageId,
-    selectImage 
-  } = useEditorStore();
+  const { globalZoomIn: onZoomIn, globalZoomOut: onZoomOut } = useViewStore();
+  const { setEditorState } = useAppStateStore();
+  const { selectedImageId, selectImage, getSelectedImage } = useImageStore();
   const {
     images,
     selectedImage: contextSelectedImage,

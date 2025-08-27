@@ -1,17 +1,13 @@
 import React from "react";
 import { Check, X, Minus, Plus } from "lucide-react";
 import { Button } from "../ui/button";
-import { useEditorStore } from "../../store/editor-store";
+import { useViewStore, useAppStateStore } from "../../stores";
 import { useImageContext } from "../../context/image-context";
 import { useNavigate } from "@tanstack/react-router";
 
 export const TextToolbar = () => {
-  const {
-    onZoomIn,
-    onZoomOut,
-    setEditorState,
-    triggerTextSave,
-  } = useEditorStore();
+  const { globalZoomIn, globalZoomOut } = useViewStore();
+  const { setEditorState, triggerTextSave } = useAppStateStore();
   const { selectedImage, onApplyText } = useImageContext();
   const navigate = useNavigate();
   
@@ -41,7 +37,7 @@ export const TextToolbar = () => {
       {/* Left: Zoom controls */}
       <div className="flex items-center gap-2">
         <Button
-          onClick={onZoomOut}
+          onClick={globalZoomOut}
           variant="outline"
           className="h-9 w-9 p-0"
           title="Zoom Out"
@@ -49,7 +45,7 @@ export const TextToolbar = () => {
           <Minus className="h-4 w-4" />
         </Button>
         <Button
-          onClick={onZoomIn}
+          onClick={globalZoomIn}
           variant="outline"
           className="h-9 w-9 p-0"
           title="Zoom In"

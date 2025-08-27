@@ -1,5 +1,5 @@
 import React from "react";
-import { useEditorStore } from "../store/editor-store";
+import { useAppStateStore } from "../stores";
 import { MainToolbar } from "./toolbars/MainToolbar";
 import { EditModeToolbar } from "./toolbars/EditModeToolbar";
 import { CropToolbar } from "./toolbars/CropToolbar";
@@ -60,7 +60,7 @@ const PadlockIndicator: React.FC<{
 export const ImageEditorToolbar: React.FC<{ padlockAnimation?: boolean }> = ({
   padlockAnimation,
 }) => {
-  const editorState = useEditorStore((state) => state.editorState);
+  const editorState = useAppStateStore((state) => state.editorState);
   const location = useLocation();
   
   // Check if we're on an edit route with a tool query parameter

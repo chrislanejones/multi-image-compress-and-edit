@@ -1,15 +1,25 @@
 import React from "react";
-import { Check, X, Minus, Plus, Undo, Redo, ArrowUp, ArrowLeftRight, Paintbrush, Eraser, Smile } from "lucide-react";
+import {
+  Check,
+  X,
+  Minus,
+  Plus,
+  Undo,
+  Redo,
+  ArrowUp,
+  ArrowLeftRight,
+  Paintbrush,
+  Eraser,
+  Smile,
+} from "lucide-react";
 import { Button } from "../ui/button";
-import { useEditorStore } from "../../store/editor-store";
+import { useViewStore, usePaintStore, useAppStateStore } from "../../stores";
 import { useImageContext } from "../../context/image-context";
 import { useNavigate } from "@tanstack/react-router";
 
 export const PaintToolbar = () => {
+  const { globalZoomIn, globalZoomOut } = useViewStore();
   const {
-    onZoomIn,
-    onZoomOut,
-    setEditorState,
     clearPaintStrokes,
     clearShapes,
     undoLastPaintStroke,
@@ -20,10 +30,11 @@ export const PaintToolbar = () => {
     setPaintTool,
     currentEmoji,
     setCurrentEmoji,
-  } = useEditorStore();
+  } = usePaintStore();
+  const { setEditorState } = useAppStateStore();
   const { selectedImage, onApplyPaint } = useImageContext();
   const navigate = useNavigate();
-  
+
   const currentImageId = selectedImage?.id;
 
   const handleSaveAndExit = async () => {
@@ -61,7 +72,7 @@ export const PaintToolbar = () => {
       {/* Left: Zoom controls and Undo/Redo */}
       <div className="flex items-center gap-2">
         <Button
-          onClick={onZoomOut}
+          onClick={globalZoomOut}
           variant="outline"
           className="h-9 w-9 p-0"
           title="Zoom Out"
@@ -69,7 +80,7 @@ export const PaintToolbar = () => {
           <Minus className="h-4 w-4" />
         </Button>
         <Button
-          onClick={onZoomIn}
+          onClick={globalZoomIn}
           variant="outline"
           className="h-9 w-9 p-0"
           title="Zoom In"
@@ -86,7 +97,9 @@ export const PaintToolbar = () => {
           <Undo className="h-4 w-4" />
         </Button>
         <Button
-          onClick={() => {/* TODO: Implement redo */}}
+          onClick={() => {
+            /* TODO: Implement redo */
+          }}
           variant="outline"
           className="h-9 w-9 p-0"
           disabled={true}
@@ -101,42 +114,47 @@ export const PaintToolbar = () => {
         <Button
           onClick={() => setPaintTool("brush")}
           variant={paintTool === "brush" ? "default" : "outline"}
-          className="h-9 w-9 p-0"
-          title="Brush"
+          className="h-9"
+          title="Paint Brush"
         >
-          <Paintbrush className="h-4 w-4" />
+          <Paintbrush className="h-4 w-4 mr-2" />
+          Paint
         </Button>
         <Button
           onClick={() => setPaintTool("eraser")}
           variant={paintTool === "eraser" ? "default" : "outline"}
-          className="h-9 w-9 p-0"
+          className="h-9"
           title="Eraser"
         >
-          <Eraser className="h-4 w-4" />
+          <Eraser className="h-4 w-4 mr-2" />
+          Eraser
         </Button>
         <Button
           onClick={() => setPaintTool("emoji")}
           variant={paintTool === "emoji" ? "default" : "outline"}
-          className="h-9 w-9 p-0"
+          className="h-9"
           title={`Emoji (${currentEmoji})`}
         >
-          <Smile className="h-4 w-4" />
+          <Smile className="h-4 w-4 mr-2" />
+          Emojis
         </Button>
         <Button
           onClick={() => setPaintTool("arrow")}
           variant={paintTool === "arrow" ? "default" : "outline"}
-          className="h-9 w-9 p-0"
-          title="Arrow"
+          className="h-9"
+          title="Single Arrow"
         >
-          <ArrowUp className="h-4 w-4" />
+          <ArrowUp className="h-4 w-4 mr-2" />
+          Arrow
         </Button>
         <Button
           onClick={() => setPaintTool("double")}
           variant={paintTool === "double" ? "default" : "outline"}
-          className="h-9 w-9 p-0"
+          className="h-9"
           title="Double Arrow"
         >
-          <ArrowLeftRight className="h-4 w-4" />
+          <ArrowLeftRight className="h-4 w-4 mr-2" />
+          Double Arrow
         </Button>
       </div>
 

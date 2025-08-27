@@ -1,13 +1,16 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { Button } from "./ui/button";
 import { Slider } from "./ui/slider";
-import { useEditorStore } from "../store/editor-store";
+import { usePaintStore } from "../stores";
 import { PaintStroke } from "../types/types";
-import { 
-  Undo, 
-  Redo 
+import {
+  Paintbrush,
+  Eraser,
+  Smile,
+  ArrowUp,
+  ArrowLeftRight,
 } from "lucide-react";
-import EmojiPicker from 'emoji-picker-react';
+import EmojiPicker from "emoji-picker-react";
 
 interface PaintCanvasProps {
   imageUrl: string;
@@ -17,26 +20,56 @@ interface PaintCanvasProps {
 }
 
 const PRESET_COLORS = [
-  "#ff0000", "#e51e25", "#a61b29", "#8d4bbb",
-  "#ff7f00", "#ff8c00", "#ff4500", "#ffa500",
-  "#ffff00", "#ffd700", "#ffc72c", "#fbec5d",
-  "#00ff00", "#32cd32", "#008000", "#00a550",
-  "#0000ff", "#1e90ff", "#5f9ea0", "#00bfff",
-  "#800080", "#9370db", "#8a2be2", "#9b30ff",
-  "#ffffff", "#d3d3d3", "#808080", "#000000"
+  // Essentials
+  "#000000", // Black
+  "#ffffff", // White
+  "#6b7280", // Gray
+  
+  // Vibrant Reds & Pinks
+  "#ef4444", // Red
+  "#dc2626", // Dark Red
+  "#ec4899", // Pink
+  "#f43f5e", // Rose
+  
+  // Warm Oranges & Yellows
+  "#f97316", // Orange
+  "#fb923c", // Light Orange
+  "#eab308", // Yellow
+  "#fbbf24", // Bright Yellow
+  
+  // Natural Greens
+  "#22c55e", // Green
+  "#16a34a", // Forest Green
+  "#10b981", // Emerald
+  "#84cc16", // Lime
+  
+  // Cool Blues & Purples
+  "#3b82f6", // Blue
+  "#2563eb", // Dark Blue
+  "#06b6d4", // Cyan
+  "#0891b2", // Teal
+  "#8b5cf6", // Purple
+  "#7c3aed", // Violet
+  "#a855f7", // Magenta
+  "#c084fc", // Light Purple
+  
+  // Earth Tones
+  "#a3a3a3", // Light Gray
+  "#525252", // Dark Gray
+  "#78716c", // Stone
+  "#92400e", // Brown
 ];
 
-export const PaintCanvas: React.FC<PaintCanvasProps> = ({
-  imageUrl,
-}) => {
+export const PaintCanvas: React.FC<PaintCanvasProps> = ({ imageUrl }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentStroke, setCurrentStroke] = useState<PaintStroke | null>(null);
   const [isDrawingArrow, setIsDrawingArrow] = useState(false);
-  const [arrowStart, setArrowStart] = useState<{ x: number; y: number } | null>(null);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  
+  const [arrowStart, setArrowStart] = useState<{ x: number; y: number } | null>(
+    null
+  );
+
   // Get paint state from zustand store
   const {
     paintStrokes: strokes,
@@ -49,12 +82,13 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
     clearPaintStrokes,
     setBrushSize,
     setBrushColor,
+    setPaintTool,
     currentEmoji,
     setCurrentEmoji,
     arrowColor,
     arrowWidth,
-  } = useEditorStore();
-  
+  } = usePaintStore();
+
   // Local undo/redo state (could be moved to store later)
   const [undoStack, setUndoStack] = useState<PaintStroke[][]>([]);
   const [redoStack, setRedoStack] = useState<PaintStroke[][]>([]);
@@ -86,7 +120,6 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
     canvas.height = backgroundCanvas.height;
   }, [imageUrl]);
 
-  // Redraw strokes
   // Helper function for drawing arrowheads
   const drawArrowhead = (
     ctx: CanvasRenderingContext2D,
@@ -135,11 +168,11 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
 
       ctx.beginPath();
       ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-      
+
       for (let i = 1; i < stroke.points.length; i++) {
         ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
       }
-      
+
       ctx.stroke();
     });
 
@@ -171,14 +204,7 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
         ctx.stroke();
 
         // head(s)
-        drawArrowhead(
-          ctx,
-          shape.x1,
-          shape.y1,
-          shape.x2,
-          shape.y2,
-          shape.width
-        );
+        drawArrowhead(ctx, shape.x1, shape.y1, shape.x2, shape.y2, shape.width);
         if (shape.double) {
           drawArrowhead(
             ctx,
@@ -214,7 +240,7 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const coords = getCanvasCoordinates(e);
-    
+
     if (selectedTool === "emoji") {
       // Handle emoji placement
       addShape({
@@ -255,7 +281,7 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
       };
 
       setCurrentStroke(updatedStroke);
-      
+
       // Draw current stroke in real-time
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -264,7 +290,7 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
 
       // Redraw all strokes plus current stroke
       redrawStrokes();
-      
+
       // Draw current stroke
       if (updatedStroke.points.length > 1) {
         ctx.strokeStyle = updatedStroke.color;
@@ -280,7 +306,8 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
 
         ctx.beginPath();
         const lastPoint = updatedStroke.points[updatedStroke.points.length - 2];
-        const currentPoint = updatedStroke.points[updatedStroke.points.length - 1];
+        const currentPoint =
+          updatedStroke.points[updatedStroke.points.length - 1];
         ctx.moveTo(lastPoint.x, lastPoint.y);
         ctx.lineTo(currentPoint.x, currentPoint.y);
         ctx.stroke();
@@ -318,28 +345,11 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
     }
   };
 
-  const handleUndo = () => {
-    if (strokes.length === 0) return;
-    
-    // For now, just remove the last stroke
-    // TODO: Implement proper undo/redo in the store
-    clearPaintStrokes();
-    strokes.slice(0, -1).forEach(stroke => {
-      addPaintStroke(stroke);
-    });
-  };
-
-  const handleRedo = () => {
-    // TODO: Implement redo functionality
-    console.log("Redo not yet implemented");
-  };
-
   const handleClear = () => {
-    setUndoStack(prev => [...prev, strokes]);
+    setUndoStack((prev) => [...prev, strokes]);
     setRedoStack([]);
     clearPaintStrokes();
   };
-
 
   return (
     <div className="grid grid-cols-2 gap-4">
@@ -367,24 +377,7 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
       <div className="bg-gray-800 p-4 rounded-lg space-y-4 text-white">
         <div className="flex justify-between">
           <h3 className="text-lg">Paint Tools</h3>
-          <div className="flex space-x-2">
-            <Button
-              onClick={handleUndo}
-              variant="outline"
-              disabled={undoStack.length === 0}
-            >
-              <Undo className="h-4 w-4" />
-            </Button>
-            <Button
-              onClick={handleRedo}
-              variant="outline"
-              disabled={redoStack.length === 0}
-            >
-              <Redo className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
-
 
         {/* Brush Size */}
         <div className="space-y-2">
@@ -399,64 +392,119 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
           />
         </div>
 
-        {/* Color Selection */}
-        <div className="space-y-2">
-          <label className="block">Color</label>
-          <div className="grid grid-cols-8 gap-1">
-            {PRESET_COLORS.map((color) => (
-              <button
-                key={color}
-                className={`w-6 h-6 rounded ${
-                  selectedColor === color ? "ring-2 ring-white" : ""
-                }`}
-                style={{ backgroundColor: color }}
-                onClick={() => setBrushColor(color)}
-              />
-            ))}
-          </div>
-          <div className="flex items-center mt-2">
-            <input
-              type="color"
-              value={selectedColor}
-              onChange={(e) => setBrushColor(e.target.value)}
-              className="w-8 h-8 p-0 border-none"
-            />
-            <span className="ml-2 font-mono text-xs">{selectedColor}</span>
-          </div>
-        </div>
+        {/* Color Selection - Only show for non-emoji tools */}
+        {selectedTool !== "emoji" && (
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-white">
+              Color
+            </label>
 
-        {/* Emoji Picker */}
-        {selectedTool === "emoji" && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="block">Current Emoji</label>
-              <span className="text-2xl">{currentEmoji}</span>
-            </div>
-            <Button
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              variant="outline"
-              className="w-full"
-            >
-              {showEmojiPicker ? "Hide Emoji Picker" : "Show Emoji Picker"}
-            </Button>
-            {showEmojiPicker && (
-              <div className="mt-2">
-                <EmojiPicker
-                  onEmojiClick={(emojiData) => {
-                    setCurrentEmoji(emojiData.emoji);
-                    setShowEmojiPicker(false);
-                  }}
-                  width={300}
-                  height={300}
-                />
+            {/* Current Color Display */}
+            <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
+              <div
+                className="w-8 h-8 rounded-md border-2 border-gray-500 shadow-sm"
+                style={{ backgroundColor: selectedColor }}
+              />
+              <div className="flex-1">
+                <div className="text-sm font-medium text-white">
+                  Current Color
+                </div>
+                <div className="text-xs text-gray-400 font-mono uppercase">
+                  {selectedColor}
+                </div>
               </div>
-            )}
+            </div>
+
+            {/* Color Presets */}
+            <div className="space-y-3">
+              <div className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                Color Palette
+              </div>
+              <div className="grid grid-cols-8 gap-2 p-3 bg-gray-700 rounded-lg">
+                {PRESET_COLORS.map((color, index) => (
+                  <button
+                    key={color}
+                    className={`w-9 h-9 rounded-lg border-2 transition-all duration-200 hover:scale-105 hover:shadow-lg ${
+                      selectedColor === color
+                        ? "border-white shadow-xl ring-2 ring-blue-400 ring-offset-2 ring-offset-gray-700 scale-105"
+                        : "border-gray-500 hover:border-gray-300"
+                    } ${
+                      color === "#ffffff" ? "shadow-inner" : ""
+                    }`}
+                    style={{ 
+                      backgroundColor: color,
+                      boxShadow: color === "#ffffff" 
+                        ? "inset 0 1px 3px rgba(0,0,0,0.2)" 
+                        : selectedColor === color 
+                        ? "0 4px 12px rgba(0,0,0,0.3)" 
+                        : "0 2px 4px rgba(0,0,0,0.1)"
+                    }}
+                    onClick={() => setBrushColor(color)}
+                    title={`${color} - ${index < 3 ? 'Essential' : 
+                           index < 7 ? 'Red/Pink' : 
+                           index < 11 ? 'Orange/Yellow' : 
+                           index < 15 ? 'Green' : 
+                           index < 23 ? 'Blue/Purple' : 'Earth Tone'}`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Color Picker */}
+            <div className="space-y-2">
+              <div className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                Custom
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
+                <input
+                  type="color"
+                  value={selectedColor}
+                  onChange={(e) => setBrushColor(e.target.value)}
+                  className="w-12 h-8 rounded border-2 border-gray-500 bg-transparent cursor-pointer"
+                />
+                <div className="text-sm text-white">Pick any color</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Emoji Picker - Only show for emoji tool */}
+        {selectedTool === "emoji" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-medium text-white">
+                Emoji
+              </label>
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{currentEmoji}</span>
+                <div className="text-xs text-gray-400">Current</div>
+              </div>
+            </div>
+
+            <div className="bg-gray-700 rounded-lg p-2">
+              <EmojiPicker
+                onEmojiClick={(emojiData) => {
+                  setCurrentEmoji(emojiData.emoji);
+                }}
+                width="100%"
+                height={300}
+                theme={"dark" as any}
+                searchDisabled={false}
+                skinTonesDisabled={true}
+                previewConfig={{ showPreview: false }}
+                lazyLoadEmojis={true}
+              />
+            </div>
           </div>
         )}
 
         {/* Clear Button */}
         <div className="mt-4">
-          <Button onClick={handleClear} variant="destructive" className="w-full">
+          <Button
+            onClick={handleClear}
+            variant="destructive"
+            className="w-full"
+          >
             Clear All
           </Button>
         </div>

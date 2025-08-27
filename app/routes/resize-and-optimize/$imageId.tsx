@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEditorStore } from "../../store/editor-store";
+import { useAppStateStore, useImageStore } from "../../stores";
 import { useImageContext } from "../../context/image-context";
 import { useEffect } from "react";
 import React from "react";
@@ -73,7 +73,8 @@ export const Route = createFileRoute("/resize-and-optimize/$imageId")({
 
 function OptimizeImageComponent() {
   const { imageId } = Route.useParams();
-  const { selectImage, setEditorState } = useEditorStore();
+  const { selectImage } = useImageStore();
+  const { setEditorState } = useAppStateStore();
   const { paginatedImages, selectedImage, onSelect, onRemove, loadingImages } = useImageContext();
   const navigate = useNavigate();
 

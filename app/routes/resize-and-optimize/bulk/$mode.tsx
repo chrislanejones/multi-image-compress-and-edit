@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEditorStore } from "../../../store/editor-store";
+import { useAppStateStore } from "../../../stores";
 import { useEffect } from "react";
 import { z } from "zod";
 
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/resize-and-optimize/bulk/$mode")({
 
 function BulkModeComponent() {
   const { mode } = Route.useParams();
-  const { setEditorState } = useEditorStore();
+  const { setEditorState } = useAppStateStore();
 
   useEffect(() => {
     setEditorState("bulkImageEdit");

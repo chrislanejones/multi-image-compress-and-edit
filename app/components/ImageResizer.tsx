@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useImageContext } from "../context/image-context";
-import { useEditorStore } from "../store/editor-store";
+import { useCompressionStore } from "../stores";
 import { Slider } from "./ui/slider";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -39,8 +39,8 @@ export default function ImageResizer() {
     setQuality,
     setFormat,
     setCompressionLevel,
-    handleReset: resetEditorUI,
-  } = useEditorStore();
+    resetToDefaults: resetEditorUI,
+  } = useCompressionStore();
 
   // Local state for sliders and image dimensions
   const [localWidth, setLocalWidth] = useState(0);

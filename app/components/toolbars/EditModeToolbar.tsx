@@ -16,17 +16,13 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "../ui/button";
-import { useEditorStore } from "../../store/editor-store";
+import { useViewStore, useImageStore, useAppStateStore } from "../../stores";
 import { useImageContext } from "../../context/image-context";
 
 export const EditModeToolbar = () => {
-  const { onZoomIn, onZoomOut, setEditorState } = useEditorStore();
-  const {
-    rotateImage,
-    flipImageHorizontal,
-    flipImageVertical,
-    resetImage,
-  } = useEditorStore();
+  const { globalZoomIn, globalZoomOut } = useViewStore();
+  const { rotateImage, flipImageHorizontal, flipImageVertical, resetImage } = useImageStore();
+  const { setEditorState } = useAppStateStore();
   const { selectedImage } = useImageContext();
   const navigate = useNavigate();
   
@@ -52,10 +48,10 @@ export const EditModeToolbar = () => {
     <div className="w-full grid grid-cols-3 items-center">
       {/* Left: zoom + rotate + flip + reset */}
       <div className="flex items-center gap-2 justify-self-start">
-        <Button onClick={onZoomIn} variant="outline" className="h-9 w-9 p-0">
+        <Button onClick={globalZoomIn} variant="outline" className="h-9 w-9 p-0">
           <Plus className="h-4 w-4" />
         </Button>
-        <Button onClick={onZoomOut} variant="outline" className="h-9 w-9 p-0">
+        <Button onClick={globalZoomOut} variant="outline" className="h-9 w-9 p-0">
           <Minus className="h-4 w-4" />
         </Button>
         <Button
