@@ -20,6 +20,12 @@ const DEFAULT_VALUES = {
   compressionLevel: "medium" as CompressionLevel,
 };
 
+type State = {
+  compressingIds: Set<string>;
+  startCompressing: (id: string) => void;
+  stopCompressing: (id: string) => void;
+};
+
 export const useCompressionStore = create<CompressionStore>((set) => ({
   // Initial state
   quality: DEFAULT_VALUES.quality,

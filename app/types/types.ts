@@ -272,6 +272,8 @@ export const COMPRESSION_LEVELS = [
   { value: "extremeBW", label: "Extreme B&W (Black & White)", quality: 30 },
 ] as const;
 
+export type Codec = "avif" | "webp" | "jpeg";
+
 // ===== COMPONENT PROPS =====
 
 /**
