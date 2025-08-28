@@ -1,6 +1,6 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { useBlurStore } from '../stores';
-import type { BlurStroke } from '../types/types';
+import React, { useRef, useEffect, useState, useCallback } from "react";
+import { useBlurStore } from "../stores";
+import type { BlurStroke } from "../types/types";
 
 interface BlurCanvasProps {
   imageUrl: string;
@@ -13,210 +13,341 @@ export const BlurCanvas: React.FC<BlurCanvasProps> = ({
   imageUrl,
   imageWidth,
   imageHeight,
-  zoom
+  zoom,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const [isDrawing, setIsDrawing] = useState(false);
-  const [currentStroke, setCurrentStroke] = useState<{ x: number; y: number }[]>([]);
+  const [currentStroke, setCurrentStroke] = useState<
+    { x: number; y: number }[]
+  >([]);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [canvasScale, setCanvasScale] = useState({ x: 1, y: 1 });
 
   const {
     blurAmount,
     brushSize,
     blurBrushStrokes,
     addBlurStroke,
-    setIsBlurBrushing
+    setIsBlurBrushing,
   } = useBlurStore();
 
-  // Initialize canvas and image
+  // Load image and setup canvas
   useEffect(() => {
+    if (!imageUrl) return;
+
     const canvas = canvasRef.current;
     const image = imageRef.current;
     if (!canvas || !image) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     // Load the image
     image.onload = () => {
-      // Set canvas size to match image display size
-      const displayWidth = image.naturalWidth * (zoom / 100);
-      const displayHeight = image.naturalHeight * (zoom / 100);
-      
-      canvas.width = displayWidth;
-      canvas.height = displayHeight;
-      
-      // Clear and redraw
+      const naturalWidth = image.naturalWidth;
+      const naturalHeight = image.naturalHeight;
+
+      // Set canvas size to natural image size for high resolution
+      canvas.width = naturalWidth;
+      canvas.height = naturalHeight;
+
+      // Calculate display size that fits the container
+      if (containerRef.current) {
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const containerWidth = containerRect.width - 32; // padding
+        const containerHeight = containerRect.height - 32;
+
+        const scaleToFit = Math.min(
+          containerWidth / naturalWidth,
+          containerHeight / naturalHeight,
+          1 // Don't scale up
+        );
+
+        const displayWidth = naturalWidth * scaleToFit * (zoom / 100);
+        const displayHeight = naturalHeight * scaleToFit * (zoom / 100);
+
+        canvas.style.width = `${displayWidth}px`;
+        canvas.style.height = `${displayHeight}px`;
+
+        // Store scale factors for coordinate conversion
+        setCanvasScale({
+          x: naturalWidth / displayWidth,
+          y: naturalHeight / displayHeight,
+        });
+      }
+
+      setImageLoaded(true);
       redrawCanvas();
     };
+
+    image.onerror = () => {
+      console.error("Failed to load image for blur canvas");
+    };
+
     image.src = imageUrl;
   }, [imageUrl, zoom]);
 
-  // Redraw canvas with all blur strokes
+  // Redraw canvas with all strokes
   const redrawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const image = imageRef.current;
-    if (!canvas || !image) return;
+    if (!canvas || !image || !imageLoaded) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Always start with the original, unblurred image
+    // Draw original image
     ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
 
-    // Apply blur strokes on top of the original image
-    blurBrushStrokes.forEach(stroke => {
+    // Apply all blur strokes
+    blurBrushStrokes.forEach((stroke) => {
       applyBlurStroke(ctx, stroke);
     });
-  }, [blurBrushStrokes]);
+  }, [blurBrushStrokes, imageLoaded]);
 
-  // Apply a single blur stroke to the canvas
-  const applyBlurStroke = (ctx: CanvasRenderingContext2D, stroke: BlurStroke) => {
-    if (stroke.points.length === 0) return;
+  // Apply a single blur stroke
+  const applyBlurStroke = useCallback(
+    (ctx: CanvasRenderingContext2D, stroke: BlurStroke) => {
+      if (stroke.points.length === 0) return;
 
-    ctx.save();
-    
-    // Create a temporary canvas for the blurred image
-    const tempCanvas = document.createElement('canvas');
-    const tempCtx = tempCanvas.getContext('2d');
-    if (!tempCtx) return;
+      const image = imageRef.current;
+      if (!image) return;
 
-    tempCanvas.width = ctx.canvas.width;
-    tempCanvas.height = ctx.canvas.height;
+      ctx.save();
 
-    // Draw the original image to temp canvas and apply blur
-    const image = imageRef.current;
-    if (image) {
+      // Create temporary canvas for blurred image
+      const tempCanvas = document.createElement("canvas");
+      const tempCtx = tempCanvas.getContext("2d");
+      if (!tempCtx) {
+        ctx.restore();
+        return;
+      }
+
+      tempCanvas.width = ctx.canvas.width;
+      tempCanvas.height = ctx.canvas.height;
+
+      // Apply blur filter and draw image
       tempCtx.filter = `blur(${stroke.blurAmount}px)`;
       tempCtx.drawImage(image, 0, 0, tempCanvas.width, tempCanvas.height);
-    }
 
-    // Create a clipping mask for the brush stroke
-    ctx.save();
-    ctx.beginPath();
-    
-    // Draw the brush stroke path
-    if (stroke.points.length === 1) {
-      // Single point - draw a circle
-      ctx.arc(stroke.points[0].x, stroke.points[0].y, stroke.brushSize / 2, 0, Math.PI * 2);
-    } else {
-      // Multiple points - draw connected strokes
-      for (let i = 0; i < stroke.points.length; i++) {
-        const point = stroke.points[i];
+      // Create clipping path for brush stroke
+      ctx.beginPath();
+
+      if (stroke.points.length === 1) {
+        // Single point - circle
+        const point = stroke.points[0];
         ctx.arc(point.x, point.y, stroke.brushSize / 2, 0, Math.PI * 2);
+      } else {
+        // Multiple points - create smooth path
+        stroke.points.forEach((point, index) => {
+          if (index === 0) {
+            ctx.moveTo(point.x, point.y);
+          } else {
+            // Use quadratic curves for smoother lines
+            const prevPoint = stroke.points[index - 1];
+            const midX = (prevPoint.x + point.x) / 2;
+            const midY = (prevPoint.y + point.y) / 2;
+            ctx.quadraticCurveTo(prevPoint.x, prevPoint.y, midX, midY);
+          }
+        });
+
+        // Close the path and create brush effect
+        ctx.lineWidth = stroke.brushSize;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.strokeStyle = "white"; // This will be clipped anyway
+        ctx.stroke();
       }
-    }
-    
-    ctx.clip();
-    
-    // Draw the blurred image only within the clipped area
-    ctx.drawImage(tempCanvas, 0, 0);
-    
-    ctx.restore();
-    ctx.restore();
-  };
 
-  // Handle mouse/touch start
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+      ctx.clip();
 
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+      // Draw blurred image within clipped area
+      ctx.drawImage(tempCanvas, 0, 0);
 
-    setIsDrawing(true);
-    setCurrentStroke([{ x, y }]);
-    setIsBlurBrushing(true);
-    
-    canvas.setPointerCapture(e.pointerId);
-  }, [setIsBlurBrushing]);
+      ctx.restore();
+    },
+    []
+  );
 
-  // Handle mouse/touch move
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!isDrawing) return;
+  // Convert screen coordinates to canvas coordinates
+  const getCanvasCoordinates = useCallback(
+    (e: React.PointerEvent) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return { x: 0, y: 0 };
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left) * canvasScale.x;
+      const y = (e.clientY - rect.top) * canvasScale.y;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+      return { x, y };
+    },
+    [canvasScale]
+  );
 
-    const newStroke = [...currentStroke, { x, y }];
-    setCurrentStroke(newStroke);
+  // Handle drawing start
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (!imageLoaded) return;
 
-    // Draw preview of current stroke
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      redrawCanvas();
-      
-      // Draw current stroke preview
-      const previewStroke: BlurStroke = {
-        id: 'preview',
-        points: newStroke,
-        blurAmount,
-        brushSize,
-        timestamp: Date.now()
-      };
-      applyBlurStroke(ctx, previewStroke);
-    }
-  }, [isDrawing, currentStroke, blurAmount, brushSize, redrawCanvas]);
+      const canvas = canvasRef.current;
+      if (!canvas) return;
 
-  // Handle mouse/touch end
-  const handlePointerUp = useCallback((e: React.PointerEvent) => {
-    if (!isDrawing) return;
+      const coords = getCanvasCoordinates(e);
+      setIsDrawing(true);
+      setCurrentStroke([coords]);
+      setIsBlurBrushing(true);
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+      canvas.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    },
+    [imageLoaded, getCanvasCoordinates, setIsBlurBrushing]
+  );
 
-    // Create final blur stroke
-    const finalStroke: BlurStroke = {
-      id: crypto.randomUUID(),
-      points: currentStroke,
+  // Handle drawing movement
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!isDrawing || !imageLoaded) return;
+
+      const coords = getCanvasCoordinates(e);
+      const newStroke = [...currentStroke, coords];
+      setCurrentStroke(newStroke);
+
+      // Real-time preview
+      const canvas = canvasRef.current;
+      if (canvas) {
+        redrawCanvas();
+
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          const previewStroke: BlurStroke = {
+            id: "preview",
+            points: newStroke,
+            blurAmount,
+            brushSize,
+            timestamp: Date.now(),
+          };
+          applyBlurStroke(ctx, previewStroke);
+        }
+      }
+
+      e.preventDefault();
+    },
+    [
+      isDrawing,
+      imageLoaded,
+      currentStroke,
       blurAmount,
       brushSize,
-      timestamp: Date.now()
-    };
+      getCanvasCoordinates,
+      redrawCanvas,
+      applyBlurStroke,
+    ]
+  );
 
-    // Add to store
-    addBlurStroke(finalStroke);
+  // Handle drawing end
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (!isDrawing || !imageLoaded) return;
 
-    // Reset drawing state
-    setIsDrawing(false);
-    setCurrentStroke([]);
-    setIsBlurBrushing(false);
-    
-    canvas.releasePointerCapture(e.pointerId);
-  }, [isDrawing, currentStroke, blurAmount, brushSize, addBlurStroke, setIsBlurBrushing]);
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      // Create final stroke
+      const finalStroke: BlurStroke = {
+        id: crypto.randomUUID(),
+        points: currentStroke,
+        blurAmount,
+        brushSize,
+        timestamp: Date.now(),
+      };
+
+      addBlurStroke(finalStroke);
+
+      // Reset state
+      setIsDrawing(false);
+      setCurrentStroke([]);
+      setIsBlurBrushing(false);
+
+      canvas.releasePointerCapture(e.pointerId);
+      e.preventDefault();
+    },
+    [
+      isDrawing,
+      imageLoaded,
+      currentStroke,
+      blurAmount,
+      brushSize,
+      addBlurStroke,
+      setIsBlurBrushing,
+    ]
+  );
 
   // Redraw when strokes change
   useEffect(() => {
-    redrawCanvas();
-  }, [redrawCanvas]);
+    if (imageLoaded) {
+      redrawCanvas();
+    }
+  }, [imageLoaded, redrawCanvas]);
+
+  if (!imageLoaded) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+        <div className="text-center text-white">
+          <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+          <p>Loading image...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center">
+    <div
+      ref={containerRef}
+      className="absolute inset-0 flex items-center justify-center bg-gray-900 overflow-hidden"
+    >
+      {/* Hidden reference image */}
       <img
         ref={imageRef}
         src={imageUrl}
         alt="Blur canvas reference"
         className="hidden"
       />
+
+      {/* Main blur canvas */}
       <canvas
         ref={canvasRef}
-        className="max-w-full max-h-full object-contain cursor-crosshair"
+        className="cursor-crosshair shadow-lg border border-gray-600"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
         style={{
-          touchAction: 'none',
-          transform: `scale(${zoom / 100})`
+          touchAction: "none",
+          imageRendering: "auto",
         }}
       />
+
+      {/* Visual brush size indicator */}
+      {isDrawing && (
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            width: `${brushSize / canvasScale.x}px`,
+            height: `${brushSize / canvasScale.y}px`,
+            border: "2px solid rgba(255, 255, 255, 0.5)",
+            borderRadius: "50%",
+            left: "50%",
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+          }}
+        />
+      )}
     </div>
   );
 };

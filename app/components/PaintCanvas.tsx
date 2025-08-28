@@ -1,16 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
-import { Button } from "./ui/button";
-import { Slider } from "./ui/slider";
 import { usePaintStore } from "../stores";
-import { PaintStroke } from "../types/types";
-import {
-  Paintbrush,
-  Eraser,
-  Smile,
-  ArrowUp,
-  ArrowLeftRight,
-} from "lucide-react";
-import EmojiPicker from "emoji-picker-react";
+import type { PaintStroke } from "../types/types";
 
 interface PaintCanvasProps {
   imageUrl: string;
@@ -19,58 +9,50 @@ interface PaintCanvasProps {
   zoom: number;
 }
 
-const PRESET_COLORS = [
-  // Essentials
-  "#000000", // Black
-  "#ffffff", // White
-  "#6b7280", // Gray
-  
-  // Vibrant Reds & Pinks
-  "#ef4444", // Red
-  "#dc2626", // Dark Red
-  "#ec4899", // Pink
-  "#f43f5e", // Rose
-  
-  // Warm Oranges & Yellows
-  "#f97316", // Orange
-  "#fb923c", // Light Orange
-  "#eab308", // Yellow
-  "#fbbf24", // Bright Yellow
-  
-  // Natural Greens
-  "#22c55e", // Green
-  "#16a34a", // Forest Green
-  "#10b981", // Emerald
-  "#84cc16", // Lime
-  
-  // Cool Blues & Purples
-  "#3b82f6", // Blue
-  "#2563eb", // Dark Blue
-  "#06b6d4", // Cyan
-  "#0891b2", // Teal
-  "#8b5cf6", // Purple
-  "#7c3aed", // Violet
-  "#a855f7", // Magenta
-  "#c084fc", // Light Purple
-  
-  // Earth Tones
-  "#a3a3a3", // Light Gray
-  "#525252", // Dark Gray
-  "#78716c", // Stone
-  "#92400e", // Brown
-];
+// Define shape types locally to match store
+type ArrowShape = {
+  id: string;
+  type: "arrow";
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  double: boolean;
+  color: string;
+  width: number;
+};
 
-export const PaintCanvas: React.FC<PaintCanvasProps> = ({ imageUrl }) => {
+type EmojiShape = {
+  id: string;
+  type: "emoji";
+  x: number;
+  y: number;
+  text: string;
+  size: number;
+};
+
+type Shape = ArrowShape | EmojiShape;
+
+export const PaintCanvas: React.FC<PaintCanvasProps> = ({
+  imageUrl,
+  imageWidth,
+  imageHeight,
+  zoom,
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentStroke, setCurrentStroke] = useState<PaintStroke | null>(null);
   const [isDrawingArrow, setIsDrawingArrow] = useState(false);
   const [arrowStart, setArrowStart] = useState<{ x: number; y: number } | null>(
     null
   );
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [canvasScale, setCanvasScale] = useState({ x: 1, y: 1 });
 
-  // Get paint state from zustand store
+  // Get paint state from store
   const {
     paintStrokes: strokes,
     shapes,
@@ -79,22 +61,15 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({ imageUrl }) => {
     brushColor: selectedColor,
     addPaintStroke,
     addShape,
-    clearPaintStrokes,
-    setBrushSize,
-    setBrushColor,
-    setPaintTool,
     currentEmoji,
-    setCurrentEmoji,
     arrowColor,
     arrowWidth,
   } = usePaintStore();
 
-  // Local undo/redo state (could be moved to store later)
-  const [undoStack, setUndoStack] = useState<PaintStroke[][]>([]);
-  const [redoStack, setRedoStack] = useState<PaintStroke[][]>([]);
-
   // Load background image
   useEffect(() => {
+    if (!imageUrl) return;
+
     const backgroundCanvas = backgroundCanvasRef.current;
     if (!backgroundCanvas) return;
 
@@ -102,49 +77,94 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({ imageUrl }) => {
     if (!ctx) return;
 
     const img = new Image();
+    img.crossOrigin = "anonymous";
+
     img.onload = () => {
-      backgroundCanvas.width = img.naturalWidth;
-      backgroundCanvas.height = img.naturalHeight;
+      const naturalWidth = img.naturalWidth;
+      const naturalHeight = img.naturalHeight;
+
+      // Set background canvas to natural image size
+      backgroundCanvas.width = naturalWidth;
+      backgroundCanvas.height = naturalHeight;
       ctx.drawImage(img, 0, 0);
+
+      // Setup main canvas
+      const canvas = canvasRef.current;
+      if (canvas) {
+        canvas.width = naturalWidth;
+        canvas.height = naturalHeight;
+
+        // Calculate display size
+        if (containerRef.current) {
+          const containerRect = containerRef.current.getBoundingClientRect();
+          const containerWidth = containerRect.width - 32;
+          const containerHeight = containerRect.height - 32;
+
+          const scaleToFit = Math.min(
+            containerWidth / naturalWidth,
+            containerHeight / naturalHeight,
+            1
+          );
+
+          const displayWidth = naturalWidth * scaleToFit * (zoom / 100);
+          const displayHeight = naturalHeight * scaleToFit * (zoom / 100);
+
+          canvas.style.width = `${displayWidth}px`;
+          canvas.style.height = `${displayHeight}px`;
+          backgroundCanvas.style.width = `${displayWidth}px`;
+          backgroundCanvas.style.height = `${displayHeight}px`;
+
+          setCanvasScale({
+            x: naturalWidth / displayWidth,
+            y: naturalHeight / displayHeight,
+          });
+        }
+      }
+
+      setImageLoaded(true);
     };
+
+    img.onerror = () => {
+      console.error("Failed to load image for paint canvas");
+    };
+
     img.src = imageUrl;
-  }, [imageUrl]);
-
-  // Set up main canvas
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const backgroundCanvas = backgroundCanvasRef.current;
-    if (!canvas || !backgroundCanvas) return;
-
-    canvas.width = backgroundCanvas.width;
-    canvas.height = backgroundCanvas.height;
-  }, [imageUrl]);
+  }, [imageUrl, zoom]);
 
   // Helper function for drawing arrowheads
-  const drawArrowhead = (
-    ctx: CanvasRenderingContext2D,
-    x1: number,
-    y1: number,
-    x2: number,
-    y2: number,
-    width: number
-  ) => {
-    const angle = Math.atan2(y2 - y1, x2 - x1);
-    const headLen = Math.max(10, width * 3);
-    const a1 = angle - Math.PI / 7;
-    const a2 = angle + Math.PI / 7;
+  const drawArrowhead = useCallback(
+    (
+      ctx: CanvasRenderingContext2D,
+      x1: number,
+      y1: number,
+      x2: number,
+      y2: number,
+      width: number
+    ) => {
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      const headLen = Math.max(15, width * 3);
+      const headAngle = Math.PI / 6;
 
-    ctx.beginPath();
-    ctx.moveTo(x2, y2);
-    ctx.lineTo(x2 - headLen * Math.cos(a1), y2 - headLen * Math.sin(a1));
-    ctx.lineTo(x2 - headLen * Math.cos(a2), y2 - headLen * Math.sin(a2));
-    ctx.closePath();
-    ctx.fill();
-  };
+      ctx.save();
+      ctx.translate(x2, y2);
+      ctx.rotate(angle);
 
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-headLen, headLen * Math.tan(headAngle));
+      ctx.lineTo(-headLen, -headLen * Math.tan(headAngle));
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
+    },
+    []
+  );
+
+  // Redraw all strokes and shapes
   const redrawStrokes = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !imageLoaded) return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -155,6 +175,7 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({ imageUrl }) => {
     strokes.forEach((stroke) => {
       if (stroke.points.length === 0) return;
 
+      ctx.save();
       ctx.strokeStyle = stroke.color;
       ctx.lineWidth = stroke.brushSize;
       ctx.lineCap = "round";
@@ -167,43 +188,51 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({ imageUrl }) => {
       }
 
       ctx.beginPath();
-      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-
-      for (let i = 1; i < stroke.points.length; i++) {
-        ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+      if (stroke.points.length === 1) {
+        // Single point - draw a circle
+        const point = stroke.points[0];
+        ctx.arc(point.x, point.y, stroke.brushSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Multiple points - smooth line
+        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+        for (let i = 1; i < stroke.points.length; i++) {
+          const point = stroke.points[i];
+          const prevPoint = stroke.points[i - 1];
+          const midX = (prevPoint.x + point.x) / 2;
+          const midY = (prevPoint.y + point.y) / 2;
+          ctx.quadraticCurveTo(prevPoint.x, prevPoint.y, midX, midY);
+        }
+        ctx.stroke();
       }
 
-      ctx.stroke();
+      ctx.restore();
     });
 
-    // Draw shapes (emoji + arrows)
+    // Draw shapes (emojis and arrows)
     shapes.forEach((shape) => {
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+
       if (shape.type === "emoji") {
-        ctx.save();
-        ctx.globalCompositeOperation = "source-over";
-        ctx.font =
-          `${shape.size}px system-ui, apple color emoji, ` +
-          `segoe ui emoji, sans-serif`;
+        ctx.font = `${shape.size}px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif`;
         ctx.textBaseline = "middle";
         ctx.textAlign = "center";
         ctx.fillText(shape.text, shape.x, shape.y);
-        ctx.restore();
       } else if (shape.type === "arrow") {
-        ctx.save();
-        ctx.globalCompositeOperation = "source-over";
         ctx.strokeStyle = shape.color;
         ctx.fillStyle = shape.color;
         ctx.lineWidth = shape.width;
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
 
-        // shaft
+        // Draw arrow shaft
         ctx.beginPath();
         ctx.moveTo(shape.x1, shape.y1);
         ctx.lineTo(shape.x2, shape.y2);
         ctx.stroke();
 
-        // head(s)
+        // Draw arrowheads
         drawArrowhead(ctx, shape.x1, shape.y1, shape.x2, shape.y2, shape.width);
         if (shape.double) {
           drawArrowhead(
@@ -215,300 +244,247 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({ imageUrl }) => {
             shape.width
           );
         }
-        ctx.restore();
       }
+
+      ctx.restore();
     });
-  }, [strokes, shapes]);
+  }, [strokes, shapes, imageLoaded, drawArrowhead]);
 
+  // Redraw when strokes change
   useEffect(() => {
-    redrawStrokes();
-  }, [redrawStrokes]);
-
-  const getCanvasCoordinates = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-
-    return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
-    };
-  };
-
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const coords = getCanvasCoordinates(e);
-
-    if (selectedTool === "emoji") {
-      // Handle emoji placement
-      addShape({
-        id: Date.now().toString(),
-        type: "emoji",
-        x: coords.x,
-        y: coords.y,
-        text: currentEmoji,
-        size: brushSize * 2, // Scale emoji size based on brush size
-      });
-    } else if (selectedTool === "arrow" || selectedTool === "double") {
-      // Start arrow drawing
-      setArrowStart(coords);
-      setIsDrawingArrow(true);
-    } else {
-      // Handle brush/eraser strokes
-      const newStroke: PaintStroke = {
-        id: Date.now().toString(),
-        tool: selectedTool,
-        points: [coords],
-        color: selectedColor,
-        brushSize: brushSize,
-        timestamp: Date.now(),
-      };
-
-      setCurrentStroke(newStroke);
-      setIsDrawing(true);
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (isDrawing && currentStroke) {
-      // Handle brush/eraser drawing
-      const coords = getCanvasCoordinates(e);
-      const updatedStroke = {
-        ...currentStroke,
-        points: [...currentStroke.points, coords],
-      };
-
-      setCurrentStroke(updatedStroke);
-
-      // Draw current stroke in real-time
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      // Redraw all strokes plus current stroke
+    if (imageLoaded) {
       redrawStrokes();
-
-      // Draw current stroke
-      if (updatedStroke.points.length > 1) {
-        ctx.strokeStyle = updatedStroke.color;
-        ctx.lineWidth = updatedStroke.brushSize;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-
-        if (updatedStroke.tool === "eraser") {
-          ctx.globalCompositeOperation = "destination-out";
-        } else {
-          ctx.globalCompositeOperation = "source-over";
-        }
-
-        ctx.beginPath();
-        const lastPoint = updatedStroke.points[updatedStroke.points.length - 2];
-        const currentPoint =
-          updatedStroke.points[updatedStroke.points.length - 1];
-        ctx.moveTo(lastPoint.x, lastPoint.y);
-        ctx.lineTo(currentPoint.x, currentPoint.y);
-        ctx.stroke();
-      }
     }
-    // Note: Arrow preview during drawing could be added here if desired
-  };
+  }, [imageLoaded, redrawStrokes]);
 
-  const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (currentStroke && isDrawing) {
-      // Handle brush/eraser completion
-      addPaintStroke({
-        ...currentStroke,
-        id: Date.now().toString(),
-        timestamp: Date.now(),
-      });
-      setCurrentStroke(null);
-      setIsDrawing(false);
-    } else if (isDrawingArrow && arrowStart) {
-      // Handle arrow completion
+  // Convert screen coordinates to canvas coordinates
+  const getCanvasCoordinates = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return { x: 0, y: 0 };
+
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left) * canvasScale.x;
+      const y = (e.clientY - rect.top) * canvasScale.y;
+
+      return { x, y };
+    },
+    [canvasScale]
+  );
+
+  // Handle mouse down
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!imageLoaded) return;
+
       const coords = getCanvasCoordinates(e);
-      addShape({
-        id: Date.now().toString(),
-        type: "arrow",
-        x1: arrowStart.x,
-        y1: arrowStart.y,
-        x2: coords.x,
-        y2: coords.y,
-        double: selectedTool === "double",
-        color: arrowColor,
-        width: arrowWidth,
-      });
-      setArrowStart(null);
-      setIsDrawingArrow(false);
-    }
-  };
 
-  const handleClear = () => {
-    setUndoStack((prev) => [...prev, strokes]);
-    setRedoStack([]);
-    clearPaintStrokes();
-  };
+      if (selectedTool === "emoji") {
+        // Place emoji immediately
+        addShape({
+          id: crypto.randomUUID(),
+          type: "emoji",
+          x: coords.x,
+          y: coords.y,
+          text: currentEmoji,
+          size: brushSize * 2,
+        } as EmojiShape);
+      } else if (selectedTool === "arrow" || selectedTool === "double") {
+        // Start arrow drawing
+        setArrowStart(coords);
+        setIsDrawingArrow(true);
+      } else {
+        // Start brush/eraser stroke
+        const newStroke: PaintStroke = {
+          id: crypto.randomUUID(),
+          tool: selectedTool as "brush" | "eraser",
+          points: [coords],
+          color: selectedColor,
+          brushSize: brushSize,
+          timestamp: Date.now(),
+        };
+
+        setCurrentStroke(newStroke);
+        setIsDrawing(true);
+      }
+
+      e.preventDefault();
+    },
+    [
+      selectedTool,
+      currentEmoji,
+      brushSize,
+      selectedColor,
+      arrowColor,
+      arrowWidth,
+      addShape,
+      getCanvasCoordinates,
+      imageLoaded,
+    ]
+  );
+
+  // Handle mouse move
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!imageLoaded) return;
+
+      if (isDrawing && currentStroke) {
+        const coords = getCanvasCoordinates(e);
+        const updatedStroke = {
+          ...currentStroke,
+          points: [...currentStroke.points, coords],
+        };
+
+        setCurrentStroke(updatedStroke);
+
+        // Real-time drawing preview
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            // Redraw everything
+            redrawStrokes();
+
+            // Draw current stroke preview
+            ctx.save();
+            ctx.strokeStyle = updatedStroke.color;
+            ctx.lineWidth = updatedStroke.brushSize;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+
+            if (updatedStroke.tool === "eraser") {
+              ctx.globalCompositeOperation = "destination-out";
+            } else {
+              ctx.globalCompositeOperation = "source-over";
+            }
+
+            if (updatedStroke.points.length > 1) {
+              ctx.beginPath();
+              ctx.moveTo(updatedStroke.points[0].x, updatedStroke.points[0].y);
+
+              for (let i = 1; i < updatedStroke.points.length; i++) {
+                const point = updatedStroke.points[i];
+                const prevPoint = updatedStroke.points[i - 1];
+                const midX = (prevPoint.x + point.x) / 2;
+                const midY = (prevPoint.y + point.y) / 2;
+                ctx.quadraticCurveTo(prevPoint.x, prevPoint.y, midX, midY);
+              }
+
+              ctx.stroke();
+            }
+
+            ctx.restore();
+          }
+        }
+      }
+
+      e.preventDefault();
+    },
+    [isDrawing, currentStroke, getCanvasCoordinates, redrawStrokes, imageLoaded]
+  );
+
+  // Handle mouse up
+  const handleMouseUp = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!imageLoaded) return;
+
+      if (currentStroke && isDrawing) {
+        // Finish brush/eraser stroke
+        addPaintStroke(currentStroke);
+        setCurrentStroke(null);
+        setIsDrawing(false);
+      } else if (isDrawingArrow && arrowStart) {
+        // Finish arrow
+        const coords = getCanvasCoordinates(e);
+        addShape({
+          id: crypto.randomUUID(),
+          type: "arrow",
+          x1: arrowStart.x,
+          y1: arrowStart.y,
+          x2: coords.x,
+          y2: coords.y,
+          double: selectedTool === "double",
+          color: arrowColor,
+          width: arrowWidth,
+        } as ArrowShape);
+
+        setArrowStart(null);
+        setIsDrawingArrow(false);
+      }
+
+      e.preventDefault();
+    },
+    [
+      currentStroke,
+      isDrawing,
+      isDrawingArrow,
+      arrowStart,
+      selectedTool,
+      arrowColor,
+      arrowWidth,
+      addPaintStroke,
+      addShape,
+      getCanvasCoordinates,
+      imageLoaded,
+    ]
+  );
+
+  if (!imageLoaded) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+        <div className="text-center text-white">
+          <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+          <p>Loading image...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="grid grid-cols-2 gap-4">
-      {/* Canvas Section */}
-      <div className="bg-gray-800 p-4 rounded-lg">
-        <div className="relative">
-          <canvas
-            ref={backgroundCanvasRef}
-            className="absolute inset-0 w-full h-auto"
-            style={{ maxHeight: "600px" }}
-          />
-          <canvas
-            ref={canvasRef}
-            className="relative w-full cursor-crosshair"
-            style={{ maxHeight: "600px" }}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-          />
-        </div>
-      </div>
+    <div
+      ref={containerRef}
+      className="absolute inset-0 flex items-center justify-center bg-gray-900 overflow-hidden"
+    >
+      {/* Background image canvas */}
+      <canvas
+        ref={backgroundCanvasRef}
+        className="absolute shadow-lg border border-gray-600"
+        style={{ pointerEvents: "none" }}
+      />
 
-      {/* Tools Section */}
-      <div className="bg-gray-800 p-4 rounded-lg space-y-4 text-white">
-        <div className="flex justify-between">
-          <h3 className="text-lg">Paint Tools</h3>
-        </div>
+      {/* Paint canvas overlay */}
+      <canvas
+        ref={canvasRef}
+        className="absolute cursor-crosshair shadow-lg border border-gray-600"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        style={{
+          touchAction: "none",
+          imageRendering: "auto",
+        }}
+      />
 
-        {/* Brush Size */}
-        <div className="space-y-2">
-          <label className="block">Size: {brushSize}px</label>
-          <Slider
-            className="w-full"
-            min={1}
-            max={50}
-            step={1}
-            value={[brushSize]}
-            onValueChange={(v) => setBrushSize(v[0])}
-          />
-        </div>
-
-        {/* Color Selection - Only show for non-emoji tools */}
-        {selectedTool !== "emoji" && (
-          <div className="space-y-3">
-            <label className="block text-sm font-medium text-white">
-              Color
-            </label>
-
-            {/* Current Color Display */}
-            <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
-              <div
-                className="w-8 h-8 rounded-md border-2 border-gray-500 shadow-sm"
-                style={{ backgroundColor: selectedColor }}
-              />
-              <div className="flex-1">
-                <div className="text-sm font-medium text-white">
-                  Current Color
-                </div>
-                <div className="text-xs text-gray-400 font-mono uppercase">
-                  {selectedColor}
-                </div>
-              </div>
-            </div>
-
-            {/* Color Presets */}
-            <div className="space-y-3">
-              <div className="text-xs font-medium text-gray-400 uppercase tracking-wide">
-                Color Palette
-              </div>
-              <div className="grid grid-cols-8 gap-2 p-3 bg-gray-700 rounded-lg">
-                {PRESET_COLORS.map((color, index) => (
-                  <button
-                    key={color}
-                    className={`w-9 h-9 rounded-lg border-2 transition-all duration-200 hover:scale-105 hover:shadow-lg ${
-                      selectedColor === color
-                        ? "border-white shadow-xl ring-2 ring-blue-400 ring-offset-2 ring-offset-gray-700 scale-105"
-                        : "border-gray-500 hover:border-gray-300"
-                    } ${
-                      color === "#ffffff" ? "shadow-inner" : ""
-                    }`}
-                    style={{ 
-                      backgroundColor: color,
-                      boxShadow: color === "#ffffff" 
-                        ? "inset 0 1px 3px rgba(0,0,0,0.2)" 
-                        : selectedColor === color 
-                        ? "0 4px 12px rgba(0,0,0,0.3)" 
-                        : "0 2px 4px rgba(0,0,0,0.1)"
-                    }}
-                    onClick={() => setBrushColor(color)}
-                    title={`${color} - ${index < 3 ? 'Essential' : 
-                           index < 7 ? 'Red/Pink' : 
-                           index < 11 ? 'Orange/Yellow' : 
-                           index < 15 ? 'Green' : 
-                           index < 23 ? 'Blue/Purple' : 'Earth Tone'}`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Custom Color Picker */}
-            <div className="space-y-2">
-              <div className="text-xs font-medium text-gray-400 uppercase tracking-wide">
-                Custom
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
-                <input
-                  type="color"
-                  value={selectedColor}
-                  onChange={(e) => setBrushColor(e.target.value)}
-                  className="w-12 h-8 rounded border-2 border-gray-500 bg-transparent cursor-pointer"
-                />
-                <div className="text-sm text-white">Pick any color</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Emoji Picker - Only show for emoji tool */}
-        {selectedTool === "emoji" && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-white">
-                Emoji
-              </label>
-              <div className="flex items-center gap-2">
-                <span className="text-lg">{currentEmoji}</span>
-                <div className="text-xs text-gray-400">Current</div>
-              </div>
-            </div>
-
-            <div className="bg-gray-700 rounded-lg p-2">
-              <EmojiPicker
-                onEmojiClick={(emojiData) => {
-                  setCurrentEmoji(emojiData.emoji);
-                }}
-                width="100%"
-                height={300}
-                theme={"dark" as any}
-                searchDisabled={false}
-                skinTonesDisabled={true}
-                previewConfig={{ showPreview: false }}
-                lazyLoadEmojis={true}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Clear Button */}
-        <div className="mt-4">
-          <Button
-            onClick={handleClear}
-            variant="destructive"
-            className="w-full"
-          >
-            Clear All
-          </Button>
-        </div>
-      </div>
+      {/* Visual indicators */}
+      {(isDrawing || isDrawingArrow) && (
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            width: `${brushSize / canvasScale.x}px`,
+            height: `${brushSize / canvasScale.y}px`,
+            border: "2px solid rgba(255, 255, 255, 0.7)",
+            borderRadius: selectedTool === "emoji" ? "0%" : "50%",
+            left: "50%",
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+            backgroundColor:
+              selectedTool === "eraser"
+                ? "rgba(255, 0, 0, 0.2)"
+                : "transparent",
+          }}
+        />
+      )}
     </div>
   );
 };

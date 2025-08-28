@@ -10,6 +10,8 @@ import {
   useAppStateStore,
   useCropStore,
   useImageStore,
+  useBlurStore,
+  usePaintStore,
 } from "../stores";
 import { TextToolRef } from "../types/types";
 import {
@@ -45,6 +47,41 @@ import type { ImageFile } from "../types/types";
 export const Route = createFileRoute("/resize-and-optimize")({
   component: ResizeAndOptimizeLayout,
 });
+
+// Error Boundary for canvas tools
+const CanvasErrorBoundary = ({ children }: { children: React.ReactNode }) => {
+  const [hasError, setHasError] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleError = (error: any) => {
+      console.error("Canvas tool error:", error);
+      setHasError(true);
+    };
+
+    window.addEventListener("error", handleError);
+    return () => window.removeEventListener("error", handleError);
+  }, []);
+
+  if (hasError) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+        <div className="text-center text-white">
+          <p className="text-xl mb-4">
+            Oops! Something went wrong with the editor.
+          </p>
+          <Button
+            onClick={() => setHasError(false)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700"
+          >
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+};
 
 // Fast thumbnail component for the gallery
 const FastThumbnail = React.memo(
@@ -235,6 +272,25 @@ function ResizeAndOptimizeLayout() {
     }
   }, [isEditModeRoute, routeMode, crop, setCrop]);
 
+  // Clear tool states when switching modes
+  useEffect(() => {
+    const clearToolStates = () => {
+      if (!isEditModeRoute) {
+        // Clear all tool states when exiting edit mode
+        const { resetCrop } = useCropStore.getState();
+        const { clearBlurStrokes } = useBlurStore.getState();
+        const { clearPaintStrokes, clearShapes } = usePaintStore.getState();
+
+        resetCrop();
+        clearBlurStrokes();
+        clearPaintStrokes();
+        clearShapes();
+      }
+    };
+
+    clearToolStates();
+  }, [isEditModeRoute, routeMode]);
+
   // Sync image context with zustand store
   useEffect(() => {
     setStoreImages(images);
@@ -399,15 +455,13 @@ function ResizeAndOptimizeLayout() {
           selectedImage && (
             <div className="flex-1 bg-gray-900 rounded-lg overflow-hidden relative">
               {isEditModeRoute && routeMode === "crop" ? (
-                // Crop mode
-                <div className="absolute inset-0 flex items-center justify-center p-8">
+                // Improved Crop mode with better sizing and interaction
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-900 p-4">
                   <div
-                    className="relative flex items-center justify-center"
+                    className="relative flex items-center justify-center max-w-full max-h-full"
                     style={{
                       transform: `scale(${cropZoom / 100})`,
                       transformOrigin: "center",
-                      maxWidth: "calc(100% - 64px)",
-                      maxHeight: "calc(100% - 64px)",
                     }}
                   >
                     <ReactCrop
@@ -419,8 +473,8 @@ function ResizeAndOptimizeLayout() {
                       minHeight={10}
                       keepSelection={true}
                       style={{
-                        maxWidth: "100%",
-                        maxHeight: "100%",
+                        maxWidth: "90vw",
+                        maxHeight: "80vh",
                       }}
                     >
                       <img
@@ -429,77 +483,112 @@ function ResizeAndOptimizeLayout() {
                         alt={selectedImage.file?.name || "Selected image"}
                         className="block max-w-full max-h-full object-contain"
                         style={{
-                          transform: `rotate(${selectedImage.rotation || 0}deg) scaleX(${selectedImage.flipHorizontal ? -1 : 1}) scaleY(${selectedImage.flipVertical ? -1 : 1})`,
+                          transform: `rotate(${selectedImage.rotation || 0}deg) scaleX(${
+                            selectedImage.flipHorizontal ? -1 : 1
+                          }) scaleY(${selectedImage.flipVertical ? -1 : 1})`,
                           maxHeight: "calc(100vh - 200px)",
-                          maxWidth: "100%",
+                          maxWidth: "calc(100vw - 100px)",
+                        }}
+                        onLoad={(e) => {
+                          // Initialize crop if not set
+                          if (!crop && e.currentTarget) {
+                            const { naturalWidth, naturalHeight } =
+                              e.currentTarget;
+                            const initialCrop = {
+                              unit: "%" as const,
+                              x: 10,
+                              y: 10,
+                              width: 80,
+                              height: 80,
+                            };
+                            setCrop(initialCrop);
+                          }
                         }}
                       />
                     </ReactCrop>
                   </div>
+
+                  {/* Crop info overlay */}
+                  {crop && (
+                    <div className="absolute bottom-4 left-4 bg-black bg-opacity-75 text-white p-3 rounded-lg text-sm">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>X: {Math.round(crop.x)}%</div>
+                        <div>Y: {Math.round(crop.y)}%</div>
+                        <div>W: {Math.round(crop.width)}%</div>
+                        <div>H: {Math.round(crop.height)}%</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : isEditModeRoute && routeMode === "blur" ? (
-                // Blur mode with interactive canvas
-                <BlurCanvas
-                  imageUrl={selectedImage.url}
-                  imageWidth={selectedImage.width || 800}
-                  imageHeight={selectedImage.height || 600}
-                  zoom={zoom}
-                />
+                // Use the improved BlurCanvas component
+                <CanvasErrorBoundary>
+                  <BlurCanvas
+                    imageUrl={selectedImage.url}
+                    imageWidth={selectedImage.width || 800}
+                    imageHeight={selectedImage.height || 600}
+                    zoom={zoom}
+                  />
+                </CanvasErrorBoundary>
               ) : isEditModeRoute && routeMode === "paint" ? (
-                // Paint mode with interactive canvas
-                <PaintCanvas
-                  imageUrl={selectedImage.url}
-                  imageWidth={selectedImage.width || 800}
-                  imageHeight={selectedImage.height || 600}
-                  zoom={zoom}
-                />
+                // Use the improved PaintCanvas component
+                <CanvasErrorBoundary>
+                  <PaintCanvas
+                    imageUrl={selectedImage.url}
+                    imageWidth={selectedImage.width || 800}
+                    imageHeight={selectedImage.height || 600}
+                    zoom={zoom}
+                  />
+                </CanvasErrorBoundary>
               ) : isEditModeRoute && routeMode === "text" ? (
-                // Text mode with text tool
-                <TextTool
-                  ref={textToolRef}
-                  imageUrl={selectedImage.url}
-                  onApplyText={async (textedImageUrl) => {
-                    try {
-                      // Convert data URL to blob
-                      const response = await fetch(textedImageUrl);
-                      const blob = await response.blob();
-                      const newUrl = URL.createObjectURL(blob);
+                // Use the improved TextTool component
+                <CanvasErrorBoundary>
+                  <TextTool
+                    ref={textToolRef}
+                    imageUrl={selectedImage.url}
+                    onApplyText={async (textedImageUrl) => {
+                      try {
+                        // Convert data URL to blob
+                        const response = await fetch(textedImageUrl);
+                        const blob = await response.blob();
+                        const newUrl = URL.createObjectURL(blob);
 
-                      // Update the image in the context
-                      updateImage(selectedImage.id, {
-                        url: newUrl,
-                        file: new File([blob], selectedImage.file.name, {
-                          type: blob.type,
-                        }),
-                        size: blob.size,
-                      });
+                        // Update the image in the context
+                        updateImage(selectedImage.id, {
+                          url: newUrl,
+                          file: new File([blob], selectedImage.file.name, {
+                            type: blob.type,
+                          }),
+                          size: blob.size,
+                        });
 
-                      // Clean up old URL to prevent memory leaks
-                      if (selectedImage.url !== selectedImage.compressedUrl) {
-                        URL.revokeObjectURL(selectedImage.url);
+                        // Clean up old URL to prevent memory leaks
+                        if (selectedImage.url !== selectedImage.compressedUrl) {
+                          URL.revokeObjectURL(selectedImage.url);
+                        }
+
+                        // Go back to edit mode
+                        setEditorState("editImage");
+                        navigate({
+                          to: `/resize-and-optimize/${selectedImage.id}/edit`,
+                        });
+                      } catch (error) {
+                        console.error("Error applying text:", error);
                       }
-
-                      // Go back to edit mode
+                    }}
+                    onCancel={() => {
                       setEditorState("editImage");
                       navigate({
                         to: `/resize-and-optimize/${selectedImage.id}/edit`,
                       });
-                    } catch (error) {
-                      console.error("Error applying text:", error);
+                    }}
+                    setEditorState={(state: string) =>
+                      setEditorState(state as any)
                     }
-                  }}
-                  onCancel={() => {
-                    setEditorState("editImage");
-                    navigate({
-                      to: `/resize-and-optimize/${selectedImage.id}/edit`,
-                    });
-                  }}
-                  setEditorState={(state: string) =>
-                    setEditorState(state as any)
-                  }
-                  setBold={() => {}}
-                  setItalic={() => {}}
-                />
+                    setBold={() => {}}
+                    setItalic={() => {}}
+                  />
+                </CanvasErrorBoundary>
               ) : (
                 // Other editing modes or bulk modes
                 <div className="absolute inset-0 flex items-center justify-center p-8">
