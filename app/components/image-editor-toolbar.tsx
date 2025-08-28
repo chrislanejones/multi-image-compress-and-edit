@@ -10,15 +10,6 @@ import { Lock, Images } from "lucide-react";
 import { EditorState } from "../types/types";
 import { useLocation } from "@tanstack/react-router";
 
-const toolbarMap: Partial<Record<EditorState, React.ReactNode>> = {
-  resizeAndOptimize: <MainToolbar />,
-  editImage: <EditModeToolbar />,
-  crop: <CropToolbar />,
-  blur: <BlurToolbar />,
-  paint: <PaintToolbar />,
-  text: <TextToolbar />,
-};
-
 const PadlockIndicator: React.FC<{
   editorState: EditorState;
   padlockAnimation?: boolean;
@@ -62,24 +53,35 @@ export const ImageEditorToolbar: React.FC<{ padlockAnimation?: boolean }> = ({
 }) => {
   const editorState = useAppStateStore((state) => state.editorState);
   const location = useLocation();
-  
+
   // Check if we're on an edit route with a tool query parameter
   const searchParams = new URLSearchParams(location.search);
-  const toolParam = searchParams.get('tool');
-  
-  // Determine which toolbar to show based on editorState and tool param
+  const toolParam = searchParams.get("tool");
+
+  // Determine which toolbar to show
   let CurrentToolbar: React.ReactNode = null;
-  
-  if (toolParam === 'crop') {
+
+  // Check for specific tool modes first
+  if (toolParam === "crop" || editorState === "crop") {
     CurrentToolbar = <CropToolbar />;
-  } else if (toolParam === 'blur') {
+  } else if (toolParam === "blur" || editorState === "blur") {
     CurrentToolbar = <BlurToolbar />;
-  } else if (toolParam === 'paint') {
+  } else if (toolParam === "paint" || editorState === "paint") {
     CurrentToolbar = <PaintToolbar />;
-  } else if (toolParam === 'text') {
+  } else if (toolParam === "text" || editorState === "text") {
     CurrentToolbar = <TextToolbar />;
   } else {
-    CurrentToolbar = toolbarMap[editorState] ?? null;
+    // Fallback to regular toolbar mapping
+    const toolbarMap: Partial<Record<EditorState, React.ReactNode>> = {
+      resizeAndOptimize: <MainToolbar />,
+      editImage: <EditModeToolbar />,
+      crop: <CropToolbar />,
+      blur: <BlurToolbar />,
+      paint: <PaintToolbar />,
+      text: <TextToolbar />,
+    };
+
+    CurrentToolbar = toolbarMap[editorState] ?? <MainToolbar />;
   }
 
   return (

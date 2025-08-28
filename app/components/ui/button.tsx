@@ -29,8 +29,7 @@ export function Button({
         {
           "bg-primary text-primary-foreground hover:bg-primary/90":
             variant === "default",
-          "bg-red-600 text-white hover:bg-red-700":
-            variant === "destructive",
+          "bg-red-600 text-white hover:bg-red-700": variant === "destructive",
           "bg-background hover:bg-accent hover:text-accent-foreground":
             variant === "outline",
           "bg-secondary text-secondary-foreground hover:bg-secondary/80":

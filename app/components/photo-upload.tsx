@@ -1,193 +1,154 @@
-// app/components/photo-upload.tsx
+// app/components/photo-upload.tsx - Updated version with drag, drop, and paste
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Upload, CheckCircle, AlertCircle, Zap } from "lucide-react";
+import { Upload, Zap, ArrowRight, Clipboard } from "lucide-react";
 import {
   ComputerWindow,
   ComputerWindowHeader,
   ComputerWindowLogo,
   ComputerWindowTitle,
-  ComputerWindowProgress,
-  ComputerWindowTerminal,
-  TerminalCommand,
-  TerminalInfo,
-  TerminalSuccess,
-  TerminalWarning,
-  TerminalHighlight,
 } from "./ui/computer-window";
 import { Button } from "./ui/button";
 import { useImageContext } from "../context/image-context";
 
-interface ProcessingStats {
-  totalOriginalSize: number;
-  totalCompressedSize: number;
-  averageCompressionRatio: number;
-  coreWebVitalsDistribution: Record<string, number>;
-  goodScorePercentage: number;
-}
-
 export default function PhotoUpload() {
   const navigate = useNavigate();
-  const { addFiles, images, loadingImages } = useImageContext();
+  const { addFiles, images } = useImageContext();
 
   const [isDragging, setIsDragging] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [progress, setProgress] = useState({ current: 0, total: 0 });
-  const [processingStartTime, setProcessingStartTime] = useState<number>(0);
-  const [processingLogs, setProcessingLogs] = useState<string[]>([]);
-  const [compressionStats, setCompressionStats] =
-    useState<ProcessingStats | null>(null);
+  const [isPasting, setIsPasting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const addLog = useCallback((message: string) => {
-    setProcessingLogs((prev) => [...prev.slice(-12), message]); // Keep last 12 logs
-  }, []);
+  // Helper function to convert clipboard items to files
+  const clipboardItemsToFiles = useCallback(
+    async (clipboardItems: ClipboardItem[]): Promise<File[]> => {
+      const files: File[] = [];
 
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
-  };
-
-  // Calculate stats when images change
-  useEffect(() => {
-    if (images.length > 0 && isProcessing) {
-      const stats = {
-        totalOriginalSize: 0,
-        totalCompressedSize: 0,
-        averageCompressionRatio: 0,
-        coreWebVitalsDistribution: {
-          good: 0,
-          "almost-there": 0,
-          "needs-improvement": 0,
-          poor: 0,
-        },
-        goodScorePercentage: 0,
-      };
-
-      let processedCount = 0;
-
-      images.forEach((img) => {
-        if (img.metadata) {
-          stats.totalOriginalSize += img.metadata.originalSize || img.size || 0;
-          stats.totalCompressedSize +=
-            img.metadata.compressedSize || img.size || 0;
-
-          if (img.metadata.compressionRatio !== undefined) {
-            stats.averageCompressionRatio += img.metadata.compressionRatio;
-            processedCount++;
+      for (const item of clipboardItems) {
+        for (const type of item.types) {
+          if (type.startsWith("image/")) {
+            try {
+              const blob = await item.getType(type);
+              // Generate a filename based on the current timestamp and type
+              const extension = type.split("/")[1] || "png";
+              const filename = `pasted-image-${Date.now()}.${extension}`;
+              const file = new File([blob], filename, { type });
+              files.push(file);
+            } catch (error) {
+              console.error("Error processing clipboard image:", error);
+            }
           }
-
-          const score = img.metadata.coreWebVitalsScore || "poor";
-          stats.coreWebVitalsDistribution[score]++;
         }
-      });
-
-      if (processedCount > 0) {
-        stats.averageCompressionRatio = Math.round(
-          stats.averageCompressionRatio / processedCount
-        );
-        stats.goodScorePercentage = Math.round(
-          ((stats.coreWebVitalsDistribution.good +
-            stats.coreWebVitalsDistribution["almost-there"]) /
-            images.length) *
-            100
-        );
-        setCompressionStats(stats);
       }
 
-      setProgress({
-        current: images.length - loadingImages.size,
-        total: images.length,
-      });
+      return files;
+    },
+    []
+  );
+
+  // Handle paste events
+  const handlePaste = useCallback(
+    async (e: ClipboardEvent) => {
+      e.preventDefault();
+
+      if (!e.clipboardData) return;
+
+      setIsPasting(true);
+
+      try {
+        // Try to get files from clipboard items (modern approach)
+        if (e.clipboardData.items) {
+          const items = Array.from(e.clipboardData.items);
+          const imageFiles: File[] = [];
+
+          for (const item of items) {
+            if (item.type.startsWith("image/")) {
+              const file = item.getAsFile();
+              if (file) {
+                // Generate a better filename
+                const extension = file.type.split("/")[1] || "png";
+                const filename = `pasted-image-${Date.now()}.${extension}`;
+                const renamedFile = new File([file], filename, {
+                  type: file.type,
+                });
+                imageFiles.push(renamedFile);
+              }
+            }
+          }
+
+          if (imageFiles.length > 0) {
+            await addFiles(imageFiles);
+            navigate({ to: "/processing" });
+            return;
+          }
+        }
+
+        // Fallback: try to get files from clipboard files
+        if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+          const files = Array.from(e.clipboardData.files).filter((file) =>
+            file.type.startsWith("image/")
+          );
+
+          if (files.length > 0) {
+            await addFiles(files);
+            navigate({ to: "/processing" });
+            return;
+          }
+        }
+
+        console.log("No image data found in clipboard");
+      } catch (error) {
+        console.error("Paste error:", error);
+      } finally {
+        setIsPasting(false);
+      }
+    },
+    [addFiles, navigate]
+  );
+
+  // Set up global paste event listener
+  useEffect(() => {
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      // Only handle paste if we're not in an input field
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+      handlePaste(e);
+    };
+
+    document.addEventListener("paste", handleGlobalPaste);
+    return () => document.removeEventListener("paste", handleGlobalPaste);
+  }, [handlePaste]);
+
+  // Show paste visual feedback
+  useEffect(() => {
+    if (isPasting) {
+      const timer = setTimeout(() => setIsPasting(false), 2000);
+      return () => clearTimeout(timer);
     }
-  }, [images, loadingImages, isProcessing]);
+  }, [isPasting]);
 
   const handleFiles = useCallback(
     async (files: FileList) => {
       if (!files || files.length === 0) return;
 
-      setIsProcessing(true);
-      setProcessingStartTime(Date.now());
-      setProcessingLogs([]);
-      setCompressionStats(null);
-      setProgress({ current: 0, total: files.length });
-
-      addLog("🚀 ImageHorse Enhanced Compression Started");
-      addLog(`📊 Processing ${files.length} images for Core Web Vitals`);
-      addLog("🎯 Target: Excellent performance scores for all images");
-      addLog("─".repeat(50));
-
       try {
-        // Convert FileList to File array and process
+        // Convert FileList to File array and add to context
         const fileArray = Array.from(files);
         await addFiles(fileArray);
 
-        // Monitor processing completion
-        const checkCompletion = () => {
-          if (loadingImages.size === 0) {
-            // All images processed
-            const elapsedTime = Date.now() - processingStartTime;
-            addLog("─".repeat(50));
-            addLog("🎉 All images processed successfully!");
-
-            if (compressionStats) {
-              addLog(
-                `💾 Total savings: ${formatBytes(compressionStats.totalOriginalSize - compressionStats.totalCompressedSize)}`
-              );
-              addLog(
-                `📊 Average compression: ${compressionStats.averageCompressionRatio}%`
-              );
-              addLog(
-                `⚡ Core Web Vitals: ${compressionStats.goodScorePercentage}% optimized`
-              );
-              addLog(
-                `✨ ${compressionStats.coreWebVitalsDistribution.good} images have excellent performance`
-              );
-
-              if (compressionStats.coreWebVitalsDistribution.poor > 0) {
-                addLog(
-                  `⚠️ ${compressionStats.coreWebVitalsDistribution.poor} images need manual optimization`
-                );
-              }
-            }
-
-            addLog(`⏱️ Completed in ${(elapsedTime / 1000).toFixed(1)}s`);
-            addLog("🚀 Ready for editing!");
-
-            // Navigate after showing results
-            setTimeout(() => {
-              navigate({ to: "/resize-and-optimize" });
-            }, 3000);
-          } else {
-            // Still processing, check again
-            setTimeout(checkCompletion, 500);
-          }
-        };
-
-        // Start monitoring
-        setTimeout(checkCompletion, 1000);
+        // Navigate to processing page immediately after adding files
+        navigate({ to: "/processing" });
       } catch (error) {
-        console.error("Processing error:", error);
-        addLog(
-          `❌ Error: ${error instanceof Error ? error.message : "Unknown error"}`
-        );
-
-        setTimeout(() => {
-          setIsProcessing(false);
-        }, 2000);
+        console.error("Upload error:", error);
       }
     },
-    [
-      addFiles,
-      processingStartTime,
-      addLog,
-      navigate,
-      loadingImages.size,
-      compressionStats,
-    ]
+    [addFiles, navigate]
   );
 
   const handleFileChange = useCallback(
@@ -209,165 +170,40 @@ export default function PhotoUpload() {
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(true);
   }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(false);
+    e.stopPropagation();
+    // Only set dragging to false if we're leaving the drop zone entirely
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragging(false);
+    }
   }, []);
 
-  const handleDragOver = useCallback(
-    (e: React.DragEvent) => e.preventDefault(),
-    []
-  );
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
+      e.stopPropagation();
       setIsDragging(false);
-      if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
+
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleFiles(e.dataTransfer.files);
+      }
     },
     [handleFiles]
   );
 
   const hasImages = images.length > 0;
-  const progressPercent =
-    progress.total > 0 ? (progress.current / progress.total) * 100 : 0;
 
-  // Processing view
-  if (isProcessing) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-        <ComputerWindow size="xl">
-          <ComputerWindowHeader>
-            <div className="mb-4">
-              <div className="w-12 h-12 border-4 border-sky-400 border-t-transparent rounded-full animate-spin" />
-            </div>
-            <ComputerWindowTitle
-              title="ImageHorse Enhanced Processing"
-              subtitle={`Core Web Vitals optimization for ${progress.total} images`}
-            />
-            <span className="flex gap-2 font-medium text-gray-400 mt-2">
-              <span>
-                {progress.current}/{progress.total}
-              </span>
-              <span>•</span>
-              <span>{Math.round(progressPercent)}%</span>
-              <span>•</span>
-              <span>
-                {loadingImages.size > 0 ? "Processing..." : "Complete"}
-              </span>
-            </span>
-          </ComputerWindowHeader>
-
-          <ComputerWindowProgress progress={progressPercent} />
-
-          {/* Compression Statistics */}
-          {compressionStats && (
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-gray-800 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Zap className="w-5 h-5 text-green-400" />
-                  <span className="text-white font-medium">
-                    Compression Stats
-                  </span>
-                </div>
-                <div className="space-y-1 text-sm">
-                  <div className="text-gray-300">
-                    Original: {formatBytes(compressionStats.totalOriginalSize)}
-                  </div>
-                  <div className="text-green-400">
-                    Compressed:{" "}
-                    {formatBytes(compressionStats.totalCompressedSize)}
-                  </div>
-                  <div className="text-sky-400">
-                    Saved:{" "}
-                    {formatBytes(
-                      compressionStats.totalOriginalSize -
-                        compressionStats.totalCompressedSize
-                    )}
-                    ({compressionStats.averageCompressionRatio}%)
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gray-800 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  {compressionStats.goodScorePercentage >= 80 ? (
-                    <CheckCircle className="w-5 h-5 text-green-400" />
-                  ) : compressionStats.goodScorePercentage >= 60 ? (
-                    <AlertCircle className="w-5 h-5 text-yellow-400" />
-                  ) : (
-                    <AlertCircle className="w-5 h-5 text-red-400" />
-                  )}
-                  <span className="text-white font-medium">
-                    Core Web Vitals
-                  </span>
-                </div>
-                <div className="space-y-1 text-sm">
-                  <div className="text-green-400">
-                    Excellent: {compressionStats.coreWebVitalsDistribution.good}
-                  </div>
-                  <div className="text-yellow-400">
-                    Good:{" "}
-                    {compressionStats.coreWebVitalsDistribution["almost-there"]}
-                  </div>
-                  <div className="text-sky-400 font-medium">
-                    {compressionStats.goodScorePercentage}% Optimized
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Terminal Output */}
-          <ComputerWindowTerminal maxHeight="max-h-64">
-            <TerminalCommand>
-              $ imagehorse --core-web-vitals --aggressive --verbose
-            </TerminalCommand>
-            <TerminalInfo>
-              ImageHorse v2.0 - Core Web Vitals Optimizer
-            </TerminalInfo>
-            <TerminalInfo>
-              Using AVIF/WebP with aggressive compression...
-            </TerminalInfo>
-            <TerminalInfo>{"─".repeat(40)}</TerminalInfo>
-
-            {processingLogs.map((log, index) => {
-              if (log.startsWith("🚀") || log.startsWith("🎉")) {
-                return <TerminalSuccess key={index}>{log}</TerminalSuccess>;
-              } else if (log.startsWith("⚠️") || log.startsWith("❌")) {
-                return <TerminalWarning key={index}>{log}</TerminalWarning>;
-              } else if (log.includes("✅") || log.includes("score")) {
-                return (
-                  <div key={index} className="text-green-400">
-                    {log}
-                  </div>
-                );
-              } else {
-                return <TerminalInfo key={index}>{log}</TerminalInfo>;
-              }
-            })}
-
-            {loadingImages.size === 0 && progress.total > 0 && (
-              <>
-                <TerminalInfo>{"─".repeat(40)}</TerminalInfo>
-                <TerminalSuccess>
-                  ✓ Core Web Vitals optimization complete
-                </TerminalSuccess>
-                <TerminalSuccess>
-                  → Redirecting to image editor...
-                </TerminalSuccess>
-              </>
-            )}
-          </ComputerWindowTerminal>
-        </ComputerWindow>
-      </div>
-    );
-  }
-
-  // Has images view
+  // Has images view - show option to add more or proceed
   if (hasImages) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
@@ -379,33 +215,63 @@ export default function PhotoUpload() {
             />
             <ComputerWindowTitle
               title="ImageHorse"
-              subtitle="Core Web Vitals Image Optimizer"
+              subtitle="Ultra Core Web Vitals Image Optimizer"
             />
           </ComputerWindowHeader>
 
           <div className="text-center mb-6">
-            <p className="text-gray-300">
-              Add more images for Core Web Vitals optimization
+            <p className="text-gray-300 mb-2">
+              You have {images.length} image{images.length !== 1 ? "s" : ""}{" "}
+              ready for optimization
+            </p>
+            <p className="text-xs text-gray-400">
+              Add more images or proceed to ultra-aggressive Core Web Vitals
+              optimization
             </p>
           </div>
 
-          {/* Upload Area */}
+          {/* Upload Area with Drag, Drop and Paste */}
           <div
-            className={`flex flex-col items-center justify-center p-8 border-2 border-dashed ${
+            className={`flex flex-col items-center justify-center p-6 border-2 border-dashed transition-all duration-200 ${
               isDragging
-                ? "border-sky-400 bg-sky-400/10"
-                : "border-gray-600 bg-gray-800/50"
-            } rounded-lg hover:bg-gray-800/70 transition-colors cursor-pointer mb-6`}
+                ? "border-sky-400 bg-sky-400/20 scale-105"
+                : isPasting
+                  ? "border-purple-400 bg-purple-400/20 scale-105"
+                  : "border-gray-600 bg-gray-800/50"
+            } rounded-lg hover:bg-gray-800/70 cursor-pointer mb-6`}
             onClick={handleUploadClick}
             onDragEnter={handleDragEnter}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <Upload className="h-10 w-10 text-sky-400 mb-4" />
+            {isPasting ? (
+              <Clipboard className="h-8 w-8 mb-2 text-purple-300 animate-pulse" />
+            ) : (
+              <Upload
+                className={`h-8 w-8 mb-2 transition-colors ${isDragging ? "text-sky-300" : "text-sky-400"}`}
+              />
+            )}
+
             <p className="text-sm text-gray-300 text-center">
-              Drag and drop more images or click to browse
+              {isPasting
+                ? "Processing pasted image..."
+                : isDragging
+                  ? "Drop your images here!"
+                  : "Add more images, drag & drop, or paste (Ctrl+V)"}
             </p>
+
+            {isDragging && (
+              <p className="text-xs text-sky-400 mt-1 animate-pulse">
+                Release to add files
+              </p>
+            )}
+
+            {isPasting && (
+              <p className="text-xs text-purple-400 mt-1 animate-pulse">
+                Processing clipboard image...
+              </p>
+            )}
           </div>
 
           <input
@@ -417,27 +283,40 @@ export default function PhotoUpload() {
             className="hidden"
           />
 
-          {/* Buttons */}
-          <div className="flex gap-4 w-full">
-            <button
+          {/* Buttons using shadcn/ui styling */}
+          <div className="flex gap-3 w-full">
+            <Button
               onClick={handleUploadClick}
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-gray-200 dark:bg-white text-black hover:bg-gray-300 dark:hover:bg-gray-100 h-11 rounded-md px-8 flex-1"
+              variant="outline"
+              className="flex-1 h-12"
             >
-              Add More Images
-            </button>
-            <button
-              onClick={handleBackToImages}
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-gray-200 dark:bg-white text-black hover:bg-gray-300 dark:hover:bg-gray-100 h-11 rounded-md px-8 flex-1"
+              <Upload className="mr-2 h-4 w-4" />
+              Add More
+            </Button>
+
+            <Button
+              onClick={() => navigate({ to: "/processing" })}
+              className="flex-2 h-12"
             >
-              View Gallery ({images.length})
-            </button>
+              <Zap className="mr-2 h-4 w-4" />
+              <span className="mr-2">Start ImageHorse Processing</span>
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Current images preview */}
+          <div className="mt-4 p-3 bg-gray-800/50 rounded-lg">
+            <div className="text-xs text-gray-400 text-center">
+              {images.length} image{images.length !== 1 ? "s" : ""} loaded •
+              Ultra-aggressive compression ready
+            </div>
           </div>
         </ComputerWindow>
       </div>
     );
   }
 
-  // Initial upload view
+  // Initial upload view - no images yet
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <ComputerWindow>
@@ -448,39 +327,88 @@ export default function PhotoUpload() {
           />
           <ComputerWindowTitle
             title="ImageHorse"
-            subtitle="Core Web Vitals Image Optimizer"
+            subtitle="Ultra Core Web Vitals Image Optimizer"
           />
         </ComputerWindowHeader>
 
         <div className="text-center mb-6">
-          <p className="text-gray-300">
-            Upload images for aggressive Core Web Vitals optimization
+          <p className="text-gray-300 mb-2">
+            Upload images for ultra-aggressive Core Web Vitals optimization
           </p>
-          <p className="text-xs text-gray-400 mt-2">
+          <p className="text-xs text-gray-400">
             Automatically compressed to achieve excellent performance scores
           </p>
         </div>
 
-        {/* Upload Area */}
+        {/* Main Upload Area with Enhanced Drag, Drop, and Paste */}
         <div
-          className={`flex flex-col items-center justify-center p-8 border-2 border-dashed ${
+          className={`flex flex-col items-center justify-center p-8 border-2 border-dashed transition-all duration-300 ${
             isDragging
-              ? "border-sky-400 bg-sky-400/10"
-              : "border-gray-600 bg-gray-800/50"
-          } rounded-lg hover:bg-gray-800/70 transition-colors cursor-pointer mb-6`}
+              ? "border-sky-400 bg-sky-400/20 scale-105 shadow-lg shadow-sky-400/25"
+              : isPasting
+                ? "border-purple-400 bg-purple-400/20 scale-105 shadow-lg shadow-purple-400/25"
+                : "border-gray-600 bg-gray-800/50"
+          } rounded-lg hover:bg-gray-800/70 hover:border-gray-500 cursor-pointer mb-6`}
           onClick={handleUploadClick}
           onDragEnter={handleDragEnter}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <Upload className="h-10 w-10 text-sky-400 mb-4" />
-          <p className="text-sm text-gray-300 text-center">
-            Drag and drop your images here or click to browse
+          {isPasting ? (
+            <Clipboard className="h-12 w-12 mb-4 text-purple-300 animate-bounce" />
+          ) : (
+            <Upload
+              className={`h-12 w-12 mb-4 transition-all duration-300 ${
+                isDragging ? "text-sky-300 scale-110" : "text-sky-400"
+              }`}
+            />
+          )}
+
+          <p
+            className={`text-lg font-medium mb-2 transition-colors ${
+              isPasting
+                ? "text-purple-300"
+                : isDragging
+                  ? "text-sky-300"
+                  : "text-white"
+            }`}
+          >
+            {isPasting
+              ? "Processing pasted image!"
+              : isDragging
+                ? "Drop your images here!"
+                : "Drop your images here"}
           </p>
-          <p className="text-xs text-gray-500 text-center mt-2">
-            AVIF, WebP & JPEG • Automatic Core Web Vitals optimization
+
+          <p className="text-sm text-gray-300 text-center mb-4">
+            {isPasting
+              ? "Image from clipboard is being processed..."
+              : isDragging
+                ? "Release to start processing"
+                : "Drag and drop, click to browse, or paste images (Ctrl+V)"}
           </p>
+
+          {isDragging && (
+            <div className="text-xs text-sky-400 animate-pulse">
+              🚀 Ready for ultra-aggressive optimization
+            </div>
+          )}
+
+          {isPasting && (
+            <div className="text-xs text-purple-400 animate-pulse">
+              📋 Processing clipboard image...
+            </div>
+          )}
+
+          {!isDragging && !isPasting && (
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <Zap className="h-3 w-3" />
+              <span>
+                AVIF, WebP & JPEG • Ultra Core Web Vitals optimization
+              </span>
+            </div>
+          )}
         </div>
 
         <input
@@ -492,13 +420,36 @@ export default function PhotoUpload() {
           className="hidden"
         />
 
-        {/* Button */}
-        <button
-          onClick={handleUploadClick}
-          className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-gray-200 dark:bg-white text-black hover:bg-gray-300 dark:hover:bg-gray-100 h-11 rounded-md px-8 w-full"
-        >
-          Select Images for Optimization
-        </button>
+        {/* Button using shadcn/ui styling */}
+        <Button onClick={handleUploadClick} className="w-full h-12">
+          <Upload className="mr-2 h-4 w-4" />
+          Select Images for Ultra Optimization
+        </Button>
+
+        {/* Features highlight */}
+        <div className="mt-6 p-4 bg-gray-800/30 rounded-lg border border-gray-700">
+          <div className="text-xs text-gray-400 text-center mb-3">
+            <strong className="text-white">ImageHorse Ultra Features:</strong>
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-xs text-gray-400">
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+              <span>Ultra-aggressive compression</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+              <span>Core Web Vitals optimized</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+              <span>AVIF/WebP conversion</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 bg-orange-400 rounded-full"></div>
+              <span>Paste from clipboard (Ctrl+V)</span>
+            </div>
+          </div>
+        </div>
       </ComputerWindow>
     </div>
   );
