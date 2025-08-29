@@ -85,6 +85,12 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
     multiple: true,
   });
 
+  const updateImage = useCallback((id: string, updates: Partial<ImageFile>) => {
+    setImages((prev) =>
+      prev.map((img) => (img.id === id ? { ...img, ...updates } : img))
+    );
+  }, []);
+
   const onRemove = useCallback(
     (id: string) => {
       setImages((prev) => prev.filter((img) => img.id !== id));
@@ -159,12 +165,6 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     [images, updateImage]
   );
-
-  const updateImage = useCallback((id: string, updates: Partial<ImageFile>) => {
-    setImages((prev) =>
-      prev.map((img) => (img.id === id ? { ...img, ...updates } : img))
-    );
-  }, []);
 
   const onRotate = useCallback((id: string, degrees: number) => {
     setImages((prev) =>
