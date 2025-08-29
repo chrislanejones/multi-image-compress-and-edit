@@ -470,7 +470,7 @@ export default function ImageResizer() {
         <div className="space-y-2">
           <label className="text-sm font-medium">Output Format</label>
           <Select value={format} onValueChange={handleFormatChange}>
-            <SelectTrigger className="w-full bg-gray-700">
+            <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
