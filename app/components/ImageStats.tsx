@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { formatBytes } from "../utils/image";
+import { FileArchive } from "lucide-react";
 import type { ImageFile } from "../types/types";
 
 interface ImageStatsProps {
@@ -17,7 +18,8 @@ export default function ImageStats({ selectedImage }: ImageStatsProps) {
   return (
     <Card className="rounded-lg bg-gray-800 text-white border-0 shadow-lg">
       <CardHeader className="p-3 pb-0">
-        <CardTitle className="text-lg font-semibold">
+        <CardTitle className="flex items-center text-lg font-semibold">
+          <FileArchive className="h-5 w-5 mr-2" />
           Compression Stats
         </CardTitle>
       </CardHeader>

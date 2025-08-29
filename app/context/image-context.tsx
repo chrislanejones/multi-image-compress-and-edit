@@ -839,8 +839,15 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       onApplyBlur,
       onApplyPaint,
       onApplyText,
-      addImages: (newImages: ImageFile[]) =>
-        setImages((prev) => [...prev, ...newImages]),
+      addImages: (newImages: ImageFile[]) => {
+        console.log('addImages called with:', newImages.length, 'images');
+        console.log('Previous images count:', images.length);
+        setImages((prev) => {
+          const updated = [...prev, ...newImages];
+          console.log('Updated images count:', updated.length);
+          return updated;
+        });
+      },
       removeAllImages: () => setImages([]),
       navigateImage: (direction: NavigationDirection) => {
         const idx = images.findIndex((i) => i.id === selectedImageId);

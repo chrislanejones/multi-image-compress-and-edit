@@ -17,6 +17,8 @@ function UploadPage() {
   const {
     terminalOutput,
     setTerminalOutput,
+    addTerminalLine,
+    addTerminalLines,
     hasProcessedImages,
     setHasProcessedImages,
   } = useUploadStore();
@@ -27,6 +29,7 @@ function UploadPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const hasImages = images.length > 0;
+  console.log('hasImages:', hasImages, 'images.length:', images.length);
 
   async function handleFiles(files: FileList) {
     if (!files || files.length === 0) return;
@@ -35,16 +38,14 @@ function UploadPage() {
     setProcessingStartTime(Date.now());
     setProgress({ current: 0, total: files.length });
 
-    // Initialize terminal output
-    const newTerminalOutput = [
-      { text: `$ imagehorse --compress --verbose`, type: "command" as const },
-      {
-        text: `ImageHorse v2.0`,
-        type: "info" as const,
-      },
-      { text: `Processing ${files.length} files...`, type: "info" as const },
-      { text: `─────────────────────────────────────`, type: "info" as const },
-    ];
+    // Add initial processing header to terminal (like a receipt)
+    const timestamp = new Date().toLocaleTimeString();
+    addTerminalLines([
+      { text: "", type: "info" },
+      { text: `[${timestamp}] $ imagehorse --compress --verbose`, type: "command" },
+      { text: `ImageHorse v2.0 - Processing ${files.length} files...`, type: "info" },
+      { text: `─────────────────────────────────────`, type: "info" },
+    ]);
 
     try {
       const processed = await Promise.all(
@@ -65,24 +66,15 @@ function UploadPage() {
 
           const url = URL.createObjectURL(compressedFile);
 
-          // Add terminal output for this file
+          // Add terminal output for this file (appending like a receipt)
           const fileIndex = String(index + 1).padStart(2, "0");
           const originalSizeMB = (originalSize / (1024 * 1024)).toFixed(1);
           const compressedSizeMB = (compressedSize / (1024 * 1024)).toFixed(1);
-          newTerminalOutput.push(
-            {
-              text: `[${fileIndex}] Processing ${file.name}`,
-              type: "info" as const,
-            },
-            {
-              text: `  → Original: ${originalSizeMB}MB → Compressed: ${compressedSizeMB}MB (${compressionRatio}% reduction)`,
-              type: "info" as const,
-            },
-            {
-              text: `  ✓ Dimensions optimized: 1920x1080`,
-              type: "info" as const,
-            }
-          );
+          
+          // Add each line as it processes (receipt style)
+          addTerminalLine(`[${fileIndex}] Processing ${file.name}`, "info");
+          addTerminalLine(`  → Original: ${originalSizeMB}MB → Compressed: ${compressedSizeMB}MB (${compressionRatio}% reduction)`, "success");
+          addTerminalLine(`  ✓ Dimensions optimized: 1920x1080`, "success");
 
           const imageData = {
             id: crypto.randomUUID(),
@@ -105,19 +97,18 @@ function UploadPage() {
         })
       );
 
-      // Add completion message
-      newTerminalOutput.push(
-        { text: "", type: "info" as const },
-        {
-          text: "✓ All images processed successfully",
-          type: "info" as const,
-        },
-        { text: `→ Total images: ${processed.length}`, type: "info" as const }
-      );
-
-      setTerminalOutput(newTerminalOutput);
+      // Add completion message to receipt
+      addTerminalLines([
+        { text: "", type: "info" },
+        { text: "✓ All images processed successfully", type: "success" },
+        { text: `→ Total images: ${processed.length}`, type: "info" },
+        { text: `→ Ready for editing and download`, type: "info" },
+        { text: `─────────────────────────────────────`, type: "info" },
+      ]);
+      console.log('Processing complete, processed images:', processed.length);
       setHasProcessedImages(true);
       addImages(processed);
+      console.log('Images added to context, current images length:', images.length);
 
       // Ensure minimum 5 second display time
       const elapsedTime = Date.now() - processingStartTime;
@@ -309,16 +300,16 @@ function UploadPage() {
             >
               Select Images
             </Button>
-            {hasImages && (
-              <Button
-                onClick={handleReviewImages}
-                variant="outline"
-                className="flex-1"
-              >
-                <Images className="mr-2 h-4 w-4" />
-                Review and Edit Images ({images.length})
-              </Button>
-            )}
+            {/* DEBUG: Show button logic */}
+            <Button
+              onClick={handleReviewImages}
+              variant="outline"
+              className="flex-1"
+              disabled={!hasImages}
+            >
+              <Images className="mr-2 h-4 w-4" />
+              Review and Edit Images ({images.length}) {hasImages ? '✓' : '✗'}
+            </Button>
           </div>
         </div>
       </div>

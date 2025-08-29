@@ -1,5 +1,6 @@
 import { cn } from "../../lib/utils";
 import { ScrollArea } from "./scroll-area";
+import { useEffect, useRef } from "react";
 
 interface TerminalProps {
   className?: string;
@@ -16,6 +17,17 @@ export function Terminal({
   activeTab = 0,
   onTabChange,
 }: TerminalProps) {
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when children change (new terminal entries)
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+    }
+  }, [children]);
   return (
     <div className={cn("border rounded-lg overflow-hidden", className)}>
       {/* Terminal Header */}
@@ -43,7 +55,7 @@ export function Terminal({
       
       {/* Terminal Content with Scroll */}
       <div className="bg-muted">
-        <ScrollArea className="h-64 w-full">
+        <ScrollArea className="h-64 w-full" ref={scrollAreaRef}>
           <div className="px-4 py-3.5 text-muted-foreground">
             {children}
           </div>

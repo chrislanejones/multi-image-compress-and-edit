@@ -13,6 +13,7 @@ interface UploadStore {
   
   // Actions
   addTerminalLine: (text: string, type?: TerminalEntry['type']) => void;
+  addTerminalLines: (entries: TerminalEntry[]) => void;
   setTerminalOutput: (output: TerminalEntry[]) => void;
   clearTerminal: () => void;
   setHasProcessedImages: (hasProcessed: boolean) => void;
@@ -29,6 +30,11 @@ export const useUploadStore = create<UploadStore>()(
       addTerminalLine: (text, type = 'info') =>
         set((state) => ({
           terminalOutput: [...state.terminalOutput, { text, type }],
+        })),
+
+      addTerminalLines: (entries) =>
+        set((state) => ({
+          terminalOutput: [...state.terminalOutput, ...entries],
         })),
 
       setTerminalOutput: (output) => set({ terminalOutput: output }),
