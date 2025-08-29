@@ -5,6 +5,7 @@ import { Minus, Plus, MousePointer } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Slider } from "./ui/slider";
+import type { MousePosition } from "../types/types";
 
 export interface ImageZoomViewProps {
   imageUrl: string;
@@ -13,11 +14,6 @@ export interface ImageZoomViewProps {
     flipHorizontal?: boolean;
     flipVertical?: boolean;
   };
-}
-
-interface MousePosition {
-  x: number;
-  y: number;
 }
 
 export default function ImageZoomView({ imageUrl, imageTransforms }: ImageZoomViewProps) {
