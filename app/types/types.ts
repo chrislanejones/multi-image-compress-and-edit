@@ -92,6 +92,7 @@ export interface FullImageContextType {
   onApplyBlur: () => void;
   onApplyPaint: () => void;
   onApplyText: () => void;
+  resetCompression: (id: string) => void;
 }
 
 /**

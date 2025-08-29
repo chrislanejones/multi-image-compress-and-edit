@@ -18,8 +18,10 @@ import {
   useAppStateStore,
   useCropStore,
   useBlurStore,
-  usePaintStore 
+  usePaintStore,
+  useCompressionStore
 } from "@/stores";
+import { compressBestForCWVFromURL, calculateCoreWebVitalsScore } from "@/utils/core-web-vitals";
 
 const ImageContext = createContext<FullImageContextType | null>(null);
 
@@ -92,8 +94,70 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const onSelect = useCallback(
-    (id: string | null) => setSelectedImageId(id),
-    []
+    async (id: string | null) => {
+      setSelectedImageId(id);
+      
+      // Trigger Core Web Vitals compression when image is selected
+      if (id) {
+        const compressionStore = useCompressionStore.getState();
+        const image = images.find(img => img.id === id);
+        
+        if (image && compressionStore.coreWebVitalsEnabled && 
+            !compressionStore.compressedImages.has(id) && 
+            !compressionStore.isCompressing(id)) {
+          
+          try {
+            // Start compression tracking
+            compressionStore.startCompressing(id);
+            
+            // Store original data before compression
+            const originalData = {
+              url: image.url,
+              size: image.size,
+              metadata: image.metadata
+            };
+            
+            // Compress with Core Web Vitals optimization
+            const result = await compressBestForCWVFromURL(image.url, 1400);
+            const compressedUrl = URL.createObjectURL(result.blob);
+            const compressionRatio = Math.round(
+              Math.max(0, 1 - result.bytes / image.size) * 100
+            );
+
+            // Update image with compressed version
+            updateImage(id, {
+              compressedUrl,
+              compressedSize: result.bytes,
+              metadata: {
+                ...image.metadata,
+                originalSize: image.size,
+                compressedSize: result.bytes,
+                compressionRatio,
+                coreWebVitalsScore: result.coreWebVitalsScore,
+                codec: result.codec,
+                quality: result.quality,
+                bpp: +result.bpp.toFixed(3),
+                width: result.width,
+                height: result.height,
+                boltTier: result.boltTier,
+              },
+            });
+
+            // Track compressed image
+            compressionStore.addCompressedImage(id, originalData);
+            
+            console.log(
+              `✅ CWV Compressed ${image.name}: ${result.coreWebVitalsScore} score, ${Math.round(result.bytes / 1024)}KB`
+            );
+          } catch (error) {
+            console.warn("Core Web Vitals compression failed:", image?.name, error);
+          } finally {
+            compressionStore.stopCompressing(id);
+          }
+        }
+      }
+    },
+    [images, updateImage]
   );
 
   const updateImage = useCallback((id: string, updates: Partial<ImageFile>) => {
@@ -751,6 +815,30 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
     setEditorState("editImage");
   }, []);
 
+  // Reset Compression function to restore original image
+  const resetCompression = useCallback((id: string) => {
+    const compressionStore = useCompressionStore.getState();
+    const originalData = compressionStore.resetCompression(id);
+    
+    if (originalData) {
+      // Restore original image data
+      updateImage(id, {
+        compressedUrl: undefined,
+        compressedSize: undefined,
+        metadata: {
+          ...originalData.metadata,
+          coreWebVitalsScore: calculateCoreWebVitalsScore(
+            originalData.metadata?.width || 0,
+            originalData.metadata?.height || 0,
+            originalData.size
+          ),
+        },
+      });
+      
+      console.log(`🔄 Compression reset for image ${id}`);
+    }
+  }, [updateImage]);
+
   useEffect(() => {
     images.forEach((img) => {
       if (img.width === 0) {
@@ -839,6 +927,7 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       onApplyBlur,
       onApplyPaint,
       onApplyText,
+      resetCompression,
       addImages: (newImages: ImageFile[]) => {
         console.log('addImages called with:', newImages.length, 'images');
         console.log('Previous images count:', images.length);
@@ -889,6 +978,7 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       onApplyBlur,
       onApplyPaint,
       onApplyText,
+      resetCompression,
     ]
   );
 

@@ -31,6 +31,7 @@ export default function ImageResizer() {
     setResizeDraft,
     handleApplyResize,
     handleReset,
+    resetCompression,
   } = useImageContext();
   const {
     quality,
@@ -136,21 +137,27 @@ export default function ImageResizer() {
     []
   );
 
-  // Update Core Web Vitals and changes state
+  // Update Core Web Vitals score from image metadata or calculate it
   useEffect(() => {
-    if (localWidth > 0 && localHeight > 0) {
+    // Use Core Web Vitals score from metadata if available (from CWV compression)
+    if (selectedImage?.metadata?.coreWebVitalsScore) {
+      setCoreWebVitalsScore(selectedImage.metadata.coreWebVitalsScore);
+    } else if (localWidth > 0 && localHeight > 0) {
       updateCoreWebVitalsScore(localWidth, localHeight);
-      setHasChanges(
-        localWidth !== imageDimensions.width ||
-          localHeight !== imageDimensions.height
-      );
     }
+    
+    // Update has changes state
+    setHasChanges(
+      localWidth !== imageDimensions.width ||
+        localHeight !== imageDimensions.height
+    );
   }, [
     localWidth,
     localHeight,
     imageDimensions.width,
     imageDimensions.height,
     updateCoreWebVitalsScore,
+    selectedImage?.metadata?.coreWebVitalsScore,
   ]);
 
   // Width slider change handler
@@ -228,13 +235,13 @@ export default function ImageResizer() {
   };
 
   const handleResetCompressionSelectedImage = () => {
-    // Reset compression settings
-    resetEditorUI();
-    
-    // Reset the selected image only
+    // Reset Core Web Vitals compression for selected image
     if (selectedImage) {
-      resetSingleImage(selectedImage.id);
+      resetCompression(selectedImage.id);
     }
+    
+    // Reset compression settings UI
+    resetEditorUI();
     
     // Reset resize draft for selected image
     setResizeDraft({
