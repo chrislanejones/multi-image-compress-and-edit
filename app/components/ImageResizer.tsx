@@ -6,7 +6,14 @@ import { useCompressionStore, useImageStore } from "../stores";
 import { Slider } from "./ui/slider";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Maximize2, Download, Image as ImgIcon, RefreshCw, RotateCcw, Archive } from "lucide-react";
+import {
+  Maximize2,
+  Download,
+  Image as ImgIcon,
+  RefreshCw,
+  RotateCcw,
+  Archive,
+} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -145,7 +152,7 @@ export default function ImageResizer() {
     } else if (localWidth > 0 && localHeight > 0) {
       updateCoreWebVitalsScore(localWidth, localHeight);
     }
-    
+
     // Update has changes state
     setHasChanges(
       localWidth !== imageDimensions.width ||
@@ -215,12 +222,12 @@ export default function ImageResizer() {
   const handleFullReset = () => {
     // Reset compression settings globally
     resetEditorUI();
-    
+
     // Reset all images in the store to original state
-    images.forEach(image => {
+    images.forEach((image) => {
       resetSingleImage(image.id);
     });
-    
+
     // Reset current image context
     handleReset();
     setAspectRatio(true);
@@ -239,10 +246,10 @@ export default function ImageResizer() {
     if (selectedImage) {
       resetCompression(selectedImage.id);
     }
-    
+
     // Reset compression settings UI
     resetEditorUI();
-    
+
     // Reset resize draft for selected image
     setResizeDraft({
       width: imageDimensions.width,
@@ -267,7 +274,7 @@ export default function ImageResizer() {
     if (images.length === 0) return;
 
     // Import JSZip dynamically to avoid bundle bloat
-    const JSZip = await import('jszip').then(module => module.default);
+    const JSZip = await import("jszip").then((module) => module.default);
     const zip = new JSZip();
 
     // Add each image to the zip
@@ -276,12 +283,12 @@ export default function ImageResizer() {
         // Fetch the image as blob
         const response = await fetch(image.url);
         const blob = await response.blob();
-        
+
         // Get the original filename or create one
         const filename = image.file?.name || `image-${image.id}.${format}`;
-        const nameWithoutExt = filename.split('.')[0];
+        const nameWithoutExt = filename.split(".")[0];
         const finalFilename = `${nameWithoutExt}-compressed.${format}`;
-        
+
         zip.file(finalFilename, blob);
       } catch (error) {
         console.error(`Failed to add ${image.name} to zip:`, error);
@@ -290,16 +297,16 @@ export default function ImageResizer() {
 
     try {
       // Generate and download the zip
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const link = document.createElement('a');
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const link = document.createElement("a");
       link.href = URL.createObjectURL(zipBlob);
-      link.download = `imagehorse-compressed-images-${new Date().toISOString().split('T')[0]}.zip`;
+      link.download = `imagehorse-compressed-images-${new Date().toISOString().split("T")[0]}.zip`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(link.href);
     } catch (error) {
-      console.error('Failed to create zip file:', error);
+      console.error("Failed to create zip file:", error);
     }
   };
 
@@ -413,7 +420,7 @@ export default function ImageResizer() {
         <div className="space-y-2">
           <label className="text-sm font-medium">Compression Level</label>
           <Select value={compressionLevel} onValueChange={handleLevelChange}>
-            <SelectTrigger className="bg-gray-700">
+            <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -514,18 +521,23 @@ export default function ImageResizer() {
               <RotateCcw className="h-4 w-4 mr-2" /> Reset Compression
             </Button>
           </div>
-          
+
           {/* Row 2 */}
           <div className="flex gap-2">
-            <Button onClick={handleDownload} variant="outline" className="flex-1">
-              <Download className="h-4 w-4 mr-2" /> Download
-            </Button>
-            <Button 
-              onClick={() => handleBulkDownload()}
-              variant="outline" 
+            <Button
+              onClick={handleDownload}
+              variant="outline"
               className="flex-1"
             >
-              <Archive className="h-4 w-4 mr-2" /> Bulk Download Zip ({images.length})
+              <Download className="h-4 w-4 mr-2" /> Download
+            </Button>
+            <Button
+              onClick={() => handleBulkDownload()}
+              variant="outline"
+              className="flex-1"
+            >
+              <Archive className="h-4 w-4 mr-2" /> Bulk Download Zip (
+              {images.length})
             </Button>
           </div>
         </div>
