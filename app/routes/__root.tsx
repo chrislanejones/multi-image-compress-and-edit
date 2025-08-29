@@ -1,5 +1,5 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
-import { ThemeProvider } from "../components/theme-providerl";
+import { ThemeProvider } from "../components/theme-provider";
 import { ImageProvider } from "../context/image-context";
 import { Toaster } from "sonner";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
@@ -81,17 +81,17 @@ const RootComponent = () => {
       const selectedImage = getSelectedImage();
       if (!selectedImage) return;
 
-      if (event.altKey && (event.key === '-' || event.key === '_')) {
+      if (event.altKey && (event.key === "-" || event.key === "_")) {
         event.preventDefault();
         globalZoomOut();
-      } else if (event.altKey && (event.key === '=' || event.key === '+')) {
+      } else if (event.altKey && (event.key === "=" || event.key === "+")) {
         event.preventDefault();
         globalZoomIn();
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [globalZoomIn, globalZoomOut, getSelectedImage]);
 
   return (
