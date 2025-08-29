@@ -118,6 +118,12 @@ export interface ImageMetadata {
   lastModified?: number; // Unix timestamp of last modification
   isOptimized?: boolean; // Flag indicating if the image has undergone optimization
   editHistory?: EditAction[]; // A log of edits applied to the image
+  coreWebVitalsScore?: CoreWebVitalsScore; // Core Web Vitals performance score
+  codec?: string; // Compression codec used (avif, webp, jpeg)
+  bpp?: number; // Bytes per pixel
+  width?: number; // Image width after compression
+  height?: number; // Image height after compression
+  boltTier?: 1 | 2 | 3; // Performance tier
 }
 
 /**

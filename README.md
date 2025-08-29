@@ -1,5 +1,7 @@
 # ImageHorse - TanStack Start Edition 🐎
 
+![Image of Photo App](/public/Image-App.jpeg)
+
 A powerful image editing and compression tool built with [TanStack Start](https://tanstack.com/start) and supercharged by [Bun](https://bun.sh) — no Next.js, no nonsense.
 
 ## ✨ Features

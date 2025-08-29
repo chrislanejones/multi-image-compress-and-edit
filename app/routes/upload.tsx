@@ -4,7 +4,7 @@ import { Terminal } from "../components/ui/terminal";
 import { Upload, Images } from "lucide-react";
 import { useImageContext } from "../context/image-context";
 import imageCompression from "browser-image-compression";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useUploadStore } from "../stores";
 
 export const Route = createFileRoute("/upload")({
@@ -172,6 +172,36 @@ function UploadPage() {
     setIsDragging(false);
     if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
   }, []);
+
+  const handlePaste = useCallback((e: ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const files: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.indexOf('image') !== -1) {
+        const file = item.getAsFile();
+        if (file) {
+          files.push(file);
+        }
+      }
+    }
+
+    if (files.length > 0) {
+      const fileList = new DataTransfer();
+      files.forEach(file => fileList.items.add(file));
+      handleFiles(fileList.files);
+    }
+  }, []);
+
+  // Add paste event listener
+  useEffect(() => {
+    document.addEventListener('paste', handlePaste);
+    return () => {
+      document.removeEventListener('paste', handlePaste);
+    };
+  }, [handlePaste]);
 
   const progressPercent =
     progress.total > 0 ? (progress.current / progress.total) * 100 : 0;
