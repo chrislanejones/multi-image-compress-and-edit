@@ -5,13 +5,16 @@ A powerful image editing and compression tool built with [TanStack Start](https:
 ## ✨ Features
 
 - 🖼️ **Multiple image upload** with drag & drop, paste, and file browser
-- 📦 **Smart compression** using web workers for smooth performance
-- 🎨 **Advanced editing tools** – crop, paint, blur, add text
-- 📊 **Bulk operations** – apply actions across multiple images
-- 🎨 **Modern UI** – responsive with light, dark, and system theme support
+- ⚡ **Auto Core Web Vitals compression** – aggressive optimization on image selection
+- 🔄 **Reset Compression** – restore original quality with Zustand persistence
+- 🟢 **Smart status indicators** – green ball shows "good" CWV performance
+- 📦 **Advanced compression** with AVIF/WebP/JPEG codec selection
+- 🎨 **Full editing suite** – crop, paint, blur, text, emoji, arrows
+- 📊 **Bulk operations** – ZIP download with compressed images
+- 🖥️ **Receipt-style terminal** – persistent output with auto-scroll
+- 🎨 **Modern UI** – responsive with light/dark theme support (fixed select dropdowns)
 - ⚡ **Lightning-fast dev experience** thanks to Bun
 - 🧠 **Memory-efficient** – cleanups and previews done right
-- 🌈 **AI Editor** interface (coming soon!)
 
 ## 🚀 Quick Start
 
@@ -78,10 +81,15 @@ imagehorse/
 
 ### Tools & Features
 
-- React Image Cropper
-- Canvas overlay for painting & blur
-- Zustand + Context for hybrid state management
-- Zoom, Flip, Rotate, and upcoming text tools
+- **Core Web Vitals Compression** - Automatic aggressive compression on image selection
+- **Reset Compression** - Restore original images with Zustand persistence
+- **React Image Cropper** - Precise crop tool with percentage/pixel units
+- **Canvas overlay painting** - Brush, eraser, emoji, and arrow tools
+- **Selective blur** - Paint-on blur effects with variable intensity
+- **Text tool** - Add text with custom fonts, colors, and positioning
+- **Bulk operations** - Download all images as compressed ZIP
+- **Zustand + Context** - Hybrid state management with localStorage persistence
+- **Receipt terminal** - Persistent processing output with auto-scroll
 
 ## 🔥 Why Bun + TanStack Start?
 
@@ -120,21 +128,29 @@ bun run type-check  # Type safety
 
 ✅ **Stable & Working**
 
-- Upload & image preview
-- Image resize + compression
-- Full editing toolbars (Crop, Blur, Paint)
+- Upload & image preview with receipt-style terminal
+- **Automatic Core Web Vitals compression** on image selection
+- **Reset Compression** functionality with Zustand persistence
+- Image resize + advanced compression with codec selection
+- Full editing toolbars (Crop, Blur, Paint, Text, Emoji, Arrows)
+- **Bulk ZIP download** for all processed images
+- Smart status indicators and CWV performance scoring
 - Zustand state, theme system, and routing
+- Fixed dark mode UI visibility issues
 
-🧪 **In Progress**
+🧪 **Recently Added**
 
-- Toolbar refinements
-- History + undo/redo stack
-- Better keyboard controls
+- Core Web Vitals compression with AVIF/WebP/JPEG support
+- Persistent compression state with reset capability
+- Enhanced terminal output with auto-scroll
+- Bulk operations and ZIP export functionality
+- Dark mode select dropdown fixes
 
 🔮 **Coming Soon**
 
 - AI-assisted editing tools
-- Bulk crop preview & sync
+- History + undo/redo stack for editing operations
+- Enhanced keyboard shortcuts and controls
 - Cloud storage & export options
 
 ## 🤝 Contributing
