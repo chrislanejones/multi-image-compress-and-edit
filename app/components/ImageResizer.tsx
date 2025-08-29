@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useImageContext } from "../context/image-context";
-import { useCompressionStore } from "../stores";
+import { useCompressionStore, useImageStore } from "../stores";
 import { Slider } from "./ui/slider";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Maximize2, Download, Image as ImgIcon, RefreshCw } from "lucide-react";
+import { Maximize2, Download, Image as ImgIcon, RefreshCw, RotateCcw, Archive } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -41,6 +41,7 @@ export default function ImageResizer() {
     setCompressionLevel,
     resetToDefaults: resetEditorUI,
   } = useCompressionStore();
+  const { images, resetImage: resetSingleImage } = useImageStore();
 
   // Local state for sliders and image dimensions
   const [localWidth, setLocalWidth] = useState(0);
@@ -205,17 +206,43 @@ export default function ImageResizer() {
   };
 
   const handleFullReset = () => {
+    // Reset compression settings globally
     resetEditorUI();
+    
+    // Reset all images in the store to original state
+    images.forEach(image => {
+      resetSingleImage(image.id);
+    });
+    
+    // Reset current image context
     handleReset();
     setAspectRatio(true);
 
-    // Reset to original dimensions
+    // Reset to original dimensions for current image
     setLocalWidth(imageDimensions.width);
     setLocalHeight(imageDimensions.height);
     setResizeDraft({
       width: imageDimensions.width,
       height: imageDimensions.height,
     });
+  };
+
+  const handleResetCompressionSelectedImage = () => {
+    // Reset compression settings
+    resetEditorUI();
+    
+    // Reset the selected image only
+    if (selectedImage) {
+      resetSingleImage(selectedImage.id);
+    }
+    
+    // Reset resize draft for selected image
+    setResizeDraft({
+      width: imageDimensions.width,
+      height: imageDimensions.height,
+    });
+    setLocalWidth(imageDimensions.width);
+    setLocalHeight(imageDimensions.height);
   };
 
   const handleDownload = () => {
@@ -227,6 +254,46 @@ export default function ImageResizer() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleBulkDownload = async () => {
+    if (images.length === 0) return;
+
+    // Import JSZip dynamically to avoid bundle bloat
+    const JSZip = await import('jszip').then(module => module.default);
+    const zip = new JSZip();
+
+    // Add each image to the zip
+    for (const image of images) {
+      try {
+        // Fetch the image as blob
+        const response = await fetch(image.url);
+        const blob = await response.blob();
+        
+        // Get the original filename or create one
+        const filename = image.file?.name || `image-${image.id}.${format}`;
+        const nameWithoutExt = filename.split('.')[0];
+        const finalFilename = `${nameWithoutExt}-compressed.${format}`;
+        
+        zip.file(finalFilename, blob);
+      } catch (error) {
+        console.error(`Failed to add ${image.name} to zip:`, error);
+      }
+    }
+
+    try {
+      // Generate and download the zip
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(zipBlob);
+      link.download = `imagehorse-compressed-images-${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    } catch (error) {
+      console.error('Failed to create zip file:', error);
+    }
   };
 
   // Core Web Vitals indicator position
@@ -407,32 +474,53 @@ export default function ImageResizer() {
           </Select>
         </div>
 
+        {/* Apply Changes Button */}
+        <Button
+          onClick={handleApplyResize}
+          className={`w-full mb-4 ${
+            hasChanges
+              ? "bg-gray-800 hover:bg-gray-700 text-white"
+              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+          }`}
+          disabled={!hasChanges}
+        >
+          <Maximize2 className="h-4 w-4 mr-2" />
+          {hasChanges ? "Apply Changes" : "No Changes to Apply"}
+        </Button>
+
         {/* Action Buttons */}
-        <div className="space-y-2">
-          <Button
-            onClick={handleApplyResize}
-            className={`w-full ${
-              hasChanges
-                ? "bg-gray-800 hover:bg-gray-700 text-white"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
-            disabled={!hasChanges}
-          >
-            <Maximize2 className="h-4 w-4 mr-2" />
-            {hasChanges ? "Apply Changes" : "No Changes to Apply"}
-          </Button>
-
-          <Button
-            onClick={handleFullReset}
-            variant="outline"
-            className="w-full"
-          >
-            <RefreshCw className="h-4 w-4 mr-2" /> Reset All
-          </Button>
-
-          <Button onClick={handleDownload} variant="outline" className="w-full">
-            <Download className="h-4 w-4 mr-2" /> Download
-          </Button>
+        <div className="space-y-3">
+          {/* Row 1 */}
+          <div className="flex gap-2">
+            <Button
+              onClick={handleFullReset}
+              variant="outline"
+              className="flex-1"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" /> Reset All
+            </Button>
+            <Button
+              onClick={handleResetCompressionSelectedImage}
+              variant="outline"
+              className="flex-1"
+            >
+              <RotateCcw className="h-4 w-4 mr-2" /> Reset Compression
+            </Button>
+          </div>
+          
+          {/* Row 2 */}
+          <div className="flex gap-2">
+            <Button onClick={handleDownload} variant="outline" className="flex-1">
+              <Download className="h-4 w-4 mr-2" /> Download
+            </Button>
+            <Button 
+              onClick={() => handleBulkDownload()}
+              variant="outline" 
+              className="flex-1"
+            >
+              <Archive className="h-4 w-4 mr-2" /> Bulk Download Zip ({images.length})
+            </Button>
+          </div>
         </div>
 
         {/* Current Status */}

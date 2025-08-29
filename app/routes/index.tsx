@@ -1,6 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
-import PhotoUpload from '@/components/photo-upload'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/')({
-  component: PhotoUpload,
+  beforeLoad: () => {
+    throw redirect({
+      to: '/upload',
+    })
+  },
 })

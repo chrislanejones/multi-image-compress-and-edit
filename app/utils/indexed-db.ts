@@ -2,27 +2,7 @@
 "use client";
 
 import { base64ToBlob } from "./image";
-
-export interface StoredImage {
-  id: string;
-  name: string;
-  type: string;
-  fileData: string;
-  url?: string;
-  width?: number;
-  height?: number;
-  lastModified?: number;
-  metadata?: Record<string, any>;
-}
-
-export interface ImageRecord {
-  id: string;
-  file: File;
-  url: string;
-  width?: number;
-  height?: number;
-  metadata?: Record<string, any>;
-}
+import type { StoredImage, ImageRecord } from "../types/types";
 
 class IndexedDBStore<T extends { id: string }> {
   constructor(

@@ -52,7 +52,7 @@ export interface ImageFile {
   metadata?: ImageMetadata;
 }
 
-interface FullImageContextType {
+export interface FullImageContextType {
   images: ImageFile[];
   selectedImage: ImageFile | null;
   paginatedImages: ImageFile[];
@@ -62,7 +62,8 @@ interface FullImageContextType {
   isCompressing: boolean;
   compressionProgress: number;
   itemsPerPage: number;
-  onDrop: (acceptedFiles: File[]) => void;
+  loadingImages: Set<string>;
+  onDrop: (acceptedFiles: File[], fileRejections: any[], event: any) => void;
   addImages: (images: ImageFile[]) => void;
   onRemove: (id: string) => void;
   removeAllImages: () => void;
@@ -70,15 +71,27 @@ interface FullImageContextType {
   onNavigatePage: (direction: "prev" | "next") => void;
   onClose: () => void;
   onSelect: (id: string | null) => void; // ← added
+  updateImage: (id: string, updates: Partial<ImageFile>) => void;
   onRotate: (id: string, degrees: number) => void;
   onCrop: (id: string, crop: ImageFile["crop"]) => void;
-  onResize: (id: string, resize: ImageFile["resize"]) => void;
+  onResize: (id: string, resize?: { width: number; height: number }) => void;
   onCompress: () => void;
   onDownload: () => void;
   onClear: () => void;
   setResizeDraft: (draft: ResizeDraft | null) => void;
+  handleApplyResize: () => void;
+  handleReset: () => void;
   setCurrentPage: (page: number) => void;
   setItemsPerPage: (count: number) => void;
+  onRotateLeft: (id: string) => void;
+  onRotateRight: (id: string) => void;
+  onFlipHorizontal: (id: string) => void;
+  onFlipVertical: (id: string) => void;
+  onReset: (id: string) => void;
+  onApplyCrop: () => void;
+  onApplyBlur: () => void;
+  onApplyPaint: () => void;
+  onApplyText: () => void;
 }
 
 /**
@@ -380,6 +393,38 @@ export interface GalleryStats {
 }
 
 // ===== TOOLS AND EDITING =====
+
+/**
+ * Represents an arrow shape for the paint tool.
+ */
+export type ArrowShape = {
+  id: string;
+  type: "arrow";
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  double: boolean;
+  color: string;
+  width: number;
+};
+
+/**
+ * Represents an emoji shape for the paint tool.
+ */
+export type EmojiShape = {
+  id: string;
+  type: "emoji";
+  x: number;
+  y: number;
+  text: string;
+  size: number;
+};
+
+/**
+ * Union type for all supported shapes in the paint tool.
+ */
+export type Shape = ArrowShape | EmojiShape;
 
 /**
  * Settings for the paint/brush tool.
@@ -744,6 +789,33 @@ export interface ImageProcessingResponse {
 // ===== STORAGE TYPES =====
 
 /**
+ * Represents an image stored in IndexedDB.
+ */
+export interface StoredImage {
+  id: string;
+  name: string;
+  type: string;
+  fileData: string;
+  url?: string;
+  width?: number;
+  height?: number;
+  lastModified?: number;
+  metadata?: Record<string, any>;
+}
+
+/**
+ * Represents an image record before it's stored in IndexedDB.
+ */
+export interface ImageRecord {
+  id: string;
+  file: File;
+  url: string;
+  width?: number;
+  height?: number;
+  metadata?: Record<string, any>;
+}
+
+/**
  * Generic interface for an item stored in a persistent storage.
  */
 export interface StorageItem {
@@ -872,7 +944,7 @@ export interface TextToolProps {
   imageUrl: string;
   onApplyText: (textedImageUrl: string) => void;
   onCancel: () => void;
-  setEditorState: (state: string) => void;
+  setEditorState: (state: EditorState) => void;
   setBold: (bold: boolean) => void;
   setItalic: (italic: boolean) => void;
 }

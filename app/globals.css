@@ -1,118 +1,122 @@
+/*
+  Global style definitions for the ImageHorse application.
+
+  This file replaces the original HSL based palette with a more descriptive
+  and accessible colour scheme.  Colours are expressed as space separated
+  HSL values so that Tailwind’s `hsl(var(--…))` helper can still consume
+  them, but every value is derived from a well known RGB colour.  The
+  palette takes its inspiration from classic equestrian tones (saddle browns,
+  tans and deep blues) to reinforce the “ImageHorse” theme while maintaining
+  sufficient contrast ratios in both light and dark modes.  A new
+  `--highlight` colour has been introduced for elements that need to pop,
+  such as tool overlays or selection regions in the editor.
+
+  See README for guidance on adding additional colours; whenever adding
+  colours you should compute the HSL values from the desired RGB values to
+  ensure accurate representation and easy readability.  You can use
+  https://www.w3schools.com/colors/colors_converter.asp or a similar tool
+  to convert between colour spaces.
+*/
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+    /*
+      Light theme colours.
+      Each variable contains a space separated HSL triple.  These values
+      come from a carefully curated palette designed to provide high
+      contrast on light backgrounds and to evoke a horse‑themed aesthetic.
+    */
+    --background: 210 16.7% 97.6%; /* off‑white base */
+    --foreground: 222.2 47.4% 11.2%; /* very dark blue for text */
+    --card: 0 0% 100%; /* pure white card background */
+    --card-foreground: 222.2 47.4% 11.2%; /* match the body text colour */
+    --popover: 210 16.7% 97.6%; /* follow background for popovers */
+    --popover-foreground: 222.2 47.4% 11.2%;
+    --primary: 25 75.9% 31%; /* saddle brown for primary buttons */
+    --primary-foreground: 0 0% 100%; /* white text on primary surfaces */
+    --secondary: 53.3 15.3% 88.4%; /* soft beige secondary surfaces */
+    --secondary-foreground: 12 6.5% 15.1%; /* dark brown text on secondary */
+    --muted: 0 0% 94.5%; /* light grey backgrounds */
+    --muted-foreground: 210 3.5% 44.3%; /* mid grey text on muted backgrounds */
+    --accent: 39.1 76.7% 83.1%; /* wheat/gold accent colour */
+    --accent-foreground: 12 6.5% 15.1%; /* dark brown for accents */
+    --destructive: 0 84.2% 60.2%; /* unchanged red for destructive actions */
+    --destructive-foreground: 0 0% 98%; /* white text on destructive */
+    --border: 214.3 12.7% 89.2%; /* pale blue grey border */
+    --input: 0 0% 94.5%; /* reuse muted as input background */
+    --ring: 25 75.9% 31%; /* match primary for focus rings */
     --radius: 0.5rem;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    /* Chart palette for visualisations */
+    --chart-1: 25 75.9% 31%; /* saddle brown */
+    --chart-2: 29.6 58.7% 52.5%; /* peru */
+    --chart-3: 34.3 43.7% 68.6%; /* tan */
+    --chart-4: 19.3 56.1% 40.2%; /* sienna */
+    --chart-5: 28.9 56.6% 46.1%; /* camel */
+    /* Additional highlight colour for selection areas or overlays */
+    --highlight: 31.1 100% 83.3%; /* pale peach highlight */
+    --highlight-foreground: 12 6.5% 15.1%; /* dark text on highlight */
   }
 
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    /*
+      Dark theme colours.
+      Colours are tuned to provide sufficient contrast on dark surfaces.
+      Warm browns and tans are used for primary actions to echo the
+      horse‑themed branding, while cool blues anchor the background.
+    */
+    --background: 220 42.9% 11%; /* deep navy background */
+    --foreground: 0 0% 96.1%; /* nearly white text */
+    --card: 220 30% 15.7%; /* slightly lighter than background */
+    --card-foreground: 0 0% 96.1%; /* white text on cards */
+    --popover: 220 30% 15.7%; /* popovers match cards */
+    --popover-foreground: 0 0% 96.1%;
+    --primary: 29.6 58.7% 52.5%; /* peru for primary surfaces */
+    --primary-foreground: 220 42.9% 11%; /* dark text on primary buttons */
+    --secondary: 221.5 33.9% 22.5%; /* slate blue for secondary surfaces */
+    --secondary-foreground: 0 0% 96.1%; /* white text on secondary */
+    --muted: 221.5 33.9% 22.5%; /* reuse secondary for muted backgrounds */
+    --muted-foreground: 0 0% 60.8%; /* soft grey text on muted */
+    --accent: 14.1 23.6% 28.2%; /* warm brown accent */
+    --accent-foreground: 0 0% 96.1%; /* white text on accent */
+    --destructive: 0 62.8% 30.6%; /* maintain dark red for destructive */
+    --destructive-foreground: 0 0% 98%; /* white text on destructive */
+    --border: 221.5 33.9% 22.5%; /* match secondary for borders */
+    --input: 221.5 33.9% 22.5%; /* inputs blend with muted backgrounds */
+    --ring: 29.6 58.7% 52.5%; /* match primary for focus rings */
+    --chart-1: 25 75.9% 31%; /* reuse light chart palette for consistency */
+    --chart-2: 29.6 58.7% 52.5%;
+    --chart-3: 34.3 43.7% 68.6%;
+    --chart-4: 19.3 56.1% 40.2%;
+    --chart-5: 28.9 56.6% 46.1%;
+    --highlight: 31.1 100% 83.3%; /* pale peach highlight */
+    --highlight-foreground: 220 42.9% 11%; /* dark navy text on highlight */
   }
 }
 
 @layer base {
   body {
+    /* Apply the computed backgrounds and text colours via Tailwind */
     @apply bg-background text-foreground;
   }
 }
 
-/* Custom animations for the AI Editor button */
-@keyframes rainbow-flow {
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-@keyframes rainbow-slow {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes rainbow-reverse {
-  0% {
-    transform: rotate(360deg);
-  }
-  100% {
-    transform: rotate(0deg);
-  }
-}
-
-.animate-rainbow-slow {
-  animation: rainbow-slow 8s linear infinite;
-}
-
-.animate-rainbow-reverse {
-  animation: rainbow-reverse 6s linear infinite;
-}
-
-.rainbow-border {
-  animation: rainbow-flow 4s ease-in-out infinite;
-}
-
-/* Image editor specific styles */
+/*
+  Image editor specific styles.
+  These styles create a checkered backdrop to indicate transparency.  The
+  colours have been adjusted to harmonise with the new palette: the light
+  theme uses very pale greys and the dark theme uses mid‑tone slates.  The
+  pattern is subtle so as not to distract from the edited image.
+*/
 .image-editor-canvas {
   background-image:
-    linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
-    linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
-    linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+    linear-gradient(45deg, hsl(0 0% 94%) 25%, transparent 25%),
+    linear-gradient(-45deg, hsl(0 0% 94%) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, hsl(0 0% 94%) 75%),
+    linear-gradient(-45deg, transparent 75%, hsl(0 0% 94%) 75%);
   background-size: 20px 20px;
   background-position:
     0 0,
@@ -123,13 +127,18 @@
 
 .dark .image-editor-canvas {
   background-image:
-    linear-gradient(45deg, #374151 25%, transparent 25%),
-    linear-gradient(-45deg, #374151 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #374151 75%),
-    linear-gradient(-45deg, transparent 75%, #374151 75%);
+    linear-gradient(45deg, hsl(221.5 33.9% 22.5%) 25%, transparent 25%),
+    linear-gradient(-45deg, hsl(221.5 33.9% 22.5%) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, hsl(221.5 33.9% 22.5%) 75%),
+    linear-gradient(-45deg, transparent 75%, hsl(221.5 33.9% 22.5%) 75%);
 }
 
-/* Tool overlay styles */
+/*
+  Tool overlay styles.  These preserve the existing behaviour of pointer
+  events but have been left unchanged, as their colours are tied into the
+  palette via the `--highlight` variable when needed (for example on
+  selection overlays).
+*/
 .tool-overlay {
   pointer-events: none;
   position: absolute;
@@ -144,23 +153,23 @@
   pointer-events: auto;
 }
 
-/* Crop overlay */
+/* Crop overlay uses the highlight colour for improved contrast */
 .crop-overlay {
-  border: 2px dashed #3b82f6;
-  background: rgba(59, 130, 246, 0.1);
+  border: 2px dashed hsl(var(--highlight));
+  background: hsla(var(--highlight) / 0.1);
 }
 
-/* Paint brush cursor */
+/* Cursors: these remain unchanged but could be updated to use theme colours
+   if necessary.  We keep the default crosshair/text cursors here. */
 .paint-cursor {
   cursor: crosshair;
 }
 
-/* Text tool cursor */
 .text-cursor {
   cursor: text;
 }
 
-/* Blur tool cursor */
+/* Blur tool cursor remains unchanged */
 .blur-cursor {
   cursor:
     url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>')
@@ -168,123 +177,39 @@
     auto;
 }
 
-/* Add these styles to your existing globals.css file */
+/* Toast palette overrides.  Where necessary these draw from the
+   top‑level variables defined above so that success/error/warning/info
+   toasts integrate seamlessly with the new colour scheme. */
+@layer base {
+  [data-sonner-toaster] {
+    --normal-bg: hsl(var(--background));
+    --normal-border: hsl(var(--border));
+    --normal-text: hsl(var(--foreground));
+    --success-bg: hsl(142 76% 36%);
+    --success-border: hsl(142 76% 46%);
+    --success-text: hsl(0 0% 100%);
+    --error-bg: hsl(0 84% 60%);
+    --error-border: hsl(0 84% 70%);
+    --error-text: hsl(0 0% 100%);
+    --warning-bg: hsl(38 92% 50%);
+    --warning-border: hsl(38 92% 60%);
+    --warning-text: hsl(0 0% 100%);
+    --info-bg: hsl(199 89% 48%);
+    --info-border: hsl(199 89% 58%);
+    --info-text: hsl(0 0% 100%);
+  }
 
-/* Sonner Toast Dark Theme Styles */
-[data-sonner-toaster] {
-  --normal-bg: hsl(var(--background));
-  --normal-border: hsl(var(--border));
-  --normal-text: hsl(var(--foreground));
-  --success-bg: hsl(142 76% 36%);
-  --success-border: hsl(142 76% 46%);
-  --success-text: hsl(0 0% 100%);
-  --error-bg: hsl(0 84% 60%);
-  --error-border: hsl(0 84% 70%);
-  --error-text: hsl(0 0% 100%);
-  --warning-bg: hsl(38 92% 50%);
-  --warning-border: hsl(38 92% 60%);
-  --warning-text: hsl(0 0% 100%);
-  --info-bg: hsl(199 89% 48%);
-  --info-border: hsl(199 89% 58%);
-  --info-text: hsl(0 0% 100%);
-}
-
-/* Dark theme overrides */
-.dark [data-sonner-toaster] {
-  --normal-bg: hsl(var(--card));
-  --normal-border: hsl(var(--border));
-  --normal-text: hsl(var(--card-foreground));
-  --success-bg: hsl(142 76% 26%);
-  --success-border: hsl(142 76% 36%);
-  --error-bg: hsl(0 62% 30%);
-  --error-border: hsl(0 62% 40%);
-  --warning-bg: hsl(38 92% 40%);
-  --warning-border: hsl(38 92% 50%);
-  --info-bg: hsl(199 89% 38%);
-  --info-border: hsl(199 89% 48%);
-}
-
-/* Toast container styles */
-[data-sonner-toast] {
-  background: var(--normal-bg) !important;
-  border: 1px solid var(--normal-border) !important;
-  color: var(--normal-text) !important;
-  border-radius: 0.5rem !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-}
-
-/* Dark theme specific toast styles */
-.dark [data-sonner-toast] {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
-}
-
-/* Success toast */
-[data-sonner-toast][data-type="success"] {
-  background: var(--success-bg) !important;
-  border-color: var(--success-border) !important;
-  color: var(--success-text) !important;
-}
-
-/* Error toast */
-[data-sonner-toast][data-type="error"] {
-  background: var(--error-bg) !important;
-  border-color: var(--error-border) !important;
-  color: var(--error-text) !important;
-}
-
-/* Warning toast */
-[data-sonner-toast][data-type="warning"] {
-  background: var(--warning-bg) !important;
-  border-color: var(--warning-border) !important;
-  color: var(--warning-text) !important;
-}
-
-/* Info toast */
-[data-sonner-toast][data-type="info"] {
-  background: var(--info-bg) !important;
-  border-color: var(--info-border) !important;
-  color: var(--info-text) !important;
-}
-
-/* Toast title */
-[data-sonner-toast] [data-title] {
-  color: inherit !important;
-  font-weight: 600 !important;
-}
-
-/* Toast description */
-[data-sonner-toast] [data-description] {
-  color: inherit !important;
-  opacity: 0.9 !important;
-}
-
-/* Close button */
-[data-sonner-toast] [data-close-button] {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  color: inherit !important;
-}
-
-[data-sonner-toast] [data-close-button]:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
-}
-
-/* Loading toast spinner */
-[data-sonner-toast] [data-icon] {
-  color: inherit !important;
-}
-
-/* Custom toast animations */
-[data-sonner-toast] {
-  transition: all 0.3s ease !important;
-}
-
-[data-sonner-toast][data-mounted] {
-  transform: translateY(0) !important;
-  opacity: 1 !important;
-}
-
-[data-sonner-toast][data-removed] {
-  transform: translateY(-100%) !important;
-  opacity: 0 !important;
+  .dark [data-sonner-toaster] {
+    --normal-bg: hsl(var(--card));
+    --normal-border: hsl(var(--border));
+    --normal-text: hsl(var(--card-foreground));
+    --success-bg: hsl(142 76% 26%);
+    --success-border: hsl(142 76% 36%);
+    --error-bg: hsl(0 62% 30%);
+    --error-border: hsl(0 62% 40%);
+    --warning-bg: hsl(38 92% 40%);
+    --warning-border: hsl(38 92% 50%);
+    --info-bg: hsl(199 89% 38%);
+    --info-border: hsl(199 89% 48%);
+  }
 }

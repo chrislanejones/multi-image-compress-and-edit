@@ -13,55 +13,13 @@ import { useDropzone } from "react-dropzone";
 import { v4 as uuidv4 } from "uuid";
 import imageCompression from "browser-image-compression";
 import { imageDB } from "@/utils/indexed-db";
-import type { ImageFile, ResizeDraft, NavigationDirection } from "@/types/types";
+import type { ImageFile, ResizeDraft, NavigationDirection, FullImageContextType } from "@/types/types";
 import { 
   useAppStateStore,
   useCropStore,
   useBlurStore,
   usePaintStore 
 } from "@/stores";
-
-interface FullImageContextType {
-  images: ImageFile[];
-  selectedImage: ImageFile | null;
-  paginatedImages: ImageFile[];
-  currentPage: number;
-  totalPages: number;
-  resizeDraft: ResizeDraft | null;
-  isCompressing: boolean;
-  compressionProgress: number;
-  itemsPerPage: number;
-  loadingImages: Set<string>;
-  onDrop: (acceptedFiles: File[], fileRejections: any[], event: any) => void;
-  addImages: (images: ImageFile[]) => void;
-  onRemove: (id: string) => void;
-  onSelect: (id: string | null) => void;
-  updateImage: (id: string, updates: Partial<ImageFile>) => void;
-  onRotate: (id: string, degrees: number) => void;
-  onCrop: (id: string, crop: ImageFile["crop"]) => void;
-  onResize: (id: string, resize?: { width: number; height: number }) => void;
-  onCompress: () => void;
-  onDownload: () => void;
-  onClear: () => void;
-  setResizeDraft: (draft: ResizeDraft | null) => void;
-  handleApplyResize: () => void;
-  handleReset: () => void;
-  setCurrentPage: (page: number) => void;
-  setItemsPerPage: (count: number) => void;
-  removeAllImages: () => void;
-  navigateImage: (direction: NavigationDirection) => void;
-  onNavigatePage: (direction: "prev" | "next") => void;
-  onClose: () => void;
-  onRotateLeft: (id: string) => void;
-  onRotateRight: (id: string) => void;
-  onFlipHorizontal: (id: string) => void;
-  onFlipVertical: (id: string) => void;
-  onReset: (id: string) => void;
-  onApplyCrop: () => void;
-  onApplyBlur: () => void;
-  onApplyPaint: () => void;
-  onApplyText: () => void;
-}
 
 const ImageContext = createContext<FullImageContextType | null>(null);
 

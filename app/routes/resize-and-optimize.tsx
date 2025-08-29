@@ -7,27 +7,12 @@ import {
 import { useImageContext } from "../context/image-context";
 import { useViewStore, useAppStateStore, useCropStore, useImageStore } from "../stores";
 import { TextToolRef } from "../types/types";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardFooter,
-} from "../components/ui/card";
-import {
-  ComputerWindow,
-  ComputerWindowHeader,
-  ComputerWindowLogo,
-  ComputerWindowTitle,
-} from "../components/ui/computer-window";
+import { Card, CardContent } from "../components/ui/card";
 import { ImageEditorToolbar } from "../components/image-editor-toolbar";
 import ImageResizer from "../components/ImageResizer";
 import ImageStats from "../components/ImageStats";
 import ImageZoomView from "../components/ImageZoomView";
-import { useEffect, useState, useRef } from "react";
-import { Home, ImageIcon } from "lucide-react";
-import { Button } from "../components/ui/button";
+import { useEffect, useRef } from "react";
 import ReactCrop from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import { BlurCanvas } from "../components/BlurCanvas";
@@ -39,61 +24,6 @@ export const Route = createFileRoute("/resize-and-optimize")({
   component: ResizeAndOptimizeLayout,
 });
 
-function NoImagesComponent() {
-  const navigate = useNavigate();
-  const [countdown, setCountdown] = useState<number | null>(null);
-
-  useEffect(() => {
-    setCountdown(3);
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev === null || prev <= 1) {
-          clearInterval(timer);
-          navigate({ to: "/" });
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [navigate]);
-
-  return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <ComputerWindow size="lg">
-        <ComputerWindowHeader>
-          <ComputerWindowLogo
-            src="/Image-Horse-Logo.svg"
-            alt="ImageHorse Logo"
-          />
-          <ComputerWindowTitle
-            title="ImageHorse"
-            subtitle="No images found in your gallery"
-          />
-        </ComputerWindowHeader>
-
-        <div className="text-center space-y-6">
-          <ImageIcon className="mx-auto h-16 w-16 text-gray-400" />
-
-          {countdown !== null && (
-            <div className="space-y-2">
-              <p className="text-gray-300">Redirecting to upload page in...</p>
-              <div className="text-4xl font-bold text-sky-400">{countdown}</div>
-            </div>
-          )}
-
-          <Button
-            onClick={() => navigate({ to: "/" })}
-            size="lg"
-            className="w-full bg-gray-200 dark:bg-white text-black hover:bg-gray-300 dark:hover:bg-gray-100"
-          >
-            <Home className="mr-2 h-4 w-4" /> Go to Upload
-          </Button>
-        </div>
-      </ComputerWindow>
-    </div>
-  );
-}
 
 function ResizeAndOptimizeLayout() {
   const { selectedImage, images, updateImage } = useImageContext();
@@ -119,7 +49,6 @@ function ResizeAndOptimizeLayout() {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const [countdown, setCountdown] = useState<number | null>(null);
 
   // Extract mode from route path and query params
   const pathSegments = location.pathname.split('/').filter(Boolean);
@@ -151,23 +80,10 @@ function ResizeAndOptimizeLayout() {
     }
   }, [isEditModeRoute, routeMode, crop, setCrop]);
 
-  // Countdown and redirect if no images exist
+  // Redirect immediately if no images exist
   useEffect(() => {
     if (images.length === 0) {
-      setCountdown(3);
-      const timer = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev === null || prev <= 1) {
-            clearInterval(timer);
-            navigate({ to: "/" });
-            return null;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      return () => clearInterval(timer);
-    } else {
-      setCountdown(null);
+      navigate({ to: "/upload" });
     }
   }, [images.length, navigate]);
 
@@ -215,48 +131,6 @@ function ResizeAndOptimizeLayout() {
   };
 
   const currentMode = getCurrentMode();
-
-  if (images.length === 0) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-        <ComputerWindow size="lg">
-          <ComputerWindowHeader>
-            <ComputerWindowLogo
-              src="/Image-Horse-Logo.svg"
-              alt="ImageHorse Logo"
-            />
-            <ComputerWindowTitle
-              title="ImageHorse"
-              subtitle="No images found in your gallery"
-            />
-          </ComputerWindowHeader>
-
-          <div className="text-center space-y-6">
-            <ImageIcon className="mx-auto h-16 w-16 text-gray-400" />
-
-            {countdown !== null && (
-              <div className="space-y-2">
-                <p className="text-gray-300">
-                  Redirecting to upload page in...
-                </p>
-                <div className="text-4xl font-bold text-sky-400">
-                  {countdown}
-                </div>
-              </div>
-            )}
-
-            <Button
-              onClick={() => navigate({ to: "/" })}
-              size="lg"
-              className="w-full bg-gray-200 dark:bg-white text-black hover:bg-gray-300 dark:hover:bg-gray-100"
-            >
-              <Home className="mr-2 h-4 w-4" /> Go to Upload
-            </Button>
-          </div>
-        </ComputerWindow>
-      </div>
-    );
-  }
 
   return (
     <div
@@ -405,49 +279,57 @@ function ResizeAndOptimizeLayout() {
           )}
         </div>
       ) : (
-        // Normal mode with sidebar
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-6">
-          {/* Main image view - takes up 3 columns on large screens */}
-          <section className="lg:col-span-3">
-            {selectedImage && (
-              <Card className="bg-gray-800 border-0 shadow-lg">
-                <CardContent className="p-4">
-                  <div
-                    className="flex items-center justify-center bg-muted rounded-lg overflow-hidden"
-                    style={{ minHeight: "400px" }}
-                  >
-                    <img
-                      key={selectedImage.id}
-                      src={selectedImage.url}
-                      alt={selectedImage.file?.name || "Selected image"}
-                      className="max-w-full max-h-full object-contain rounded transition-transform duration-200"
-                      style={{
-                        transform: `scale(${zoom / 100}) rotate(${selectedImage.rotation || 0}deg) scaleX(${selectedImage.flipHorizontal ? -1 : 1}) scaleY(${selectedImage.flipVertical ? -1 : 1})`,
-                      }}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </section>
+        <>
+          {/* Normal mode with sidebar */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-6">
+            {/* Main image view - takes up 3 columns on large screens */}
+            <section className="lg:col-span-3">
+              {selectedImage && (
+                <Card className="bg-gray-800 border-0 shadow-lg">
+                  <CardContent className="p-4">
+                    <div
+                      className="flex items-center justify-center bg-muted rounded-lg overflow-hidden"
+                      style={{ minHeight: "400px" }}
+                    >
+                      <img
+                        key={selectedImage.id}
+                        src={selectedImage.url}
+                        alt={selectedImage.file?.name || "Selected image"}
+                        className="max-w-full max-h-full object-contain rounded transition-transform duration-200"
+                        style={{
+                          transform: `scale(${zoom / 100}) rotate(${selectedImage.rotation || 0}deg) scaleX(${selectedImage.flipHorizontal ? -1 : 1}) scaleY(${selectedImage.flipVertical ? -1 : 1})`,
+                        }}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </section>
 
-          {/* Sidebar - takes up 1 column on large screens */}
-          <aside className="lg:col-span-1 space-y-6">
-            {/* Image Resizer */}
-            <ImageResizer />
+            {/* Sidebar - takes up 1 column on large screens */}
+            <aside className="lg:col-span-1 space-y-6">
+              {/* Image Resizer */}
+              <ImageResizer />
 
-            {/* Image Zoom View */}
-            {selectedImage && (
-              <ImageZoomView
-                imageUrl={selectedImage.url}
-                imageTransforms={selectedImage}
-              />
-            )}
+              {/* Image Zoom View */}
+              {selectedImage && (
+                <ImageZoomView
+                  imageUrl={selectedImage.url}
+                  imageTransforms={selectedImage}
+                />
+              )}
 
-            {/* Image Stats */}
-            <ImageStats selectedImage={selectedImage} />
-          </aside>
-        </div>
+              {/* Moved ImageStats to full width below */}
+            </aside>
+          </div>
+          
+          {/* Full width Image Stats */}
+          {selectedImage && (
+            <div className="mt-6">
+              <ImageStats selectedImage={selectedImage} />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

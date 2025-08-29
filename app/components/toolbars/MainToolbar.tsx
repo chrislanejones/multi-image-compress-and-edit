@@ -95,7 +95,7 @@ export const MainToolbar = () => {
   };
 
   const handleBackToUpload = () => {
-    navigate({ to: "/" });
+    navigate({ to: "/upload" });
   };
 
   return (

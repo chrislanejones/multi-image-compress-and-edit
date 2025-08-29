@@ -27,15 +27,20 @@ export function Button({
 
         // Variant styles
         {
+          // Default buttons draw from the primary palette colours defined in globals.css.
           "bg-primary text-primary-foreground hover:bg-primary/90":
             variant === "default",
-          "bg-red-600 text-white hover:bg-red-700":
-            variant === "destructive",
-          "bg-background hover:bg-accent hover:text-accent-foreground":
+          // Destructive buttons remain red for clear communication of dangerous actions.
+          "bg-red-600 text-white hover:bg-red-700": variant === "destructive",
+          // Outline variant now includes a subtle border to separate it from the background.
+          "bg-background border border-background text-foreground hover:secondary/10 hover:text-accent-foreground":
             variant === "outline",
+          // Secondary variant uses the secondary palette colours.
           "bg-secondary text-secondary-foreground hover:bg-secondary/80":
             variant === "secondary",
+          // Ghost variant remains minimalist, but gains contrast on hover via the accent colours.
           "hover:bg-accent hover:text-accent-foreground": variant === "ghost",
+          // Link variant uses the primary colour for text and a subtle underline on hover.
           "text-primary underline-offset-4 hover:underline": variant === "link",
         },
 

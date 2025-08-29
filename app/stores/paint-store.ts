@@ -1,28 +1,5 @@
 import { create } from "zustand";
-import type { PaintStroke } from "../types/types";
-
-type ArrowShape = {
-  id: string;
-  type: "arrow";
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-  double: boolean;
-  color: string;
-  width: number;
-};
-
-type EmojiShape = {
-  id: string;
-  type: "emoji";
-  x: number;
-  y: number;
-  text: string;
-  size: number;
-};
-
-type Shape = ArrowShape | EmojiShape;
+import type { PaintStroke, ArrowShape, EmojiShape, Shape } from "../types/types";
 
 interface PaintStore {
   // Paint state
