@@ -308,7 +308,7 @@ function ProcessingPage() {
         <ComputerWindowHeader>
           <div className="mb-4">
             {!isComplete ? (
-              <div className="w-12 h-12 border-4 border-sky-400 border-t-transparent rounded-full animate-spin" />
+              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
             ) : (
               <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
                 <Zap className="w-6 h-6 text-white" />
@@ -348,9 +348,9 @@ function ProcessingPage() {
         {compressionStats && (
           <>
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-gray-800 rounded-lg p-4">
+              <div className="bg-card rounded-lg p-4 border border-border">
                 <div className="flex items-center gap-2 mb-2">
-                  <HardDrive className="w-5 h-5 text-green-400" />
+                  <HardDrive className="w-5 h-5 text-accent" />
                   <span className="text-white font-medium">
                     Compression Stats
                   </span>
@@ -359,7 +359,7 @@ function ProcessingPage() {
                   <div className="text-gray-300">
                     Original: {formatBytes(compressionStats.totalOriginalSize)}
                   </div>
-                  <div className="text-green-400">
+                  <div className="text-accent">
                     Compressed:{" "}
                     {formatBytes(compressionStats.totalCompressedSize)}
                   </div>
@@ -367,31 +367,31 @@ function ProcessingPage() {
                     Saved: {formatBytes(compressionStats.totalSavings)} (
                     {compressionStats.averageCompressionRatio}%)
                   </div>
-                  <div className="text-yellow-400 text-xs">
+                  <div className="text-secondary text-xs">
                     Avg Quality:{" "}
                     {Math.round(compressionStats.qualityStats.average)}%
                   </div>
                 </div>
               </div>
 
-              <div className="bg-gray-800 rounded-lg p-4">
+              <div className="bg-card rounded-lg p-4 border border-border">
                 <div className="flex items-center gap-2 mb-2">
-                  <Gauge className="w-5 h-5 text-blue-400" />
+                  <Gauge className="w-5 h-5 text-primary" />
                   <span className="text-white font-medium">Performance</span>
                 </div>
                 <div className="space-y-1 text-sm">
-                  <div className="text-green-400">
+                  <div className="text-accent">
                     🚀 Excellent:{" "}
                     {compressionStats.coreWebVitalsDistribution.good}
                   </div>
-                  <div className="text-yellow-400">
+                  <div className="text-secondary">
                     ⚡ Good:{" "}
                     {compressionStats.coreWebVitalsDistribution["almost-there"]}
                   </div>
                   <div className="text-sky-400 font-medium">
                     {compressionStats.goodScorePercentage}% Optimized
                   </div>
-                  <div className="text-purple-400 text-xs">
+                  <div className="text-chart-3 text-xs">
                     Avg Time:{" "}
                     {formatTime(compressionStats.averageProcessingTime)}
                   </div>
@@ -400,9 +400,9 @@ function ProcessingPage() {
             </div>
 
             {/* Codec Distribution */}
-            <div className="bg-gray-800 rounded-lg p-4 mb-6">
+            <div className="bg-card rounded-lg p-4 mb-6 border border-border">
               <div className="flex items-center gap-2 mb-3">
-                <Camera className="w-5 h-5 text-purple-400" />
+                <Camera className="w-5 h-5 text-chart-3" />
                 <span className="text-white font-medium">
                   Format Distribution
                 </span>
@@ -418,21 +418,21 @@ function ProcessingPage() {
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div className="text-center">
                   <div className="text-2xl mb-1">🏆</div>
-                  <div className="text-yellow-400 font-medium">AVIF</div>
+                  <div className="text-secondary font-medium">AVIF</div>
                   <div className="text-gray-400">
                     {compressionStats.codecDistribution.avif} images
                   </div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl mb-1">⭐</div>
-                  <div className="text-blue-400 font-medium">WebP</div>
+                  <div className="text-primary font-medium">WebP</div>
                   <div className="text-gray-400">
                     {compressionStats.codecDistribution.webp} images
                   </div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl mb-1">📷</div>
-                  <div className="text-green-400 font-medium">JPEG</div>
+                  <div className="text-accent font-medium">JPEG</div>
                   <div className="text-gray-400">
                     {compressionStats.codecDistribution.jpeg} images
                   </div>
@@ -442,7 +442,7 @@ function ProcessingPage() {
 
             {/* Detailed Image Stats */}
             {showDetailedStats && compressionStats.imageDetails.length > 0 && (
-              <div className="bg-gray-800 rounded-lg p-4 mb-6 max-h-80 overflow-y-auto">
+              <div className="bg-card rounded-lg p-4 mb-6 max-h-80 overflow-y-auto border border-border">
                 <div className="text-white font-medium mb-3">
                   Per-Image Details
                 </div>
@@ -451,7 +451,7 @@ function ProcessingPage() {
                     (detail: DetailedImageStats, index: number) => (
                       <div
                         key={detail.id}
-                        className="bg-gray-700 rounded p-3 text-sm"
+                        className="bg-muted rounded p-3 text-sm"
                       >
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-white font-medium truncate max-w-xs">
@@ -479,14 +479,14 @@ function ProcessingPage() {
                             </div>
                           </div>
                           <div>
-                            <div className="text-green-400">
+                            <div className="text-accent">
                               {formatBytes(detail.originalSize)} →{" "}
                               {formatBytes(detail.compressedSize)}
                             </div>
-                            <div className="text-blue-400">
+                            <div className="text-primary">
                               {detail.compressionRatio}% saved
                             </div>
-                            <div className="text-purple-400">
+                            <div className="text-chart-3">
                               {formatTime(detail.processingTime)}
                             </div>
                           </div>

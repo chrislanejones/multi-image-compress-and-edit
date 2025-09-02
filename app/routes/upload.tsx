@@ -209,15 +209,15 @@ function UploadPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       {/* Computer Window Design */}
-      <div className="w-full max-w-2xl rounded-xl p-1 text-sm bg-gradient-to-br from-slate-800 to-slate-900 dark:from-slate-900 dark:to-black">
+      <div className="w-full max-w-2xl rounded-xl p-1 text-sm bg-gradient-to-br from-card to-background dark:from-card dark:to-background">
         <div className="flex gap-2 p-2">
-          <span className="size-3 rounded-full bg-red-500"></span>
-          <span className="size-3 rounded-full bg-yellow-500"></span>
-          <span className="size-3 rounded-full bg-green-500"></span>
+          <span className="size-3 rounded-full bg-destructive"></span>
+          <span className="size-3 rounded-full bg-secondary"></span>
+          <span className="size-3 rounded-full bg-accent"></span>
         </div>
-        <div className="bg-slate-900 dark:bg-black rounded-lg p-8">
+        <div className="bg-background rounded-lg p-8">
           {/* Header Section */}
-          <div className="flex flex-col items-center p-7 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 mb-8">
+          <div className="flex flex-col items-center p-7 rounded-2xl bg-gradient-to-br from-muted to-card mb-8">
             <div>
               <img
                 className="size-32 shadow-xl rounded-md"
@@ -226,12 +226,12 @@ function UploadPage() {
               />
             </div>
             <div className="flex flex-col items-center mt-4">
-              <h1 className="text-2xl font-medium text-white">ImageHorse</h1>
-              <h2 className="font-medium text-sky-400">
+              <h1 className="text-2xl font-medium text-foreground">ImageHorse</h1>
+              <h2 className="font-medium text-primary">
                 Upload Multiple Images for Core Web Vitals Compression and Image
                 Editing
               </h2>
-              <span className="flex gap-2 font-medium text-gray-400 mt-2">
+              <span className="flex gap-2 font-medium text-muted-foreground mt-2">
                 <span>v2.0</span>
                 <span>·</span>
                 <span>2025</span>
@@ -241,9 +241,9 @@ function UploadPage() {
 
           {/* Progress Bar - only show when processing */}
           {isProcessing && (
-            <div className="w-full bg-gray-700 rounded-full h-3 mb-6">
+            <div className="w-full bg-muted rounded-full h-3 mb-6">
               <div
-                className="bg-sky-400 h-3 rounded-full transition-all duration-500 ease-out"
+                className="bg-primary h-3 rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -261,22 +261,22 @@ function UploadPage() {
                       key={index}
                       className={`${
                         entry.type === "command"
-                          ? "text-green-400"
+                          ? "text-accent"
                           : entry.type === "error"
-                            ? "text-red-400"
+                            ? "text-destructive"
                             : entry.type === "success"
-                              ? "text-green-400"
+                              ? "text-accent"
                               : entry.type === "progress"
-                                ? "text-blue-400"
-                                : "text-gray-400"
+                                ? "text-primary"
+                                : "text-muted-foreground"
                       }`}
                     >
                       {entry.text}
                     </div>
                   ))
                 ) : (
-                  <div className="text-gray-400">
-                    <div className="text-green-400">$ imagehorse --ready</div>
+                  <div className="text-muted-foreground">
+                    <div className="text-accent">$ imagehorse --ready</div>
                     <div>ImageHorse v2.0 - Ready for image processing</div>
                     <div>Drop files or click to upload...</div>
                   </div>
@@ -289,17 +289,17 @@ function UploadPage() {
           <div
             className={`flex flex-col items-center justify-center p-8 border-2 border-dashed ${
               isDragging
-                ? "border-sky-400 bg-sky-400/10"
-                : "border-gray-600 bg-gray-800/50"
-            } rounded-lg hover:bg-gray-800/70 transition-colors cursor-pointer mb-6`}
+                ? "border-primary bg-primary/10"
+                : "border-muted-foreground/50 bg-muted/50"
+            } rounded-lg hover:bg-muted/70 transition-colors cursor-pointer mb-6`}
             onClick={handleUploadClick}
             onDragEnter={handleDragEnter}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <Upload className="h-10 w-10 text-sky-400 mb-4" />
-            <p className="text-sm text-gray-300 text-center">
+            <Upload className="h-10 w-10 text-primary mb-4" />
+            <p className="text-sm text-muted-foreground text-center">
               Drag and drop your images here, click to browse, or paste from
               clipboard
             </p>

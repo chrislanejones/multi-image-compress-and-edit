@@ -431,7 +431,7 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
 
   if (!imageLoaded) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+      <div className="absolute inset-0 flex items-center justify-center bg-background">
         <div className="text-center text-white">
           <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
           <p>Loading image...</p>
@@ -443,19 +443,19 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
   return (
     <div
       ref={containerRef}
-      className="absolute inset-0 flex items-center justify-center bg-gray-900 overflow-hidden"
+      className="absolute inset-0 flex items-center justify-center bg-background overflow-hidden"
     >
       {/* Background image canvas */}
       <canvas
         ref={backgroundCanvasRef}
-        className="absolute shadow-lg border border-gray-600"
+        className="absolute shadow-lg border border-border"
         style={{ pointerEvents: "none" }}
       />
 
       {/* Paint canvas overlay */}
       <canvas
         ref={canvasRef}
-        className="absolute cursor-crosshair shadow-lg border border-gray-600"
+        className="absolute cursor-crosshair shadow-lg border border-border"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -473,15 +473,17 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
           style={{
             width: `${brushSize / canvasScale.x}px`,
             height: `${brushSize / canvasScale.y}px`,
-            border: "2px solid rgba(255, 255, 255, 0.7)",
+            border: "2px solid var(--foreground)",
+            borderOpacity: 0.7,
             borderRadius: selectedTool === "emoji" ? "0%" : "50%",
             left: "50%",
             top: "50%",
             transform: "translate(-50%, -50%)",
             backgroundColor:
               selectedTool === "eraser"
-                ? "rgba(255, 0, 0, 0.2)"
+                ? "var(--destructive)"
                 : "transparent",
+            opacity: selectedTool === "eraser" ? 0.2 : 1,
           }}
         />
       )}

@@ -11,7 +11,9 @@ import { useImageContext } from "../context/image-context";
  * Use the /upload route instead
  */
 export default function PhotoUpload() {
-  console.warn('PhotoUpload component is deprecated. Use /upload route instead.');
+  console.warn(
+    "PhotoUpload component is deprecated. Use /upload route instead."
+  );
   const navigate = useNavigate();
   const { addImages, images } = useImageContext();
 
@@ -119,7 +121,7 @@ export default function PhotoUpload() {
           <div className="flex flex-col items-center p-7 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 mb-8">
             <div>
               <img
-                className="size-32 shadow-xl rounded-md"
+                className="size-32"
                 alt="ImageHorse Logo"
                 src="/Image-Horse-Logo.svg"
               />
@@ -149,9 +151,9 @@ export default function PhotoUpload() {
           <div
             className={`flex flex-col items-center justify-center p-8 border-2 border-dashed ${
               isDragging
-                ? "border-sky-400 bg-sky-400/10"
-                : "border-gray-600 bg-gray-800/50"
-            } rounded-lg hover:bg-gray-800/70 transition-colors cursor-pointer mb-6`}
+                ? "border-primary bg-primary/10"
+                : "border-border bg-muted/50"
+            } rounded-lg hover:bg-muted/70 transition-colors cursor-pointer mb-6`}
             onClick={handleUploadClick}
             onDragEnter={handleDragEnter}
             onDragOver={handleDragOver}
@@ -176,7 +178,7 @@ export default function PhotoUpload() {
           {/* Button */}
           <button
             onClick={handleUploadClick}
-            className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-gray-200 dark:bg-white text-black hover:bg-gray-300 dark:hover:bg-gray-100 h-11 rounded-md px-8 w-full"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-gray-200 dark:bg-white text-black hover:bg-gray-300 dark:hover:bg-gray-100 h-11 px-8 w-full"
           >
             Select Images
           </button>

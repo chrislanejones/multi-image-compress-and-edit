@@ -35,7 +35,7 @@ export const CropToolbar = () => {
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 bg-gray-700 rounded-lg z-10 relative">
+    <div className="flex flex-wrap items-center justify-between gap-4 bg-card border border-border rounded-lg z-10 relative">
       {/* Left: Zoom controls */}
       <div className="flex items-center gap-2">
         <Button
@@ -67,7 +67,7 @@ export const CropToolbar = () => {
         </Button>
         <Button 
           onClick={handleSaveAndExit}
-          className="h-9 bg-green-700 hover:bg-green-600 text-white"
+          className="h-9 bg-accent hover:bg-accent/90 text-accent-foreground"
         >
           <Check className="mr-2 h-4 w-4" /> Save & Exit Crop
         </Button>

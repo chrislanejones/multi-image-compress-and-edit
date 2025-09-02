@@ -262,7 +262,7 @@ const TextTool = forwardRef<TextToolRef, TextToolProps>(
 
     if (!imageLoaded) {
       return (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+        <div className="absolute inset-0 flex items-center justify-center bg-background">
           <div className="text-center text-white">
             <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
             <p>Loading image...</p>
@@ -276,7 +276,7 @@ const TextTool = forwardRef<TextToolRef, TextToolProps>(
         {/* Canvas Column */}
         <div
           ref={imageContainerRef}
-          className="bg-gray-800 rounded-lg p-4 overflow-hidden flex items-center justify-center"
+          className="bg-card rounded-lg p-4 overflow-hidden flex items-center justify-center border border-border"
         >
           <div className="relative">
             {/* Hidden reference image */}
@@ -290,7 +290,7 @@ const TextTool = forwardRef<TextToolRef, TextToolProps>(
             {/* Main canvas */}
             <canvas
               ref={canvasRef}
-              className="block cursor-crosshair shadow-lg border border-gray-600"
+              className="block cursor-crosshair shadow-lg border border-border"
               onClick={handleCanvasClick}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
@@ -348,7 +348,7 @@ const TextTool = forwardRef<TextToolRef, TextToolProps>(
         </div>
 
         {/* Controls Column */}
-        <div className="bg-gray-800 rounded-lg p-4 space-y-4 text-white overflow-y-auto max-h-[600px]">
+        <div className="bg-card rounded-lg p-4 space-y-4 text-card-foreground overflow-y-auto max-h-[600px] border border-border">
           <h3 className="text-lg font-medium flex items-center">
             <Type className="mr-2 h-5 w-5" />
             Text Tools
@@ -363,7 +363,7 @@ const TextTool = forwardRef<TextToolRef, TextToolProps>(
                 placeholder="Enter your text..."
                 value={text}
                 onChange={handleTextChange}
-                className="flex-1 bg-gray-700 border-gray-600"
+                className="flex-1 bg-input border border-input"
               />
 
               <Button
@@ -393,7 +393,7 @@ const TextTool = forwardRef<TextToolRef, TextToolProps>(
               value={alignment}
               onValueChange={(value: any) => setAlignment(value)}
             >
-              <SelectTrigger className="bg-gray-700 border-gray-600">
+              <SelectTrigger className="bg-input border border-input">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -408,7 +408,7 @@ const TextTool = forwardRef<TextToolRef, TextToolProps>(
           <div className="space-y-2">
             <label className="text-sm font-medium block">Font Family</label>
             <Select value={font} onValueChange={handleFontChange}>
-              <SelectTrigger className="bg-gray-700 border-gray-600">
+              <SelectTrigger className="bg-input border border-input">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -460,9 +460,9 @@ const TextTool = forwardRef<TextToolRef, TextToolProps>(
           {/* Text Color */}
           <div className="space-y-2">
             <label className="text-sm font-medium block">Text Color</label>
-            <div className="flex gap-3 items-center p-3 bg-gray-700 rounded-lg">
+            <div className="flex gap-3 items-center p-3 bg-muted rounded-lg">
               <div
-                className="w-12 h-12 rounded-md border-2 border-gray-500 shadow-sm"
+                className="w-12 h-12 rounded-md border-2 border-border shadow-sm"
                 style={{ backgroundColor: color }}
               />
               <div className="flex-1">
@@ -472,7 +472,7 @@ const TextTool = forwardRef<TextToolRef, TextToolProps>(
                   onChange={handleColorChange}
                   className="w-full h-8 cursor-pointer bg-transparent"
                 />
-                <div className="text-xs text-gray-400 font-mono mt-1">
+                <div className="text-xs text-muted-foreground font-mono mt-1">
                   {color}
                 </div>
               </div>
@@ -480,25 +480,25 @@ const TextTool = forwardRef<TextToolRef, TextToolProps>(
           </div>
 
           {/* Position Info */}
-          <div className="bg-gray-700 p-3 rounded-md space-y-2">
+          <div className="bg-muted p-3 rounded-md space-y-2">
             <p className="text-sm font-medium">Position & Instructions</p>
-            <p className="text-xs text-gray-300">
+            <p className="text-xs text-muted-foreground">
               Click anywhere on the image to position your text
             </p>
-            <p className="text-xs text-gray-300">
+            <p className="text-xs text-muted-foreground">
               Drag the preview text to fine-tune position
             </p>
-            <div className="text-xs text-gray-400 font-mono">
+            <div className="text-xs text-muted-foreground font-mono">
               X: {Math.round(position.x)}% • Y: {Math.round(position.y)}%
             </div>
           </div>
 
           {/* Text Preview */}
           {text.trim() && (
-            <div className="bg-gray-700 p-4 rounded-md">
+            <div className="bg-muted p-4 rounded-md">
               <p className="text-sm font-medium mb-2">Preview:</p>
               <div
-                className="text-center p-2 border border-gray-600 rounded bg-gray-800"
+                className="text-center p-2 border border-border rounded bg-card"
                 style={{
                   fontFamily: font,
                   fontSize: `${Math.min(size, 32)}px`, // Limit preview size

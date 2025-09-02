@@ -59,9 +59,9 @@ function ThemedToaster() {
       theme={isDark ? "dark" : "light"}
       toastOptions={{
         style: {
-          backgroundColor: isDark ? "#1f2937" : "#ffffff",
-          color: isDark ? "#f3f4f6" : "#1f2937",
-          border: isDark ? "1px solid #374151" : "1px solid #e5e7eb",
+          backgroundColor: "var(--card)",
+          color: "var(--card-foreground)",
+          border: "1px solid var(--border)",
         },
         className: isDark ? "dark-toast" : "light-toast",
       }}

@@ -16,7 +16,7 @@ import {
   User,
 } from "lucide-react";
 import { Button } from "../ui/button";
-import { useViewStore, useAppStateStore, useImageStore } from "../../stores";
+import { useViewStore, useAppStateStore, useImageStore, useUploadStore } from "../../stores";
 import { useImageContext } from "../../context/image-context";
 import { useNavigate } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
@@ -25,6 +25,7 @@ export const MainToolbar = () => {
   const { globalZoomIn: onZoomIn, globalZoomOut: onZoomOut } = useViewStore();
   const { setEditorState } = useAppStateStore();
   const { selectedImageId, selectImage, getSelectedImage } = useImageStore();
+  const { addTerminalLine } = useUploadStore();
   const {
     images,
     selectedImage: contextSelectedImage,
@@ -85,12 +86,17 @@ export const MainToolbar = () => {
 
   const handleRemoveAll = () => {
     if (images.length === 0) return;
+    const imageCount = images.length;
     if (
       confirm(
-        `Are you sure you want to remove all ${images.length} images? This action cannot be undone.`
+        `Are you sure you want to remove all ${imageCount} images? This action cannot be undone.`
       )
     ) {
       removeAllImages();
+      // Add terminal message after removing all images
+      addTerminalLine(`✓ All images processed successfully`, 'success');
+      addTerminalLine(`→ Total images: ${imageCount}`, 'info');
+      addTerminalLine(`→ Images removed: All ${imageCount} images cleared from gallery`, 'info');
     }
   };
 
@@ -120,16 +126,16 @@ export const MainToolbar = () => {
           >
             <Images className="mr-2 h-4 w-4" /> Bulk Edit
           </Button>
-          <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+          <div className="absolute top-full left-0 mt-1 bg-popover border border-border rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
             <button
               onClick={() => handleBulkEdit('crop')}
-              className="block w-full px-4 py-2 text-left text-white hover:bg-gray-700 rounded-t-md"
+              className="block w-full px-4 py-2 text-left text-popover-foreground hover:bg-muted rounded-t-md"
             >
               Bulk Crop
             </button>
             <button
               onClick={() => handleBulkEdit('text')}
-              className="block w-full px-4 py-2 text-left text-white hover:bg-gray-700 rounded-b-md"
+              className="block w-full px-4 py-2 text-left text-popover-foreground hover:bg-muted rounded-b-md"
             >
               Bulk Text
             </button>

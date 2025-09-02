@@ -56,12 +56,12 @@ export function NonGalleryHeader({ mode, className }: NonGalleryHeaderProps) {
 
   return (
     <div className={cn(
-      "text-center p-8 bg-gray-800 rounded-lg mb-6 flex flex-col items-center justify-center min-h-[124px]",
+      "text-center p-8 bg-card border border-border rounded-lg mb-6 flex flex-col items-center justify-center min-h-[124px]",
       className
     )}>
-      <div className="inline-flex items-center gap-2 justify-center px-4 py-2 rounded-full bg-gray-600 border border-gray-500">
-        <Icon className="h-4 w-4 text-white" />
-        <span className="font-medium text-white">{config.title}</span>
+      <div className="inline-flex items-center gap-2 justify-center px-4 py-2 rounded-full bg-muted border border-border">
+        <Icon className="h-4 w-4 text-card-foreground" />
+        <span className="font-medium text-card-foreground">{config.title}</span>
       </div>
       <p className="text-sm text-muted-foreground mt-2">
         {config.description}

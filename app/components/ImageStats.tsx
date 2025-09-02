@@ -16,7 +16,7 @@ export default function ImageStats({ selectedImage }: ImageStatsProps) {
     selectedImage.metadata;
 
   return (
-    <Card className="rounded-lg bg-gray-800 text-white border-0 shadow-lg">
+    <Card className="rounded-lg bg-card text-card-foreground shadow-lg">
       <CardHeader className="p-3 pb-0">
         <CardTitle className="flex items-center text-lg font-semibold">
           <FileArchive className="h-5 w-5 mr-2" />
@@ -32,26 +32,26 @@ export default function ImageStats({ selectedImage }: ImageStatsProps) {
           </div>
           <div className="text-center">
             <span className="font-medium text-muted-foreground block mb-1">Compressed Size</span>
-            <p className="text-xl font-bold text-green-400">
+            <p className="text-xl font-bold text-accent">
               {formatBytes(compressedSize || originalSize || 0)}
             </p>
           </div>
           <div className="text-center">
             <span className="font-medium text-muted-foreground block mb-1">Space Saved</span>
-            <p className="text-xl font-bold text-green-400">
+            <p className="text-xl font-bold text-accent">
               {formatBytes((originalSize || 0) - (compressedSize || originalSize || 0))}
             </p>
           </div>
           <div className="text-center">
             <span className="font-medium text-muted-foreground block mb-1">Reduction</span>
-            <p className="text-xl font-bold text-green-400">
+            <p className="text-xl font-bold text-accent">
               {compressionRatio || 0}%
             </p>
           </div>
         </div>
         
         {/* Additional stats row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-4 border-t border-gray-700">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-4 border-t border-border">
           <div className="text-center">
             <span className="font-medium text-muted-foreground block mb-1">Dimensions</span>
             <p className="text-sm">{selectedImage?.width || 'Unknown'} × {selectedImage?.height || 'Unknown'}</p>
@@ -62,11 +62,11 @@ export default function ImageStats({ selectedImage }: ImageStatsProps) {
           </div>
           <div className="text-center">
             <span className="font-medium text-muted-foreground block mb-1">Quality</span>
-            <p className="text-sm text-green-400">High</p>
+            <p className="text-sm text-accent">High</p>
           </div>
           <div className="text-center">
             <span className="font-medium text-muted-foreground block mb-1">Core Web Vitals</span>
-            <p className="text-sm text-green-400">✓ Optimized</p>
+            <p className="text-sm text-accent">✓ Optimized</p>
           </div>
         </div>
       </CardContent>

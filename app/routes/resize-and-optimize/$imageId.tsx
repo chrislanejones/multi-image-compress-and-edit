@@ -23,7 +23,7 @@ const FastThumbnail = React.memo(
   }) => (
     <div
       onClick={onClick}
-      className={`relative aspect-square cursor-pointer rounded-lg overflow-hidden group transition-all duration-300 ease-in-out ${isSelected ? "ring-4 ring-sky-400 ring-offset-2 ring-offset-gray-800 scale-105" : "hover:scale-105"}`}
+      className={`relative aspect-square cursor-pointer rounded-lg overflow-hidden group transition-all duration-300 ease-in-out ${isSelected ? "ring-2 ring-primary ring-offset-2 ring-offset-background scale-105" : "hover:scale-105"}`}
     >
       <div className="relative w-full h-full">
         {isLoading && (
@@ -56,7 +56,7 @@ const FastThumbnail = React.memo(
           className="absolute bottom-1 left-1 bg-black/80 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1"
           title="Image Size Reduced"
         >
-          <Zap className="w-3 h-3 text-yellow-400" />
+          <Zap className="w-3 h-3 text-secondary" />
           <span className="text-white text-xs font-medium">
             {image.metadata.compressionRatio}%
           </span>
@@ -94,7 +94,7 @@ function OptimizeImageComponent() {
   // Render the same gallery as the index route
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-6 md:grid-cols-10 gap-4 p-2 bg-gray-800 rounded-lg">
+      <div className="grid grid-cols-6 md:grid-cols-10 gap-4 p-2 bg-card border border-border rounded-lg">
         {paginatedImages.map((img) => (
           <FastThumbnail
             key={img.id}

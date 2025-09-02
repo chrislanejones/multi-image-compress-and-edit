@@ -86,10 +86,10 @@ export const BlurToolbar = () => {
       {/* Center: Blur controls */}
       <div className="flex-1 flex items-center gap-6 px-8">
         <div className="flex-1 flex flex-col gap-1">
-          <label className="text-sm font-medium text-white">
+          <label className="text-sm font-medium text-card-foreground">
             Blur Intensity: {blurAmount}px
           </label>
-          <div className="bg-gray-800 p-2 rounded">
+          <div className="bg-muted p-2 rounded">
             <Slider
               className="w-full"
               min={1}
@@ -101,10 +101,10 @@ export const BlurToolbar = () => {
           </div>
         </div>
         <div className="flex-1 flex flex-col gap-1">
-          <label className="text-sm font-medium text-white">
+          <label className="text-sm font-medium text-card-foreground">
             Brush Size: {brushSize}px
           </label>
-          <div className="bg-gray-800 p-2 rounded">
+          <div className="bg-muted p-2 rounded">
             <Slider
               className="w-full"
               min={10}
@@ -124,7 +124,7 @@ export const BlurToolbar = () => {
         </Button>
         <Button
           onClick={handleSaveAndExit}
-          className="h-9 bg-green-700 hover:bg-green-600 text-white"
+          className="h-9 bg-accent hover:bg-accent/90 text-accent-foreground"
         >
           <Check className="mr-2 h-4 w-4" /> Save & Exit Blur
         </Button>

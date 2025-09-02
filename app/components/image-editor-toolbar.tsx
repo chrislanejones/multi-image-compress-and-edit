@@ -23,24 +23,24 @@ const PadlockIndicator: React.FC<{
         padlockAnimation ? "animate-pulse" : ""
       }`}
     >
-      <div className="inline-flex items-center gap-2 justify-center px-4 py-2 rounded-full bg-gray-600">
+      <div className="inline-flex items-center gap-2 justify-center px-4 py-2 rounded-full bg-muted border border-border">
         {editorState === "bulkImageEdit" ? (
           <>
             <Images
               className={`h-4 w-4 ${
-                padlockAnimation ? "text-yellow-300" : "text-white"
+                padlockAnimation ? "text-secondary" : "text-muted-foreground"
               }`}
             />
-            <span className="font-medium">Bulk Edit Mode</span>
+            <span className="font-medium text-muted-foreground">Bulk Edit Mode</span>
           </>
         ) : (
           <>
             <Lock
               className={`h-4 w-4 ${
-                padlockAnimation ? "text-yellow-300" : "text-white"
+                padlockAnimation ? "text-secondary" : "text-muted-foreground"
               }`}
             />
-            <span className="font-medium">Edit Image Mode</span>
+            <span className="font-medium text-muted-foreground">Edit Image Mode</span>
           </>
         )}
       </div>
@@ -85,7 +85,7 @@ export const ImageEditorToolbar: React.FC<{ padlockAnimation?: boolean }> = ({
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 mb-4 bg-gray-700 p-2 rounded-lg z-10 relative">
+    <div className="flex flex-wrap items-center justify-between gap-4 mb-4 bg-card border border-border p-2 rounded-lg z-10 relative">
       {CurrentToolbar}
     </div>
   );

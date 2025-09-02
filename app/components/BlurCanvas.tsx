@@ -297,7 +297,7 @@ export const BlurCanvas: React.FC<BlurCanvasProps> = ({
 
   if (!imageLoaded) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+      <div className="absolute inset-0 flex items-center justify-center bg-background">
         <div className="text-center text-white">
           <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
           <p>Loading image...</p>
@@ -309,7 +309,7 @@ export const BlurCanvas: React.FC<BlurCanvasProps> = ({
   return (
     <div
       ref={containerRef}
-      className="absolute inset-0 flex items-center justify-center bg-gray-900 overflow-hidden"
+      className="absolute inset-0 flex items-center justify-center bg-background overflow-hidden"
     >
       {/* Hidden reference image */}
       <img
@@ -322,7 +322,7 @@ export const BlurCanvas: React.FC<BlurCanvasProps> = ({
       {/* Main blur canvas */}
       <canvas
         ref={canvasRef}
-        className="cursor-crosshair shadow-lg border border-gray-600"
+        className="cursor-crosshair shadow-lg border border-border"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

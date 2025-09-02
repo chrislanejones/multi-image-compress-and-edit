@@ -29,7 +29,7 @@ export function ComputerWindow({
         // Apply a subtle gradient using the secondary and background colours from the palette.  Tailwind allows arbitrary values inside square
         // brackets so we can reference CSS variables directly.  This ensures the component adapts seamlessly to both light and dark modes.
         "w-full rounded-xl p-1 text-sm bg-gradient-to-br",
-        "from-[hsl(var(--secondary))] to-[hsl(var(--background))]",
+        "from-[var(--secondary)] to-[var(--background)]",
         className,
         sizeClasses[size]
       )}
@@ -39,21 +39,21 @@ export function ComputerWindow({
         {/* Colours for the faux window controls now derive from the chart palette for consistency */}
         <span
           className="size-3 rounded-full"
-          style={{ backgroundColor: `hsl(var(--chart-1))` }}
+          style={{ backgroundColor: `var(--chart-1)` }}
         ></span>
         <span
           className="size-3 rounded-full"
-          style={{ backgroundColor: `hsl(var(--chart-4))` }}
+          style={{ backgroundColor: `var(--chart-4)` }}
         ></span>
         <span
           className="size-3 rounded-full"
-          style={{ backgroundColor: `hsl(var(--chart-2))` }}
+          style={{ backgroundColor: `var(--chart-2)` }}
         ></span>
         {showTitle && (
           <div className="flex-1 text-center">
             <span
               className="text-xs font-medium"
-              style={{ color: `hsl(var(--muted-foreground))` }}
+              style={{ color: `var(--muted-foreground)` }}
             >
               {title}
             </span>
@@ -64,7 +64,7 @@ export function ComputerWindow({
       {/* Window Content */}
       <div
         className="rounded-lg p-8"
-        style={{ backgroundColor: `hsl(var(--card))` }}
+        style={{ backgroundColor: `var(--card)` }}
       >
         {children}
       </div>
@@ -85,7 +85,7 @@ export function ComputerWindowHeader({
     <div
       className={cn(
         "flex flex-col items-center p-7 rounded-2xl bg-gradient-to-br",
-        "from-[hsl(var(--secondary))] to-[hsl(var(--background))]",
+        "from-[var(--secondary)] to-[var(--background)]",
         "mb-8",
         className
       )}

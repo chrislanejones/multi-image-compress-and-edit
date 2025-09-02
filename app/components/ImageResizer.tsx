@@ -23,13 +23,9 @@ import {
 } from "./ui/select";
 import { COMPRESSION_LEVELS } from "../constants/editorConstants";
 import type { ImageFormat, CoreWebVitalsScore } from "../types/types";
+import { calculateCoreWebVitalsScore } from "../utils/core-web-vitals";
 
-// Core Web Vitals thresholds
-const CORE_WEB_VITALS = {
-  LCP_THRESHOLD_GOOD: 1200 * 900,
-  LCP_THRESHOLD_POOR: 1800 * 1200,
-  BUFFER: 20000,
-} as const;
+// Note: Using Core Web Vitals thresholds from utils/core-web-vitals.ts
 
 export default function ImageResizer() {
   const {
@@ -124,21 +120,13 @@ export default function ImageResizer() {
     }
   }, [resizeDraft]);
 
-  // Calculate Core Web Vitals score
+  // Calculate Core Web Vitals score using proper utility function with file size
   const updateCoreWebVitalsScore = useCallback(
-    (width: number, height: number) => {
-      const size = width * height;
-      const buffer = CORE_WEB_VITALS.BUFFER;
-
-      let score: CoreWebVitalsScore = "poor";
-      if (size <= CORE_WEB_VITALS.LCP_THRESHOLD_GOOD - buffer) {
-        score = "good";
-      } else if (size <= CORE_WEB_VITALS.LCP_THRESHOLD_GOOD + buffer) {
-        score = "almost-there";
-      } else if (size <= CORE_WEB_VITALS.LCP_THRESHOLD_POOR - buffer) {
-        score = "needs-improvement";
-      }
-
+    (width: number, height: number, fileSize?: number) => {
+      // If no file size provided, estimate based on dimensions for uncompressed image
+      const estimatedFileSize = fileSize || width * height * 3; // Rough estimate for uncompressed RGB
+      
+      const score = calculateCoreWebVitalsScore(width, height, estimatedFileSize);
       setCoreWebVitalsScore(score);
     },
     []
@@ -146,11 +134,14 @@ export default function ImageResizer() {
 
   // Update Core Web Vitals score from image metadata or calculate it
   useEffect(() => {
-    // Use Core Web Vitals score from metadata if available (from CWV compression)
+    // Always prioritize metadata score from Core Web Vitals compression
     if (selectedImage?.metadata?.coreWebVitalsScore) {
       setCoreWebVitalsScore(selectedImage.metadata.coreWebVitalsScore);
     } else if (localWidth > 0 && localHeight > 0) {
-      updateCoreWebVitalsScore(localWidth, localHeight);
+      // For images without Core Web Vitals compression, calculate based on current dimensions
+      // Use file size if available, otherwise estimate for uncompressed
+      const fileSize = selectedImage?.file?.size;
+      updateCoreWebVitalsScore(localWidth, localHeight, fileSize);
     }
 
     // Update has changes state
@@ -165,6 +156,7 @@ export default function ImageResizer() {
     imageDimensions.height,
     updateCoreWebVitalsScore,
     selectedImage?.metadata?.coreWebVitalsScore,
+    selectedImage?.file?.size,
   ]);
 
   // Width slider change handler
@@ -245,12 +237,17 @@ export default function ImageResizer() {
     // Reset Core Web Vitals compression for selected image
     if (selectedImage) {
       resetCompression(selectedImage.id);
+      
+      // Force recalculation of Core Web Vitals score for original dimensions
+      // Use original file size for more accurate score calculation
+      const originalFileSize = selectedImage.file?.size;
+      updateCoreWebVitalsScore(imageDimensions.width, imageDimensions.height, originalFileSize);
     }
 
     // Reset compression settings UI
     resetEditorUI();
 
-    // Reset resize draft for selected image
+    // Reset resize draft for selected image - this will trigger slider updates
     setResizeDraft({
       width: imageDimensions.width,
       height: imageDimensions.height,
@@ -328,7 +325,7 @@ export default function ImageResizer() {
 
   if (!selectedImage) {
     return (
-      <Card className="rounded-lg bg-gray-800 text-white border-0 shadow-lg flex items-center justify-center p-6 min-h-[400px]">
+      <Card className="rounded-lg bg-card text-card-foreground shadow-lg flex items-center justify-center p-6 min-h-[400px]">
         <p className="text-muted-foreground text-center">
           Select an image to see resize options.
         </p>
@@ -338,7 +335,7 @@ export default function ImageResizer() {
 
   if (isLoadingDimensions || imageDimensions.width === 0) {
     return (
-      <Card className="rounded-lg bg-gray-800 text-white border-0 shadow-lg flex items-center justify-center p-6 min-h-[400px]">
+      <Card className="rounded-lg bg-card text-card-foreground shadow-lg flex items-center justify-center p-6 min-h-[400px]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
           <p className="text-muted-foreground">Loading image dimensions...</p>
@@ -354,7 +351,7 @@ export default function ImageResizer() {
   const maxHeight = Math.round(imageDimensions.height * 3);
 
   return (
-    <Card className="rounded-lg bg-gray-800 text-white border-0 shadow-lg">
+    <Card className="rounded-lg bg-card text-card-foreground shadow-lg">
       <CardHeader className="p-3 pb-0">
         <CardTitle className="flex items-center text-base font-semibold">
           <ImgIcon className="h-4 w-4 mr-2" /> Resize & Optimize
@@ -365,7 +362,7 @@ export default function ImageResizer() {
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <label className="text-sm font-medium">Width</label>
-            <span className="text-sm text-gray-300">{localWidth}px</span>
+            <span className="text-sm text-muted-foreground">{localWidth}px</span>
           </div>
           <Slider
             value={[localWidth]}
@@ -375,7 +372,7 @@ export default function ImageResizer() {
             onValueChange={handleWidthChange}
             className="w-full"
           />
-          <div className="flex justify-between text-xs text-gray-400">
+          <div className="flex justify-between text-xs text-muted-foreground">
             <span>{minWidth}px</span>
             <span>{maxWidth}px</span>
           </div>
@@ -385,7 +382,7 @@ export default function ImageResizer() {
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <label className="text-sm font-medium">Height</label>
-            <span className="text-sm text-gray-300">{localHeight}px</span>
+            <span className="text-sm text-muted-foreground">{localHeight}px</span>
           </div>
           <Slider
             value={[localHeight]}
@@ -395,7 +392,7 @@ export default function ImageResizer() {
             onValueChange={handleHeightChange}
             className="w-full"
           />
-          <div className="flex justify-between text-xs text-gray-400">
+          <div className="flex justify-between text-xs text-muted-foreground">
             <span>{minHeight}px</span>
             <span>{maxHeight}px</span>
           </div>
@@ -408,11 +405,11 @@ export default function ImageResizer() {
             onClick={() => setAspectRatio((p) => !p)}
             className={`w-10 h-6 p-1 rounded-full flex items-center transition-colors ${
               aspectRatio
-                ? "bg-blue-600 justify-end"
-                : "bg-gray-600 justify-start"
+                ? "bg-primary justify-end"
+                : "bg-muted justify-start"
             }`}
           >
-            <span className="w-4 h-4 rounded-full bg-white transition-transform" />
+            <span className="w-4 h-4 rounded-full bg-background transition-transform" />
           </button>
         </div>
 
@@ -435,16 +432,16 @@ export default function ImageResizer() {
 
         {/* Core Web Vitals Indicator */}
         <div className="space-y-2">
-          <span className="text-xs text-gray-300">Core Web Vitals Score:</span>
+          <span className="text-xs text-muted-foreground">Core Web Vitals Score:</span>
           <div className="relative w-full h-5 rounded-full overflow-hidden bg-gradient-to-r from-green-500 via-yellow-400 to-red-500">
             <div
               className="absolute top-1/2 -translate-y-1/2 transition-all duration-300 ease-in-out"
               style={{ left: getIndicatorPosition() }}
             >
-              <div className="w-3 h-3 rounded-full bg-white shadow-lg border-1 border-gray-800" />
+              <div className="w-3 h-3 rounded-full bg-background shadow-lg border border-border" />
             </div>
           </div>
-          <div className="flex justify-between text-[10px] text-gray-400 px-1">
+          <div className="flex justify-between text-[10px] text-muted-foreground px-1">
             <span>Good</span>
             <span>Almost There</span>
             <span>Needs Work</span>
@@ -454,12 +451,12 @@ export default function ImageResizer() {
             <span
               className={`text-xs font-medium ${
                 coreWebVitalsScore === "good"
-                  ? "text-green-400"
+                  ? "text-accent"
                   : coreWebVitalsScore === "almost-there"
-                    ? "text-yellow-400"
+                    ? "text-secondary"
                     : coreWebVitalsScore === "needs-improvement"
-                      ? "text-orange-400"
-                      : "text-red-400"
+                      ? "text-chart-3"
+                      : "text-destructive"
               }`}
             >
               {coreWebVitalsScore === "good"
@@ -493,8 +490,8 @@ export default function ImageResizer() {
           onClick={handleApplyResize}
           className={`w-full mb-4 ${
             hasChanges
-              ? "bg-gray-800 hover:bg-gray-700 text-white"
-              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              ? "bg-primary hover:bg-primary/90 text-primary-foreground"
+              : "bg-muted text-muted-foreground cursor-not-allowed"
           }`}
           disabled={!hasChanges}
         >
@@ -544,7 +541,7 @@ export default function ImageResizer() {
 
         {/* Current Status */}
         {hasChanges && (
-          <div className="mt-4 p-3 bg-gray-400/20 rounded-lg">
+          <div className="mt-4 p-3 bg-muted rounded-lg">
             <div className="text-xs text-white-300">
               <p>
                 Original: {imageDimensions.width} × {imageDimensions.height}px

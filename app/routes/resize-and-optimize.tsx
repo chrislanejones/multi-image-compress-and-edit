@@ -285,7 +285,7 @@ function ResizeAndOptimizeLayout() {
             {/* Main image view - takes up 3 columns on large screens */}
             <section className="lg:col-span-3">
               {selectedImage && (
-                <Card className="bg-gray-800 border-0 shadow-lg">
+                <Card className="bg-card text-card-foreground shadow-lg">
                   <CardContent className="p-4">
                     <div
                       className="flex items-center justify-center bg-muted rounded-lg overflow-hidden"

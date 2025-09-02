@@ -1,122 +1,126 @@
-/*
-  Global style definitions for the ImageHorse application.
-
-  This file replaces the original HSL based palette with a more descriptive
-  and accessible colour scheme.  Colours are expressed as space separated
-  HSL values so that Tailwind’s `hsl(var(--…))` helper can still consume
-  them, but every value is derived from a well known RGB colour.  The
-  palette takes its inspiration from classic equestrian tones (saddle browns,
-  tans and deep blues) to reinforce the “ImageHorse” theme while maintaining
-  sufficient contrast ratios in both light and dark modes.  A new
-  `--highlight` colour has been introduced for elements that need to pop,
-  such as tool overlays or selection regions in the editor.
-
-  See README for guidance on adding additional colours; whenever adding
-  colours you should compute the HSL values from the desired RGB values to
-  ensure accurate representation and easy readability.  You can use
-  https://www.w3schools.com/colors/colors_converter.asp or a similar tool
-  to convert between colour spaces.
-*/
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    /*
-      Light theme colours.
-      Each variable contains a space separated HSL triple.  These values
-      come from a carefully curated palette designed to provide high
-      contrast on light backgrounds and to evoke a horse‑themed aesthetic.
-    */
-    --background: 210 16.7% 97.6%; /* off‑white base */
-    --foreground: 222.2 47.4% 11.2%; /* very dark blue for text */
-    --card: 0 0% 100%; /* pure white card background */
-    --card-foreground: 222.2 47.4% 11.2%; /* match the body text colour */
-    --popover: 210 16.7% 97.6%; /* follow background for popovers */
-    --popover-foreground: 222.2 47.4% 11.2%;
-    --primary: 25 75.9% 31%; /* saddle brown for primary buttons */
-    --primary-foreground: 0 0% 100%; /* white text on primary surfaces */
-    --secondary: 53.3 15.3% 88.4%; /* soft beige secondary surfaces */
-    --secondary-foreground: 12 6.5% 15.1%; /* dark brown text on secondary */
-    --muted: 0 0% 94.5%; /* light grey backgrounds */
-    --muted-foreground: 210 3.5% 44.3%; /* mid grey text on muted backgrounds */
-    --accent: 39.1 76.7% 83.1%; /* wheat/gold accent colour */
-    --accent-foreground: 12 6.5% 15.1%; /* dark brown for accents */
-    --destructive: 0 84.2% 60.2%; /* unchanged red for destructive actions */
-    --destructive-foreground: 0 0% 98%; /* white text on destructive */
-    --border: 214.3 12.7% 89.2%; /* pale blue grey border */
-    --input: 0 0% 94.5%; /* reuse muted as input background */
-    --ring: 25 75.9% 31%; /* match primary for focus rings */
+    --background: oklch(0.9816 0.0017 247.8390);
+    --foreground: oklch(0 0 0);
+    --card: oklch(1.0000 0 0);
+    --card-foreground: oklch(0 0 0);
+    --popover: oklch(1.0000 0 0);
+    --popover-foreground: oklch(0 0 0);
+    --primary: oklch(0.4725 0.0831 214.1610);
+    --primary-foreground: oklch(1.0000 0 0);
+    --secondary: oklch(0.7430 0.1410 82.6272);
+    --secondary-foreground: oklch(0 0 0);
+    --muted: oklch(0.9683 0.0069 247.8956);
+    --muted-foreground: oklch(0.5544 0.0407 257.4166);
+    --accent: oklch(0.5991 0.1041 81.7230);
+    --accent-foreground: oklch(1.0000 0 0);
+    --destructive: oklch(0.6368 0.2078 25.3313);
+    --destructive-foreground: oklch(1.0000 0 0);
+    --border: oklch(0.9288 0.0126 255.5078);
+    --input: oklch(0.9288 0.0126 255.5078);
+    --ring: oklch(0.4725 0.0831 214.1610);
+    --chart-1: oklch(0.4725 0.0831 214.1610);
+    --chart-2: oklch(0.7430 0.1410 82.6272);
+    --chart-3: oklch(0.5991 0.1041 81.7230);
+    --chart-4: oklch(0.2050 0.0200 248.8302);
+    --chart-5: oklch(0.5534 0.0116 58.0708);
+    --sidebar: oklch(0.2050 0.0200 248.8302);
+    --sidebar-foreground: oklch(1.0000 0 0);
+    --sidebar-primary: oklch(0.7430 0.1410 82.6272);
+    --sidebar-primary-foreground: oklch(0 0 0);
+    --sidebar-accent: oklch(0.4725 0.0831 214.1610);
+    --sidebar-accent-foreground: oklch(1.0000 0 0);
+    --sidebar-border: oklch(0.2739 0.0055 286.0326);
+    --sidebar-ring: oklch(0.7430 0.1410 82.6272);
+    --font-sans: Roboto;
+    --font-serif: Georgia;
+    --font-mono: Roboto Mono;
     --radius: 0.5rem;
-    /* Chart palette for visualisations */
-    --chart-1: 25 75.9% 31%; /* saddle brown */
-    --chart-2: 29.6 58.7% 52.5%; /* peru */
-    --chart-3: 34.3 43.7% 68.6%; /* tan */
-    --chart-4: 19.3 56.1% 40.2%; /* sienna */
-    --chart-5: 28.9 56.6% 46.1%; /* camel */
-    /* Additional highlight colour for selection areas or overlays */
-    --highlight: 31.1 100% 83.3%; /* pale peach highlight */
-    --highlight-foreground: 12 6.5% 15.1%; /* dark text on highlight */
+    --shadow-2xs: 0px 4px 10px 0px hsl(0 0% 0% / 0.05);
+    --shadow-xs: 0px 4px 10px 0px hsl(0 0% 0% / 0.05);
+    --shadow-sm: 0px 4px 10px 0px hsl(0 0% 0% / 0.10), 0px 1px 2px -1px hsl(0 0% 0% / 0.10);
+    --shadow: 0px 4px 10px 0px hsl(0 0% 0% / 0.10), 0px 1px 2px -1px hsl(0 0% 0% / 0.10);
+    --shadow-md: 0px 4px 10px 0px hsl(0 0% 0% / 0.10), 0px 2px 4px -1px hsl(0 0% 0% / 0.10);
+    --shadow-lg: 0px 4px 10px 0px hsl(0 0% 0% / 0.10), 0px 4px 6px -1px hsl(0 0% 0% / 0.10);
+    --shadow-xl: 0px 4px 10px 0px hsl(0 0% 0% / 0.10), 0px 8px 10px -1px hsl(0 0% 0% / 0.10);
+    --shadow-2xl: 0px 4px 10px 0px hsl(0 0% 0% / 0.25);
+    --tracking-normal: normal;
+    --spacing: 0.25rem;
   }
 
   .dark {
-    /*
-      Dark theme colours.
-      Colours are tuned to provide sufficient contrast on dark surfaces.
-      Warm browns and tans are used for primary actions to echo the
-      horse‑themed branding, while cool blues anchor the background.
-    */
-    --background: 220 42.9% 11%; /* deep navy background */
-    --foreground: 0 0% 96.1%; /* nearly white text */
-    --card: 220 30% 15.7%; /* slightly lighter than background */
-    --card-foreground: 0 0% 96.1%; /* white text on cards */
-    --popover: 220 30% 15.7%; /* popovers match cards */
-    --popover-foreground: 0 0% 96.1%;
-    --primary: 29.6 58.7% 52.5%; /* peru for primary surfaces */
-    --primary-foreground: 220 42.9% 11%; /* dark text on primary buttons */
-    --secondary: 221.5 33.9% 22.5%; /* slate blue for secondary surfaces */
-    --secondary-foreground: 0 0% 96.1%; /* white text on secondary */
-    --muted: 221.5 33.9% 22.5%; /* reuse secondary for muted backgrounds */
-    --muted-foreground: 0 0% 60.8%; /* soft grey text on muted */
-    --accent: 14.1 23.6% 28.2%; /* warm brown accent */
-    --accent-foreground: 0 0% 96.1%; /* white text on accent */
-    --destructive: 0 62.8% 30.6%; /* maintain dark red for destructive */
-    --destructive-foreground: 0 0% 98%; /* white text on destructive */
-    --border: 221.5 33.9% 22.5%; /* match secondary for borders */
-    --input: 221.5 33.9% 22.5%; /* inputs blend with muted backgrounds */
-    --ring: 29.6 58.7% 52.5%; /* match primary for focus rings */
-    --chart-1: 25 75.9% 31%; /* reuse light chart palette for consistency */
-    --chart-2: 29.6 58.7% 52.5%;
-    --chart-3: 34.3 43.7% 68.6%;
-    --chart-4: 19.3 56.1% 40.2%;
-    --chart-5: 28.9 56.6% 46.1%;
-    --highlight: 31.1 100% 83.3%; /* pale peach highlight */
-    --highlight-foreground: 220 42.9% 11%; /* dark navy text on highlight */
+    --background: oklch(0.2050 0.0200 248.8302);
+    --foreground: oklch(1.0000 0 0);
+    --card: oklch(0.2399 0.0209 251.6749);
+    --card-foreground: oklch(1.0000 0 0);
+    --popover: oklch(0.2399 0.0209 251.6749);
+    --popover-foreground: oklch(1.0000 0 0);
+    --primary: oklch(0.4725 0.0831 214.1610);
+    --primary-foreground: oklch(1.0000 0 0);
+    --secondary: oklch(0.7430 0.1410 82.6272);
+    --secondary-foreground: oklch(0 0 0);
+    --muted: oklch(0.2739 0.0055 286.0326);
+    --muted-foreground: oklch(0.7118 0.0129 286.0665);
+    --accent: oklch(0.5991 0.1041 81.7230);
+    --accent-foreground: oklch(1.0000 0 0);
+    --destructive: oklch(0.5054 0.1905 27.5181);
+    --destructive-foreground: oklch(1.0000 0 0);
+    --border: oklch(0.2739 0.0055 286.0326);
+    --input: oklch(0.2739 0.0055 286.0326);
+    --ring: oklch(0.7430 0.1410 82.6272);
+    --chart-1: oklch(0.4725 0.0831 214.1610);
+    --chart-2: oklch(0.7430 0.1410 82.6272);
+    --chart-3: oklch(0.5991 0.1041 81.7230);
+    --chart-4: oklch(1.0000 0 0);
+    --chart-5: oklch(0.7118 0.0129 286.0665);
+    --sidebar: oklch(0 0 0);
+    --sidebar-foreground: oklch(1.0000 0 0);
+    --sidebar-primary: oklch(0.7430 0.1410 82.6272);
+    --sidebar-primary-foreground: oklch(0 0 0);
+    --sidebar-accent: oklch(0.4725 0.0831 214.1610);
+    --sidebar-accent-foreground: oklch(1.0000 0 0);
+    --sidebar-border: oklch(0.2739 0.0055 286.0326);
+    --sidebar-ring: oklch(0.7430 0.1410 82.6272);
+    --font-sans: Roboto;
+    --font-serif: Georgia;
+    --font-mono: Roboto Mono;
+    --radius: 0.5rem;
+    --shadow-2xs: 0px 5px 15px 0px hsl(0 0% 0% / 0.25);
+    --shadow-xs: 0px 5px 15px 0px hsl(0 0% 0% / 0.25);
+    --shadow-sm: 0px 5px 15px 0px hsl(0 0% 0% / 0.50), 0px 1px 2px -1px hsl(0 0% 0% / 0.50);
+    --shadow: 0px 5px 15px 0px hsl(0 0% 0% / 0.50), 0px 1px 2px -1px hsl(0 0% 0% / 0.50);
+    --shadow-md: 0px 5px 15px 0px hsl(0 0% 0% / 0.50), 0px 2px 4px -1px hsl(0 0% 0% / 0.50);
+    --shadow-lg: 0px 5px 15px 0px hsl(0 0% 0% / 0.50), 0px 4px 6px -1px hsl(0 0% 0% / 0.50);
+    --shadow-xl: 0px 5px 15px 0px hsl(0 0% 0% / 0.50), 0px 8px 10px -1px hsl(0 0% 0% / 0.50);
+    --shadow-2xl: 0px 5px 15px 0px hsl(0 0% 0% / 1.25);
   }
 }
 
 @layer base {
+  /* Remove white border from pseudo-elements */
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+
   body {
-    /* Apply the computed backgrounds and text colours via Tailwind */
     @apply bg-background text-foreground;
+    letter-spacing: var(--tracking-normal);
   }
 }
 
-/*
-  Image editor specific styles.
-  These styles create a checkered backdrop to indicate transparency.  The
-  colours have been adjusted to harmonise with the new palette: the light
-  theme uses very pale greys and the dark theme uses mid‑tone slates.  The
-  pattern is subtle so as not to distract from the edited image.
-*/
+/* Image editor canvas checkered background */
 .image-editor-canvas {
   background-image:
-    linear-gradient(45deg, hsl(0 0% 94%) 25%, transparent 25%),
-    linear-gradient(-45deg, hsl(0 0% 94%) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, hsl(0 0% 94%) 75%),
-    linear-gradient(-45deg, transparent 75%, hsl(0 0% 94%) 75%);
+    linear-gradient(45deg, oklch(0.9683 0.0069 247.8956) 25%, transparent 25%),
+    linear-gradient(-45deg, oklch(0.9683 0.0069 247.8956) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, oklch(0.9683 0.0069 247.8956) 75%),
+    linear-gradient(-45deg, transparent 75%, oklch(0.9683 0.0069 247.8956) 75%);
   background-size: 20px 20px;
   background-position:
     0 0,
@@ -127,18 +131,13 @@
 
 .dark .image-editor-canvas {
   background-image:
-    linear-gradient(45deg, hsl(221.5 33.9% 22.5%) 25%, transparent 25%),
-    linear-gradient(-45deg, hsl(221.5 33.9% 22.5%) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, hsl(221.5 33.9% 22.5%) 75%),
-    linear-gradient(-45deg, transparent 75%, hsl(221.5 33.9% 22.5%) 75%);
+    linear-gradient(45deg, oklch(0.2739 0.0055 286.0326) 25%, transparent 25%),
+    linear-gradient(-45deg, oklch(0.2739 0.0055 286.0326) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, oklch(0.2739 0.0055 286.0326) 75%),
+    linear-gradient(-45deg, transparent 75%, oklch(0.2739 0.0055 286.0326) 75%);
 }
 
-/*
-  Tool overlay styles.  These preserve the existing behaviour of pointer
-  events but have been left unchanged, as their colours are tied into the
-  palette via the `--highlight` variable when needed (for example on
-  selection overlays).
-*/
+/* Tool overlay styles */
 .tool-overlay {
   pointer-events: none;
   position: absolute;
@@ -153,14 +152,13 @@
   pointer-events: auto;
 }
 
-/* Crop overlay uses the highlight colour for improved contrast */
+/* Crop overlay */
 .crop-overlay {
-  border: 2px dashed hsl(var(--highlight));
-  background: hsla(var(--highlight) / 0.1);
+  border: 2px dashed oklch(0.5991 0.1041 81.7230);
+  background: oklch(0.5991 0.1041 81.7230 / 0.1);
 }
 
-/* Cursors: these remain unchanged but could be updated to use theme colours
-   if necessary.  We keep the default crosshair/text cursors here. */
+/* Cursors */
 .paint-cursor {
   cursor: crosshair;
 }
@@ -169,7 +167,6 @@
   cursor: text;
 }
 
-/* Blur tool cursor remains unchanged */
 .blur-cursor {
   cursor:
     url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>')
@@ -177,39 +174,37 @@
     auto;
 }
 
-/* Toast palette overrides.  Where necessary these draw from the
-   top‑level variables defined above so that success/error/warning/info
-   toasts integrate seamlessly with the new colour scheme. */
+/* Toast overrides */
 @layer base {
   [data-sonner-toaster] {
-    --normal-bg: hsl(var(--background));
-    --normal-border: hsl(var(--border));
-    --normal-text: hsl(var(--foreground));
-    --success-bg: hsl(142 76% 36%);
-    --success-border: hsl(142 76% 46%);
-    --success-text: hsl(0 0% 100%);
-    --error-bg: hsl(0 84% 60%);
-    --error-border: hsl(0 84% 70%);
-    --error-text: hsl(0 0% 100%);
-    --warning-bg: hsl(38 92% 50%);
-    --warning-border: hsl(38 92% 60%);
-    --warning-text: hsl(0 0% 100%);
-    --info-bg: hsl(199 89% 48%);
-    --info-border: hsl(199 89% 58%);
-    --info-text: hsl(0 0% 100%);
+    --normal-bg: var(--background);
+    --normal-border: var(--border);
+    --normal-text: var(--foreground);
+    --success-bg: oklch(0.5820 0.1736 142.5000);
+    --success-border: oklch(0.6820 0.1736 142.5000);
+    --success-text: oklch(1.0000 0 0);
+    --error-bg: oklch(0.6368 0.2078 25.3313);
+    --error-border: oklch(0.7368 0.2078 25.3313);
+    --error-text: oklch(1.0000 0 0);
+    --warning-bg: oklch(0.7500 0.1500 60.0000);
+    --warning-border: oklch(0.8500 0.1500 60.0000);
+    --warning-text: oklch(1.0000 0 0);
+    --info-bg: oklch(0.6000 0.1400 220.0000);
+    --info-border: oklch(0.7000 0.1400 220.0000);
+    --info-text: oklch(1.0000 0 0);
   }
 
   .dark [data-sonner-toaster] {
-    --normal-bg: hsl(var(--card));
-    --normal-border: hsl(var(--border));
-    --normal-text: hsl(var(--card-foreground));
-    --success-bg: hsl(142 76% 26%);
-    --success-border: hsl(142 76% 36%);
-    --error-bg: hsl(0 62% 30%);
-    --error-border: hsl(0 62% 40%);
-    --warning-bg: hsl(38 92% 40%);
-    --warning-border: hsl(38 92% 50%);
-    --info-bg: hsl(199 89% 38%);
-    --info-border: hsl(199 89% 48%);
+    --normal-bg: var(--card);
+    --normal-border: var(--border);
+    --normal-text: var(--card-foreground);
+    --success-bg: oklch(0.4820 0.1736 142.5000);
+    --success-border: oklch(0.5820 0.1736 142.5000);
+    --error-bg: oklch(0.5054 0.1905 27.5181);
+    --error-border: oklch(0.6054 0.1905 27.5181);
+    --warning-bg: oklch(0.6500 0.1500 60.0000);
+    --warning-border: oklch(0.7500 0.1500 60.0000);
+    --info-bg: oklch(0.5000 0.1400 220.0000);
+    --info-border: oklch(0.6000 0.1400 220.0000);
   }
 }

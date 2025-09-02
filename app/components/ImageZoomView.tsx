@@ -66,7 +66,7 @@ export default function ImageZoomView({ imageUrl, imageTransforms }: ImageZoomVi
   }, []);
 
   return (
-    <Card className="bg-gray-800 text-white border-0 shadow-lg">
+    <Card className="bg-card text-card-foreground shadow-lg">
       <CardHeader className="p-3 pb-0">
         <CardTitle className="flex items-center justify-between text-base">
           <span>Zoom Preview</span>

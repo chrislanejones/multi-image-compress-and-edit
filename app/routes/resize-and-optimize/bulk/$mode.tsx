@@ -22,11 +22,11 @@ function BulkModeComponent() {
 
   return (
     <div className="min-h-screen bg-background text-foreground p-4">
-      <div className="text-center p-8 bg-gray-800 rounded-lg mb-6">
-        <h1 className="text-2xl font-bold text-white mb-2">
+      <div className="text-center p-8 bg-card border border-border rounded-lg mb-6">
+        <h1 className="text-2xl font-bold text-card-foreground mb-2">
           Bulk {mode === 'crop' ? 'Crop' : 'Text'} Editor
         </h1>
-        <p className="text-gray-300">
+        <p className="text-muted-foreground">
           {mode === 'crop' 
             ? 'Apply crop settings to multiple images at once'
             : 'Add text overlays to multiple images'
@@ -34,8 +34,8 @@ function BulkModeComponent() {
         </p>
       </div>
       
-      <div className="bg-gray-800 rounded-lg p-6">
-        <p className="text-white">Bulk {mode} editor coming soon...</p>
+      <div className="bg-card border border-border rounded-lg p-6">
+        <p className="text-card-foreground">Bulk {mode} editor coming soon...</p>
       </div>
     </div>
   );
