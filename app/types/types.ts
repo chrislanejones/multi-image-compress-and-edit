@@ -124,6 +124,8 @@ export interface ImageMetadata {
   width?: number; // Image width after compression
   height?: number; // Image height after compression
   boltTier?: 1 | 2 | 3; // Performance tier
+  isCompressionReset?: boolean; // Flag indicating if compression has been reset
+  isManuallyResized?: boolean; // Flag indicating if user manually resized and applied changes
 }
 
 /**

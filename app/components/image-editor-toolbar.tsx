@@ -4,8 +4,8 @@ import { MainToolbar } from "./toolbars/MainToolbar";
 import { EditModeToolbar } from "./toolbars/EditModeToolbar";
 import { CropToolbar } from "./toolbars/CropToolbar";
 import { BlurToolbar } from "./toolbars/BlurToolbar";
-import { PaintToolbar } from "./toolbars/PaintToolbar";
 import { TextToolbar } from "./toolbars/TextToolbar";
+import { PaintToolbar } from "./toolbars/PaintToolbar";
 import { Lock, Images } from "lucide-react";
 import { EditorState } from "../types/types";
 import { useLocation } from "@tanstack/react-router";
@@ -61,6 +61,9 @@ export const ImageEditorToolbar: React.FC<{ padlockAnimation?: boolean }> = ({
   // Determine which toolbar to show
   let CurrentToolbar: React.ReactNode = null;
 
+  // Debug logging
+  console.log("🔧 Toolbar Debug:", { editorState, toolParam, location: location.pathname });
+
   // Check for specific tool modes first
   if (toolParam === "crop" || editorState === "crop") {
     CurrentToolbar = <CropToolbar />;
@@ -82,6 +85,10 @@ export const ImageEditorToolbar: React.FC<{ padlockAnimation?: boolean }> = ({
     };
 
     CurrentToolbar = toolbarMap[editorState] ?? <MainToolbar />;
+  }
+
+  if (!CurrentToolbar) {
+    return null;
   }
 
   return (

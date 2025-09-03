@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { formatBytes } from "../utils/image";
+import { formatBytes } from "../utils/format";
 import { FileArchive } from "lucide-react";
 import type { ImageFile } from "../types/types";
 

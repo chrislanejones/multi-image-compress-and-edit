@@ -2,6 +2,31 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { ImageFormat, CompressionLevel, CoreWebVitalsScore } from "../types/types";
 
+// Canvas utility function
+export async function resizeToCanvas(
+  imageUrl: string,
+  width: number,
+  height: number
+): Promise<string> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = reject;
+    i.src = imageUrl;
+  });
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext("2d")!;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, 0, 0, width, height);
+
+  return canvas.toDataURL("image/png");
+}
+
 interface CompressionStore {
   // Compression state
   quality: number;
@@ -30,6 +55,10 @@ interface CompressionStore {
   startCompressing: (id: string) => void;
   stopCompressing: (id: string) => void;
   isCompressing: (id: string) => boolean;
+  
+  // Image conversion utilities
+  convertImageToFormat: (imageUrl: string) => Promise<Blob>;
+  getMimeType: () => string;
 }
 
 const DEFAULT_VALUES = {
@@ -133,6 +162,51 @@ export const useCompressionStore = create<CompressionStore>()(
         }),
 
       isCompressing: (id) => get().compressingIds.has(id),
+
+      // Image conversion utilities
+      convertImageToFormat: async (imageUrl) => {
+        const { format, quality } = get();
+        
+        // Load image
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error("Failed to load image"));
+          img.src = imageUrl;
+        });
+
+        // Create canvas and draw image
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Could not get canvas context");
+
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        ctx.drawImage(img, 0, 0);
+
+        // Convert to selected format
+        const mimeType = get().getMimeType();
+        
+        // Convert canvas to blob in selected format
+        return new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error("Failed to convert image to blob"));
+            }
+          }, mimeType, quality / 100);
+        });
+      },
+
+      getMimeType: () => {
+        const { format } = get();
+        return format === "jpeg" ? "image/jpeg" : 
+               format === "png" ? "image/png" : 
+               "image/webp";
+      },
     }),
     {
       name: "imagehorse-compression-store",

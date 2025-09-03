@@ -12,14 +12,14 @@ import React, {
 import { useDropzone } from "react-dropzone";
 import { v4 as uuidv4 } from "uuid";
 import imageCompression from "browser-image-compression";
-import { imageDB } from "@/utils/indexed-db";
 import type { ImageFile, ResizeDraft, NavigationDirection, FullImageContextType } from "@/types/types";
 import { 
   useAppStateStore,
   useCropStore,
   useBlurStore,
   usePaintStore,
-  useCompressionStore
+  useCompressionStore,
+  useImageStore
 } from "@/stores";
 import { compressBestForCWVFromURL, calculateCoreWebVitalsScore } from "@/utils/core-web-vitals";
 
@@ -30,11 +30,22 @@ const ITEMS_PER_PAGE_DEFAULT = 10;
 export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [images, setImages] = useState<ImageFile[]>([]);
-  const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
+  // Use Zustand stores as source of truth
+  const images = useImageStore((state) => state.images);
+  const selectedImageId = useImageStore((state) => state.selectedImageId);
+  const resizeDraft = useImageStore((state) => state.resizeDraft);
+  const setImages = useImageStore((state) => state.setImages);
+  const addImages = useImageStore((state) => state.addImages);
+  const updateImage = useImageStore((state) => state.updateImage);
+  const removeImage = useImageStore((state) => state.removeImage);
+  const removeAllImages = useImageStore((state) => state.removeAllImages);
+  const selectImage = useImageStore((state) => state.selectImage);
+  const setResizeDraft = useImageStore((state) => state.setResizeDraft);
+  const resetCompressionStore = useImageStore((state) => state.resetCompression);
+  
+  // Local UI state that doesn't belong in stores
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(ITEMS_PER_PAGE_DEFAULT);
-  const [resizeDraft, setResizeDraft] = useState<ResizeDraft | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
   const [compressionProgress, setCompressionProgress] = useState(0);
   const [loadingImages, setLoadingImages] = useState<Set<string>>(new Set());
@@ -74,9 +85,9 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
         return newSet;
       });
 
-      setImages((prev) => [...prev, ...newImages]);
+      addImages(newImages);
     },
-    []
+    [addImages]
   );
 
   const { getRootProps, getInputProps } = useDropzone({
@@ -85,23 +96,18 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
     multiple: true,
   });
 
-  const updateImage = useCallback((id: string, updates: Partial<ImageFile>) => {
-    setImages((prev) =>
-      prev.map((img) => (img.id === id ? { ...img, ...updates } : img))
-    );
-  }, []);
+  // updateImage is now from the store above
 
   const onRemove = useCallback(
     (id: string) => {
-      setImages((prev) => prev.filter((img) => img.id !== id));
-      if (selectedImageId === id) setSelectedImageId(null);
+      removeImage(id);
     },
-    [selectedImageId]
+    [removeImage]
   );
 
   const onSelect = useCallback(
     async (id: string | null) => {
-      setSelectedImageId(id);
+      selectImage(id);
       
       // Trigger Core Web Vitals compression when image is selected
       if (id) {
@@ -120,7 +126,11 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
             const originalData = {
               url: image.url,
               size: image.size,
-              metadata: image.metadata
+              metadata: {
+                ...image.metadata,
+                width: image.width,
+                height: image.height
+              }
             };
             
             // Compress with Core Web Vitals optimization
@@ -167,56 +177,46 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const onRotate = useCallback((id: string, degrees: number) => {
-    setImages((prev) =>
-      prev.map((img) =>
-        img.id === id
-          ? { ...img, rotation: ((img.rotation || 0) + degrees) % 360 }
-          : img
-      )
-    );
-  }, []);
+    updateImage(id, {
+      rotation: ((images.find(img => img.id === id)?.rotation || 0) + degrees) % 360
+    });
+  }, [updateImage, images]);
 
   const onFlipHorizontal = useCallback((id: string) => {
-    setImages((prev) =>
-      prev.map((img) =>
-        img.id === id
-          ? { ...img, flipHorizontal: !img.flipHorizontal }
-          : img
-      )
-    );
-  }, []);
+    const currentImage = images.find(img => img.id === id);
+    if (currentImage) {
+      updateImage(id, {
+        flipHorizontal: !currentImage.flipHorizontal
+      });
+    }
+  }, [updateImage, images]);
 
   const onFlipVertical = useCallback((id: string) => {
-    setImages((prev) =>
-      prev.map((img) =>
-        img.id === id
-          ? { ...img, flipVertical: !img.flipVertical }
-          : img
-      )
-    );
-  }, []);
+    const currentImage = images.find(img => img.id === id);
+    if (currentImage) {
+      updateImage(id, {
+        flipVertical: !currentImage.flipVertical
+      });
+    }
+  }, [updateImage, images]);
 
   const onCrop = useCallback((id: string, crop: ImageFile["crop"]) => {
-    setImages((prev) =>
-      prev.map((img) => (img.id === id ? { ...img, crop } : img))
-    );
-  }, []);
+    updateImage(id, { crop });
+  }, [updateImage]);
 
   const onResize = useCallback(
     (id: string, resize?: { width: number; height: number }) => {
       if (!resize) return;
-      setImages((prev) =>
-        prev.map((img) => (img.id === id ? { ...img, resize } : img))
-      );
+      updateImage(id, { resize });
     },
-    []
+    [updateImage]
   );
 
   const onClear = useCallback(() => {
     setImages([]);
-    setSelectedImageId(null);
+    selectImage(null);
     setCurrentPage(1);
-  }, []);
+  }, [setImages, selectImage]);
 
   const onCompress = useCallback(async () => {
     if (!selectedImage?.file) return;
@@ -238,13 +238,10 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       );
       const compressedUrl = URL.createObjectURL(compressedFile);
 
-      setImages((prev) =>
-        prev.map((img) =>
-          img.id === selectedImage.id
-            ? { ...img, compressedUrl, compressedSize: compressedFile.size }
-            : img
-        )
-      );
+      updateImage(selectedImage.id, {
+        compressedUrl,
+        compressedSize: compressedFile.size
+      });
     } catch (error) {
       console.error("Compression failed:", error);
     } finally {
@@ -365,24 +362,21 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       const resizedUrl = URL.createObjectURL(blob);
       
       // Update the image with the new resized version
-      setImages((prev) =>
-        prev.map((img) =>
-          img.id === selectedImage.id
-            ? {
-                ...img,
-                url: resizedUrl,
-                width: resizeDraft.width,
-                height: resizeDraft.height,
-                file: new File([blob], img.file.name, { type: blob.type }),
-                size: blob.size,
-                resize: {
-                  width: resizeDraft.width,
-                  height: resizeDraft.height,
-                },
-              }
-            : img
-        )
-      );
+      updateImage(selectedImage.id, {
+        url: resizedUrl,
+        width: resizeDraft.width,
+        height: resizeDraft.height,
+        file: new File([blob], selectedImage.file.name, { type: blob.type }),
+        size: blob.size,
+        resize: {
+          width: resizeDraft.width,
+          height: resizeDraft.height,
+        },
+        metadata: {
+          ...selectedImage.metadata,
+          isManuallyResized: true, // Flag for manual resize
+        },
+      });
 
       // Clean up the old URL to prevent memory leaks
       if (selectedImage.url !== selectedImage.compressedUrl) {
@@ -398,40 +392,26 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!selectedImage) return;
     
     // Reset to original dimensions
-    setImages((prev) =>
-      prev.map((img) =>
-        img.id === selectedImage.id
-          ? {
-              ...img,
-              resize: undefined,
-              rotation: 0,
-              flipHorizontal: false,
-              flipVertical: false,
-              crop: undefined,
-            }
-          : img
-      )
-    );
+    updateImage(selectedImage.id, {
+      resize: undefined,
+      rotation: 0,
+      flipHorizontal: false,
+      flipVertical: false,
+      crop: undefined,
+    });
     
     setResizeDraft(null);
   }, [selectedImage]);
 
   const onResetImage = useCallback((id: string) => {
-    setImages((prev) =>
-      prev.map((img) =>
-        img.id === id
-          ? {
-              ...img,
-              resize: undefined,
-              rotation: 0,
-              flipHorizontal: false,
-              flipVertical: false,
-              crop: undefined,
-            }
-          : img
-      )
-    );
-  }, []);
+    updateImage(id, {
+      resize: undefined,
+      rotation: 0,
+      flipHorizontal: false,
+      flipVertical: false,
+      crop: undefined,
+    });
+  }, [updateImage]);
 
   const onApplyCrop = useCallback(async () => {
     const completedCrop = useCropStore.getState().completedCrop;
@@ -511,26 +491,19 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       const croppedUrl = URL.createObjectURL(blob);
       
       // Update the image with the cropped version
-      setImages((prev) =>
-        prev.map((img) =>
-          img.id === selectedImage.id
-            ? {
-                ...img,
-                url: croppedUrl,
-                width: Math.round(cropWidth),
-                height: Math.round(cropHeight),
-                file: new File([blob], img.file.name, { type: blob.type }),
-                size: blob.size,
-                crop: {
-                  x: completedCrop.x,
-                  y: completedCrop.y,
-                  width: completedCrop.width,
-                  height: completedCrop.height,
-                },
-              }
-            : img
-        )
-      );
+      updateImage(selectedImage.id, {
+        url: croppedUrl,
+        width: Math.round(cropWidth),
+        height: Math.round(cropHeight),
+        file: new File([blob], img.file.name, { type: blob.type }),
+        size: blob.size,
+        crop: {
+          x: completedCrop.x,
+          y: completedCrop.y,
+          width: completedCrop.width,
+          height: completedCrop.height,
+        },
+      });
 
       // Clean up the old URL to prevent memory leaks
       if (selectedImage.url !== selectedImage.compressedUrl) {
@@ -637,20 +610,13 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       const blurredUrl = URL.createObjectURL(blob);
       
       // Update the image with the blurred version
-      setImages((prev) =>
-        prev.map((img) =>
-          img.id === selectedImage.id
-            ? {
-                ...img,
-                url: blurredUrl,
-                width: img.width,
-                height: img.height,
-                file: new File([blob], img.file.name, { type: blob.type }),
-                size: blob.size,
-              }
-            : img
-        )
-      );
+      updateImage(selectedImage.id, {
+        url: blurredUrl,
+        width: selectedImage.width,
+        height: selectedImage.height,
+        file: new File([blob], selectedImage.file.name, { type: blob.type }),
+        size: blob.size,
+      });
 
       // Clean up the old URL to prevent memory leaks
       if (selectedImage.url !== selectedImage.compressedUrl) {
@@ -815,46 +781,20 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
     setEditorState("editImage");
   }, []);
 
-  // Reset Compression function to restore original image
+  // Reset Compression function - now using the store
   const resetCompression = useCallback((id: string) => {
-    const compressionStore = useCompressionStore.getState();
-    const originalData = compressionStore.resetCompression(id);
-    
-    if (originalData) {
-      // Restore original image data
-      updateImage(id, {
-        compressedUrl: undefined,
-        compressedSize: undefined,
-        metadata: {
-          ...originalData.metadata,
-          coreWebVitalsScore: calculateCoreWebVitalsScore(
-            originalData.metadata?.width || 0,
-            originalData.metadata?.height || 0,
-            originalData.size
-          ),
-        },
-      });
-      
-      console.log(`🔄 Compression reset for image ${id}`);
-    }
-  }, [updateImage]);
+    resetCompressionStore(id);
+  }, [resetCompressionStore]);
 
   useEffect(() => {
     images.forEach((img) => {
       if (img.width === 0) {
         const image = new Image();
         image.onload = () => {
-          setImages((prev) =>
-            prev.map((p) =>
-              p.id === img.id
-                ? {
-                    ...p,
-                    width: image.naturalWidth,
-                    height: image.naturalHeight,
-                  }
-                : p
-            )
-          );
+          updateImage(img.id, {
+            width: image.naturalWidth,
+            height: image.naturalHeight,
+          });
 
           // Remove from loading state once image is loaded
           setLoadingImages((prev) => {
@@ -884,7 +824,7 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
         const start = (newPage - 1) * itemsPerPage;
         const firstImageOnPage = images[start];
         if (firstImageOnPage) {
-          setSelectedImageId(firstImageOnPage.id);
+          selectImage(firstImageOnPage.id);
         }
       }
     },
@@ -928,16 +868,8 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       onApplyPaint,
       onApplyText,
       resetCompression,
-      addImages: (newImages: ImageFile[]) => {
-        console.log('addImages called with:', newImages.length, 'images');
-        console.log('Previous images count:', images.length);
-        setImages((prev) => {
-          const updated = [...prev, ...newImages];
-          console.log('Updated images count:', updated.length);
-          return updated;
-        });
-      },
-      removeAllImages: () => setImages([]),
+      addImages,
+      removeAllImages,
       navigateImage: (direction: NavigationDirection) => {
         const idx = images.findIndex((i) => i.id === selectedImageId);
         if (idx === -1) return;
@@ -947,10 +879,10 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
         if (direction === "next10")
           next = Math.min(idx + 10, images.length - 1);
         if (direction === "prev10") next = Math.max(idx - 10, 0);
-        setSelectedImageId(images[next]?.id ?? null);
+        selectImage(images[next]?.id ?? null);
       },
       onNavigatePage,
-      onClose: () => setSelectedImageId(null),
+      onClose: () => selectImage(null),
     }),
     [
       images,
@@ -979,6 +911,12 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
       onApplyPaint,
       onApplyText,
       resetCompression,
+      onDrop,
+      addImages,
+      removeAllImages,
+      selectImage,
+      selectedImageId,
+      setResizeDraft,
     ]
   );
 

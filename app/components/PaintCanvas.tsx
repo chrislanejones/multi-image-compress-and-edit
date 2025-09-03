@@ -429,33 +429,32 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
     ]
   );
 
-  if (!imageLoaded) {
-    return (
-      <div className="absolute inset-0 flex items-center justify-center bg-background">
-        <div className="text-center text-white">
-          <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-          <p>Loading image...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
       ref={containerRef}
-      className="absolute inset-0 flex items-center justify-center bg-background overflow-hidden"
+      className="w-full h-full flex items-center justify-center bg-background overflow-hidden relative"
     >
+      {/* Loading state overlay */}
+      {!imageLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background z-10">
+          <div className="text-center text-white">
+            <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <p>Loading image...</p>
+          </div>
+        </div>
+      )}
+
       {/* Background image canvas */}
       <canvas
         ref={backgroundCanvasRef}
-        className="absolute shadow-lg border border-border"
+        className={`absolute shadow-lg border border-border ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
         style={{ pointerEvents: "none" }}
       />
 
       {/* Paint canvas overlay */}
       <canvas
         ref={canvasRef}
-        className="absolute cursor-crosshair shadow-lg border border-border"
+        className={`absolute cursor-crosshair shadow-lg border border-border ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -467,7 +466,7 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
       />
 
       {/* Visual indicators */}
-      {(isDrawing || isDrawingArrow) && (
+      {imageLoaded && (isDrawing || isDrawingArrow) && (
         <div
           className="absolute pointer-events-none"
           style={{

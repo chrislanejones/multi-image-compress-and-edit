@@ -159,20 +159,30 @@ export async function bulkProcessAndZip(
     total: number
   ) => void
 ) {
-  const { bulkCropImages } = await import("./image"); // avoid circular
-  const blobs = await bulkCropImages(
-    imageUrls,
-    {
-      x: pixelCrop.x,
-      y: pixelCrop.y,
-      width: pixelCrop.width,
-      height: pixelCrop.height,
-      unit: "px",
-    },
-    format,
-    quality,
-    (pct, cur, tot) => onProgress?.("cropping", pct, cur, tot)
-  );
+  const { cropImage } = await import("./image-processing"); // avoid circular
+  
+  // Create bulk crop function inline since it's not needed elsewhere
+  const blobs: Array<{ blob: Blob; fileName: string }> = [];
+  for (let i = 0; i < imageUrls.length; i++) {
+    const imageUrl = imageUrls[i];
+    onProgress?.("cropping", Math.round((i / imageUrls.length) * 100), i + 1, imageUrls.length);
+    
+    try {
+      const result = await cropImage(imageUrl, {
+        x: pixelCrop.x,
+        y: pixelCrop.y,
+        width: pixelCrop.width,
+        height: pixelCrop.height,
+      }, format, quality);
+      blobs.push({
+        ...result,
+        fileName: `cropped-image-${i + 1}.${format === "jpeg" ? "jpg" : format}`,
+      });
+    } catch (error) {
+      console.error(`Error cropping image ${i + 1}:`, error);
+    }
+  }
+  // blobs are created inline above
   const files = blobs.map(({ blob, fileName }) => ({ name: fileName, blob }));
   onProgress?.("zipping", 0, files.length, files.length);
   await zipAndDownloadBlobs(files, zipName, (pct) =>
@@ -225,5 +235,4 @@ export async function canvasToBlob(
 /* ------------------------------------------------------------------ */
 /* 4.  Re-export everything so the rest of the app keeps working      */
 /* ------------------------------------------------------------------ */
-export * from "./image"; // keeps the old helpers around
-export * from "./indexed-db"; // keeps the IndexedDB layer
+// IndexedDB functionality moved to indexeddb-middleware.ts and integrated with Zustand stores

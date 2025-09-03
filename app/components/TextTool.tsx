@@ -260,24 +260,23 @@ const TextTool = forwardRef<TextToolRef, TextToolProps>(
       getCanvasDataUrl,
     }));
 
-    if (!imageLoaded) {
-      return (
-        <div className="absolute inset-0 flex items-center justify-center bg-background">
-          <div className="text-center text-white">
-            <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-            <p>Loading image...</p>
-          </div>
-        </div>
-      );
-    }
-
     return (
       <div className="grid grid-cols-2 gap-4 h-full">
         {/* Canvas Column */}
         <div
           ref={imageContainerRef}
-          className="bg-card rounded-lg p-4 overflow-hidden flex items-center justify-center border border-border"
+          className="bg-card rounded-lg p-4 overflow-hidden flex items-center justify-center border border-border relative"
         >
+          {/* Loading state overlay */}
+          {!imageLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center bg-card z-10">
+              <div className="text-center text-foreground">
+                <div className="w-8 h-8 border-2 border-foreground border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                <p>Loading image...</p>
+              </div>
+            </div>
+          )}
+          
           <div className="relative">
             {/* Hidden reference image */}
             <img
@@ -290,7 +289,7 @@ const TextTool = forwardRef<TextToolRef, TextToolProps>(
             {/* Main canvas */}
             <canvas
               ref={canvasRef}
-              className="block cursor-crosshair shadow-lg border border-border"
+              className={`block cursor-crosshair shadow-lg border border-border ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
               onClick={handleCanvasClick}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
@@ -458,24 +457,54 @@ const TextTool = forwardRef<TextToolRef, TextToolProps>(
           </div>
 
           {/* Text Color */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium block">Text Color</label>
-            <div className="flex gap-3 items-center p-3 bg-muted rounded-lg">
-              <div
-                className="w-12 h-12 rounded-md border-2 border-border shadow-sm"
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Text Color</h4>
+            
+            {/* Current Color Display */}
+            <div className="flex items-center gap-3">
+              <div 
+                className="w-12 h-12 rounded-full border-2 border-border shadow-sm"
                 style={{ backgroundColor: color }}
+                title={`Current color: ${color}`}
               />
-              <div className="flex-1">
-                <input
-                  type="color"
-                  value={color}
-                  onChange={handleColorChange}
-                  className="w-full h-8 cursor-pointer bg-transparent"
-                />
-                <div className="text-xs text-muted-foreground font-mono mt-1">
-                  {color}
-                </div>
+              <div className="text-sm">
+                <div className="font-medium">Current</div>
+                <div className="text-muted-foreground font-mono text-xs">{color}</div>
               </div>
+            </div>
+            
+            {/* Color Palette */}
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                "#ff0000", "#ff7f00", "#ffff00", "#00ff00",
+                "#0000ff", "#4b0082", "#9400d3", "#ff1493",
+                "#00ffff", "#ff69b4", "#000000", "#ffffff",
+                "#808080", "#8b4513", "#ffc0cb", "#90ee90"
+              ].map((paletteColor) => (
+                <button
+                  key={paletteColor}
+                  className={`w-12 h-12 rounded-lg border transition-all hover:scale-105 ${
+                    color === paletteColor
+                      ? 'border-2 border-foreground shadow-md'
+                      : 'border border-border hover:border-foreground'
+                  }`}
+                  style={{ backgroundColor: paletteColor }}
+                  onClick={() => setColor(paletteColor)}
+                  title={paletteColor}
+                />
+              ))}
+            </div>
+            
+            {/* Custom color picker as fallback */}
+            <div className="border-t border-border pt-3">
+              <label className="text-xs text-muted-foreground mb-2 block">Custom Color</label>
+              <input
+                type="color"
+                value={color}
+                onChange={handleColorChange}
+                className="w-full h-10 rounded-lg border border-border cursor-pointer"
+                title="Choose custom color"
+              />
             </div>
           </div>
 
@@ -518,7 +547,8 @@ const TextTool = forwardRef<TextToolRef, TextToolProps>(
             <Button
               onClick={applyText}
               disabled={!text.trim()}
-              className="w-full bg-green-600 hover:bg-green-700"
+              variant="default"
+              className="w-full"
             >
               Apply Text to Image
             </Button>

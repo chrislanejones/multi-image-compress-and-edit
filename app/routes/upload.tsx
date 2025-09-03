@@ -16,6 +16,7 @@ function UploadPage() {
   const { addImages, images } = useImageContext();
   const {
     terminalOutput,
+    addTerminalLine,
     setTerminalOutput,
     hasProcessedImages,
     setHasProcessedImages,
@@ -196,6 +197,18 @@ function UploadPage() {
   }, []);
 
   // Add paste event listener
+  // Monitor images and update terminal when they change
+  useEffect(() => {
+    // Only add removal message if we had terminal output (meaning images were processed before)
+    if (terminalOutput.length > 0 && images.length === 0 && hasProcessedImages) {
+      // Check if we haven't already added the removal message
+      const lastEntry = terminalOutput[terminalOutput.length - 1];
+      if (!lastEntry?.text.includes("Images removed")) {
+        addTerminalLine("→ Images removed: All images cleared from gallery", "info");
+      }
+    }
+  }, [images.length, terminalOutput, hasProcessedImages, addTerminalLine]);
+
   useEffect(() => {
     document.addEventListener('paste', handlePaste);
     return () => {
@@ -220,7 +233,7 @@ function UploadPage() {
           <div className="flex flex-col items-center p-7 rounded-2xl bg-gradient-to-br from-muted to-card mb-8">
             <div>
               <img
-                className="size-32 shadow-xl rounded-md"
+                className="size-32 rounded-md"
                 alt="ImageHorse Logo"
                 src="/Image-Horse-Logo.svg"
               />

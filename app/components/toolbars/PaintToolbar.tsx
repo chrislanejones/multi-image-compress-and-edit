@@ -165,7 +165,7 @@ export const PaintToolbar = () => {
         </Button>
         <Button
           onClick={handleSaveAndExit}
-          className="h-9 bg-green-700 hover:bg-green-600 text-white"
+          className="h-9"
         >
           <Check className="mr-2 h-4 w-4" /> Save & Exit Paint
         </Button>

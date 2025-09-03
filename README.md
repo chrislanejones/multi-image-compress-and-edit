@@ -1,6 +1,6 @@
 # ImageHorse - TanStack Start Edition 🐎
 
-![Image of Photo App](/public/Image-App.jpeg)
+![Image of Photo App](/public/multi-image-compress-and-edit-app.webp)
 
 A powerful image editing and compression tool built with [TanStack Start](https://tanstack.com/start) and supercharged by [Bun](https://bun.sh) — no Next.js, no nonsense.
 
@@ -14,7 +14,8 @@ A powerful image editing and compression tool built with [TanStack Start](https:
 - 🎨 **Full editing suite** – crop, paint, blur, text, emoji, arrows
 - 📊 **Bulk operations** – ZIP download with compressed images
 - 🖥️ **Receipt-style terminal** – persistent output with auto-scroll
-- 🎨 **Modern UI** – responsive with light/dark theme support (fixed select dropdowns)
+- 🎨 **Modern UI** – responsive with ShadCN/UI components and Twaakcn color system
+- 🏈 **Jacksonville Jaguars theme** – OKLCH color space with teal, gold, and black palette
 - ⚡ **Lightning-fast dev experience** thanks to Bun
 - 🧠 **Memory-efficient** – cleanups and previews done right
 
@@ -122,7 +123,8 @@ bun run type-check  # Type safety
 - **TanStack Start** – React app framework w/ routing
 - **TanStack Router** – Search param + route-based layouting
 - **Zustand + Context** – Hybrid state architecture
-- **Tailwind CSS** – Utility-based styling
+- **Tailwind CSS** – Utility-based styling with OKLCH color space
+- **ShadCN/UI + Twaakcn** – Accessible components with Jacksonville Jaguars color palette
 - **Radix UI** – Accessible, unstyled component primitives
 - **Bun** – Fast runtime, bundler, and package manager
 
@@ -138,15 +140,28 @@ bun run type-check  # Type safety
 - **Bulk ZIP download** for all processed images
 - Smart status indicators and CWV performance scoring
 - Zustand state, theme system, and routing
-- Fixed dark mode UI visibility issues
+- **ShadCN/UI + Twaakcn theming** with Jacksonville Jaguars color palette
+- **OKLCH color space** for perceptually uniform colors across light/dark themes
+
+#### Cache Settings
+
+Users can control image caching through the settings:
+- **Image Cache**: Toggle IndexedDB caching on/off
+- **Offline Mode**: Keep images available when offline (requires cache)
+- **Clear Cache**: Manual cache cleanup
+- **Cache Stats**: View stored image count and size
 
 🧪 **Recently Added**
 
+- **Complete Twaakcn migration** with Jacksonville Jaguars color system
+- **OKLCH color space** implementation for superior color accuracy
+- **Fixed Core Web Vitals scoring** - images now start in "good" territory
+- **Enhanced border visibility** with theme-appropriate contrast
+- **Improved color consistency** across all components and themes
 - Core Web Vitals compression with AVIF/WebP/JPEG support
 - Persistent compression state with reset capability
 - Enhanced terminal output with auto-scroll
 - Bulk operations and ZIP export functionality
-- Dark mode select dropdown fixes
 
 🔮 **Coming Soon**
 

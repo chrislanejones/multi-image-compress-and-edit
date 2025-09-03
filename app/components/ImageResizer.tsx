@@ -44,6 +44,7 @@ export default function ImageResizer() {
     setFormat,
     setCompressionLevel,
     resetToDefaults: resetEditorUI,
+    convertImageToFormat,
   } = useCompressionStore();
   const { images, resetImage: resetSingleImage } = useImageStore();
 
@@ -105,12 +106,12 @@ export default function ImageResizer() {
     [setResizeDraft]
   );
 
-  // Load dimensions when image changes
+  // Load dimensions when image changes or when compression is reset
   useEffect(() => {
     if (selectedImage?.url) {
       loadImageDimensions(selectedImage.url);
     }
-  }, [selectedImage?.url, loadImageDimensions]);
+  }, [selectedImage?.url, selectedImage?.metadata?.isCompressionReset, loadImageDimensions]);
 
   // Initialize from resize draft if available
   useEffect(() => {
@@ -234,70 +235,65 @@ export default function ImageResizer() {
   };
 
   const handleResetCompressionSelectedImage = () => {
-    // Reset Core Web Vitals compression for selected image
-    if (selectedImage) {
-      resetCompression(selectedImage.id);
-      
-      // Force recalculation of Core Web Vitals score for original dimensions
-      // Use original file size for more accurate score calculation
-      const originalFileSize = selectedImage.file?.size;
-      updateCoreWebVitalsScore(imageDimensions.width, imageDimensions.height, originalFileSize);
-    }
-
+    if (!selectedImage) return;
+    
+    // Reset compression for the selected image
+    resetCompression(selectedImage.id);
+    
     // Reset compression settings UI
     resetEditorUI();
-
-    // Reset resize draft for selected image - this will trigger slider updates
-    setResizeDraft({
-      width: imageDimensions.width,
-      height: imageDimensions.height,
-    });
-    setLocalWidth(imageDimensions.width);
-    setLocalHeight(imageDimensions.height);
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!selectedImage) return;
 
-    const link = document.createElement("a");
-    link.href = selectedImage.url;
-    link.download = `${selectedImage.file.name.split(".")[0]}-edited.${format}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      // Use compression store utility to convert image to selected format
+      const blob = await convertImageToFormat(selectedImage.url);
+
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `${selectedImage.file.name.split(".")[0]}-edited.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    } catch (error) {
+      console.error("Failed to download image:", error);
+    }
   };
 
   const handleBulkDownload = async () => {
     if (images.length === 0) return;
 
-    // Import JSZip dynamically to avoid bundle bloat
-    const JSZip = await import("jszip").then((module) => module.default);
-    const zip = new JSZip();
-
-    // Add each image to the zip
-    for (const image of images) {
-      try {
-        // Fetch the image as blob
-        const response = await fetch(image.url);
-        const blob = await response.blob();
-
-        // Get the original filename or create one
-        const filename = image.file?.name || `image-${image.id}.${format}`;
-        const nameWithoutExt = filename.split(".")[0];
-        const finalFilename = `${nameWithoutExt}-compressed.${format}`;
-
-        zip.file(finalFilename, blob);
-      } catch (error) {
-        console.error(`Failed to add ${image.name} to zip:`, error);
-      }
-    }
-
     try {
+      // Import JSZip dynamically to avoid bundle bloat
+      const JSZip = await import("jszip").then((module) => module.default);
+      const zip = new JSZip();
+
+      // Process each image using compression store utility
+      for (const image of images) {
+        try {
+          // Use compression store utility to convert image to selected format
+          const blob = await convertImageToFormat(image.url);
+
+          // Get the original filename or create one
+          const filename = image.file?.name || `image-${image.id}`;
+          const nameWithoutExt = filename.split(".")[0];
+          const finalFilename = `${nameWithoutExt}-compressed.${format}`;
+
+          zip.file(finalFilename, blob);
+        } catch (error) {
+          console.error(`Failed to process ${image.name}:`, error);
+          // Continue with other images even if one fails
+        }
+      }
+
       // Generate and download the zip
       const zipBlob = await zip.generateAsync({ type: "blob" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(zipBlob);
-      link.download = `imagehorse-compressed-images-${new Date().toISOString().split("T")[0]}.zip`;
+      link.download = `imagehorse-compressed-images-${format}-${new Date().toISOString().split("T")[0]}.zip`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

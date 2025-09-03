@@ -172,7 +172,7 @@ export const MainToolbar = () => {
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm px-2 text-white whitespace-nowrap">
+            <span className="text-sm px-2 text-foreground whitespace-nowrap">
               Switch Photos ({currentPage}/{totalPages})
             </span>
             <Button

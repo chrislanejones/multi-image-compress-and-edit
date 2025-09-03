@@ -295,23 +295,12 @@ export const BlurCanvas: React.FC<BlurCanvasProps> = ({
     }
   }, [imageLoaded, redrawCanvas]);
 
-  if (!imageLoaded) {
-    return (
-      <div className="absolute inset-0 flex items-center justify-center bg-background">
-        <div className="text-center text-white">
-          <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-          <p>Loading image...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
       ref={containerRef}
       className="absolute inset-0 flex items-center justify-center bg-background overflow-hidden"
     >
-      {/* Hidden reference image */}
+      {/* Hidden reference image - always present for loading logic */}
       <img
         ref={imageRef}
         src={imageUrl}
@@ -319,10 +308,20 @@ export const BlurCanvas: React.FC<BlurCanvasProps> = ({
         className="hidden"
       />
 
+      {/* Loading state overlay */}
+      {!imageLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background z-10">
+          <div className="text-center text-white">
+            <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <p>Loading image...</p>
+          </div>
+        </div>
+      )}
+
       {/* Main blur canvas */}
       <canvas
         ref={canvasRef}
-        className="cursor-crosshair shadow-lg border border-border"
+        className={`cursor-crosshair shadow-lg border border-border ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -334,7 +333,7 @@ export const BlurCanvas: React.FC<BlurCanvasProps> = ({
       />
 
       {/* Visual brush size indicator */}
-      {isDrawing && (
+      {imageLoaded && isDrawing && (
         <div
           className="absolute pointer-events-none"
           style={{

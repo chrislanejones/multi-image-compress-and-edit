@@ -1,5 +1,5 @@
 // app/components/toolbars/EditModeToolbar.tsx
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "@tanstack/react-router";
 import {
   Minus,
@@ -28,6 +28,7 @@ export const EditModeToolbar = () => {
   const { selectedImage } = useImageContext();
   const navigate = useNavigate();
   const location = useLocation();
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const currentImageId = selectedImage?.id;
 
@@ -75,11 +76,20 @@ export const EditModeToolbar = () => {
       // Toggle shortcut hints with 'i'
       if (key === "i") {
         event.preventDefault();
-        console.log("Toggling shortcut hints");
-        setShowShortcutHints((prev) => {
-          console.log("Previous state:", prev, "New state:", !prev);
-          return !prev;
-        });
+        
+        // Clear any existing timeout
+        if (hideTimeoutRef.current) {
+          clearTimeout(hideTimeoutRef.current);
+        }
+        
+        // Show shortcuts
+        setShowShortcutHints(true);
+        
+        // Auto-hide after 3 seconds
+        hideTimeoutRef.current = setTimeout(() => {
+          setShowShortcutHints(false);
+        }, 3000);
+        
         return;
       }
 
@@ -116,6 +126,10 @@ export const EditModeToolbar = () => {
       document.removeEventListener("keydown", handleKeyDown);
       // Ensure hints are hidden when component unmounts
       setShowShortcutHints(false);
+      // Clear any pending timeout
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
     };
   }, [
     currentImageId,
@@ -126,22 +140,6 @@ export const EditModeToolbar = () => {
 
   return (
     <div className="w-full">
-      {/* Keyboard shortcuts hint */}
-      <div className="text-xs text-muted-foreground text-center mb-2">
-        {showShortcutHints ? (
-          <div className="animate-in fade-in duration-200">
-            <span className="font-medium">Keyboard shortcuts:</span> C=Crop •
-            B=Blur • P=Paint • T=Text • X=Exit • I=Toggle hints
-          </div>
-        ) : (
-          <div>
-            Press{" "}
-            <kbd className="px-1 py-0.5 text-xs bg-gray-700 rounded">I</kbd> to
-            show keyboard shortcuts
-          </div>
-        )}
-      </div>
-
       <div className="w-full grid grid-cols-3 items-center">
         {/* Left: zoom + rotate + flip + reset */}
         <div className="flex items-center gap-2 justify-self-start">
@@ -238,15 +236,18 @@ export const EditModeToolbar = () => {
           </Button>
         </div>
 
-        {/* Right: exit */}
-        <div className="flex items-center gap-2 justify-self-end">
+        {/* Right: keyboard hint + exit */}
+        <div className="flex items-center gap-4 justify-self-end">
+          <span className="text-xs text-muted-foreground">
+            Press <kbd className="px-1 py-0.5 text-xs bg-muted rounded">I</kbd> to show keyboard shortcuts
+          </span>
           <Button
             onClick={handleExitEditMode}
             variant="outline"
             className="h-9"
           >
             <X className="mr-2 h-4 w-4" />
-            {showShortcutHints ? "Exit Edit Mode (X)" : "Exit Edit Mode"}
+            Exit Edit Mode
           </Button>
         </div>
       </div>

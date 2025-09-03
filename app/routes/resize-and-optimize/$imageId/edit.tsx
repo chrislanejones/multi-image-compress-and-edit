@@ -21,10 +21,15 @@ function EditComponent() {
   const { onSelect } = useImageContext();
 
   useEffect(() => {
-    setEditorState("editImage");
+    // Set editor state based on tool parameter
+    if (tool && ['crop', 'blur', 'paint', 'text'].includes(tool)) {
+      setEditorState(tool as any);
+    } else {
+      setEditorState("editImage");
+    }
     onSelect(imageId);
     selectImage(imageId);
-  }, [setEditorState, onSelect, selectImage, imageId]);
+  }, [setEditorState, onSelect, selectImage, imageId, tool]);
 
   return null;
 }
