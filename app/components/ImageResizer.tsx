@@ -111,7 +111,11 @@ export default function ImageResizer() {
     if (selectedImage?.url) {
       loadImageDimensions(selectedImage.url);
     }
-  }, [selectedImage?.url, selectedImage?.metadata?.isCompressionReset, loadImageDimensions]);
+  }, [
+    selectedImage?.url,
+    selectedImage?.metadata?.isCompressionReset,
+    loadImageDimensions,
+  ]);
 
   // Initialize from resize draft if available
   useEffect(() => {
@@ -126,8 +130,12 @@ export default function ImageResizer() {
     (width: number, height: number, fileSize?: number) => {
       // If no file size provided, estimate based on dimensions for uncompressed image
       const estimatedFileSize = fileSize || width * height * 3; // Rough estimate for uncompressed RGB
-      
-      const score = calculateCoreWebVitalsScore(width, height, estimatedFileSize);
+
+      const score = calculateCoreWebVitalsScore(
+        width,
+        height,
+        estimatedFileSize
+      );
       setCoreWebVitalsScore(score);
     },
     []
@@ -236,10 +244,10 @@ export default function ImageResizer() {
 
   const handleResetCompressionSelectedImage = () => {
     if (!selectedImage) return;
-    
+
     // Reset compression for the selected image
     resetCompression(selectedImage.id);
-    
+
     // Reset compression settings UI
     resetEditorUI();
   };
@@ -358,7 +366,9 @@ export default function ImageResizer() {
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <label className="text-sm font-medium">Width</label>
-            <span className="text-sm text-muted-foreground">{localWidth}px</span>
+            <span className="text-sm text-muted-foreground">
+              {localWidth}px
+            </span>
           </div>
           <Slider
             value={[localWidth]}
@@ -378,7 +388,9 @@ export default function ImageResizer() {
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <label className="text-sm font-medium">Height</label>
-            <span className="text-sm text-muted-foreground">{localHeight}px</span>
+            <span className="text-sm text-muted-foreground">
+              {localHeight}px
+            </span>
           </div>
           <Slider
             value={[localHeight]}
@@ -400,9 +412,7 @@ export default function ImageResizer() {
           <button
             onClick={() => setAspectRatio((p) => !p)}
             className={`w-10 h-6 p-1 rounded-full flex items-center transition-colors ${
-              aspectRatio
-                ? "bg-primary justify-end"
-                : "bg-muted justify-start"
+              aspectRatio ? "bg-primary justify-end" : "bg-muted justify-start"
             }`}
           >
             <span className="w-4 h-4 rounded-full bg-background transition-transform" />
@@ -428,7 +438,9 @@ export default function ImageResizer() {
 
         {/* Core Web Vitals Indicator */}
         <div className="space-y-2">
-          <span className="text-xs text-muted-foreground">Core Web Vitals Score:</span>
+          <span className="text-xs text-muted-foreground">
+            Core Web Vitals Score:
+          </span>
           <div className="relative w-full h-5 rounded-full overflow-hidden bg-gradient-to-r from-green-500 via-yellow-400 to-red-500">
             <div
               className="absolute top-1/2 -translate-y-1/2 transition-all duration-300 ease-in-out"
@@ -524,6 +536,8 @@ export default function ImageResizer() {
             >
               <Download className="h-4 w-4 mr-2" /> Download
             </Button>
+          </div>
+          <div className="flex gap-2">
             <Button
               onClick={() => handleBulkDownload()}
               variant="outline"

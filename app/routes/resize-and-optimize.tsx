@@ -49,7 +49,12 @@ function ResizeAndOptimizeLayout() {
   const { selectedImage, images, updateImage } = useImageContext();
   const textToolRef = useRef<TextToolRef>(null);
 
-  const { globalZoom: zoom, cropZoom, globalZoomIn, globalZoomOut } = useViewStore();
+  const {
+    globalZoom: zoom,
+    cropZoom,
+    globalZoomIn,
+    globalZoomOut,
+  } = useViewStore();
   const { editorState, setEditorState, setTextSaveTrigger } =
     useAppStateStore();
   const { crop, setCrop, completedCrop, setCompletedCrop } = useCropStore();
@@ -351,6 +356,12 @@ function ResizeAndOptimizeLayout() {
                   </CardContent>
                 </Card>
               )}
+              {/* Image Stats Main Section Under Canvas */}
+              {selectedImage && (
+                <div className="mt-6">
+                  <ImageStats selectedImage={selectedImage} />
+                </div>
+              )}
             </section>
 
             {/* Sidebar - takes up 1 column on large screens */}
@@ -365,17 +376,8 @@ function ResizeAndOptimizeLayout() {
                   imageTransforms={selectedImage}
                 />
               )}
-
-              {/* Moved ImageStats to full width below */}
             </aside>
           </div>
-
-          {/* Full width Image Stats */}
-          {selectedImage && (
-            <div className="mt-6">
-              <ImageStats selectedImage={selectedImage} />
-            </div>
-          )}
         </>
       )}
     </div>

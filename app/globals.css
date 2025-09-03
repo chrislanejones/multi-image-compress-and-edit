@@ -174,6 +174,23 @@
     auto;
 }
 
+/* Emoji Picker Theme */
+.EmojiPickerReact {
+  --epr-bg-color: var(--background) !important;
+  --epr-category-label-bg-color: var(--muted) !important;
+  --epr-text-color: var(--foreground) !important;
+  --epr-hover-bg-color: var(--muted) !important;
+  --epr-focus-bg-color: var(--accent) !important;
+  --epr-search-border-color: var(--border) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+}
+
+.dark .EmojiPickerReact {
+  --epr-bg-color: var(--card) !important;
+  --epr-category-label-bg-color: var(--muted) !important;
+}
+
 /* Toast overrides */
 @layer base {
   [data-sonner-toaster] {

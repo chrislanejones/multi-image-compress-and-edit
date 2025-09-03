@@ -426,7 +426,7 @@ export type EmojiShape = {
   type: "emoji";
   x: number;
   y: number;
-  text: string;
+  emoji: string;
   size: number;
 };
 

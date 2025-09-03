@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { usePaintStore } from "../stores";
-import type { PaintStroke } from "../types/types";
+import type { PaintStroke, EmojiShape } from "../types/types";
 
 interface PaintCanvasProps {
   imageUrl: string;
@@ -20,15 +20,6 @@ type ArrowShape = {
   double: boolean;
   color: string;
   width: number;
-};
-
-type EmojiShape = {
-  id: string;
-  type: "emoji";
-  x: number;
-  y: number;
-  text: string;
-  size: number;
 };
 
 type Shape = ArrowShape | EmojiShape;
@@ -61,9 +52,9 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
     brushColor: selectedColor,
     addPaintStroke,
     addShape,
-    currentEmoji,
     arrowColor,
     arrowWidth,
+    currentEmoji,
   } = usePaintStore();
 
   // Load background image
@@ -209,17 +200,12 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
       ctx.restore();
     });
 
-    // Draw shapes (emojis and arrows)
+    // Draw shapes (arrows + emojis)
     shapes.forEach((shape) => {
       ctx.save();
       ctx.globalCompositeOperation = "source-over";
 
-      if (shape.type === "emoji") {
-        ctx.font = `${shape.size}px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif`;
-        ctx.textBaseline = "middle";
-        ctx.textAlign = "center";
-        ctx.fillText(shape.text, shape.x, shape.y);
-      } else if (shape.type === "arrow") {
+      if (shape.type === "arrow") {
         ctx.strokeStyle = shape.color;
         ctx.fillStyle = shape.color;
         ctx.lineWidth = shape.width;
@@ -244,6 +230,12 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
             shape.width
           );
         }
+      } else if (shape.type === "emoji") {
+        // Draw emoji
+        ctx.font = `${shape.size}px Arial`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(shape.emoji, shape.x, shape.y);
       }
 
       ctx.restore();
@@ -279,20 +271,20 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
 
       const coords = getCanvasCoordinates(e);
 
-      if (selectedTool === "emoji") {
+      if (selectedTool === "arrow" || selectedTool === "double") {
+        // Start arrow drawing
+        setArrowStart(coords);
+        setIsDrawingArrow(true);
+      } else if (selectedTool === "emoji") {
         // Place emoji immediately
         addShape({
           id: crypto.randomUUID(),
           type: "emoji",
           x: coords.x,
           y: coords.y,
-          text: currentEmoji,
+          emoji: currentEmoji,
           size: brushSize * 2,
         } as EmojiShape);
-      } else if (selectedTool === "arrow" || selectedTool === "double") {
-        // Start arrow drawing
-        setArrowStart(coords);
-        setIsDrawingArrow(true);
       } else {
         // Start brush/eraser stroke
         const newStroke: PaintStroke = {
@@ -312,7 +304,6 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
     },
     [
       selectedTool,
-      currentEmoji,
       brushSize,
       selectedColor,
       arrowColor,
@@ -320,6 +311,7 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
       addShape,
       getCanvasCoordinates,
       imageLoaded,
+      currentEmoji,
     ]
   );
 
@@ -447,14 +439,14 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
       {/* Background image canvas */}
       <canvas
         ref={backgroundCanvasRef}
-        className={`absolute shadow-lg border border-border ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
+        className={`absolute shadow-lg border border-border ${!imageLoaded ? "opacity-0" : "opacity-100"}`}
         style={{ pointerEvents: "none" }}
       />
 
       {/* Paint canvas overlay */}
       <canvas
         ref={canvasRef}
-        className={`absolute cursor-crosshair shadow-lg border border-border ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
+        className={`absolute cursor-crosshair shadow-lg border border-border ${!imageLoaded ? "opacity-0" : "opacity-100"}`}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -472,16 +464,13 @@ export const PaintCanvas: React.FC<PaintCanvasProps> = ({
           style={{
             width: `${brushSize / canvasScale.x}px`,
             height: `${brushSize / canvasScale.y}px`,
-            border: "2px solid var(--foreground)",
-            borderOpacity: 0.7,
+            border: "2px solid rgba(34, 34, 34, 0.7)", // Adjust color and opacity as needed
             borderRadius: selectedTool === "emoji" ? "0%" : "50%",
             left: "50%",
             top: "50%",
             transform: "translate(-50%, -50%)",
             backgroundColor:
-              selectedTool === "eraser"
-                ? "var(--destructive)"
-                : "transparent",
+              selectedTool === "eraser" ? "var(--destructive)" : "transparent",
             opacity: selectedTool === "eraser" ? 0.2 : 1,
           }}
         />

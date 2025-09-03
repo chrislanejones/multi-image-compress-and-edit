@@ -130,15 +130,6 @@ export const PaintToolbar = () => {
           Eraser
         </Button>
         <Button
-          onClick={() => setPaintTool("emoji")}
-          variant={paintTool === "emoji" ? "default" : "outline"}
-          className="h-9"
-          title={`Emoji (${currentEmoji})`}
-        >
-          <Smile className="h-4 w-4 mr-2" />
-          Emojis
-        </Button>
-        <Button
           onClick={() => setPaintTool("arrow")}
           variant={paintTool === "arrow" ? "default" : "outline"}
           className="h-9"
@@ -155,6 +146,15 @@ export const PaintToolbar = () => {
         >
           <ArrowLeftRight className="h-4 w-4 mr-2" />
           Double Arrow
+        </Button>
+        <Button
+          onClick={() => setPaintTool("emoji")}
+          variant={paintTool === "emoji" ? "default" : "outline"}
+          className="h-9"
+          title="Emoji"
+        >
+          <Smile className="h-4 w-4 mr-2" />
+          Emoji
         </Button>
       </div>
 

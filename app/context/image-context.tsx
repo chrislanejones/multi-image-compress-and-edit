@@ -691,19 +691,9 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
         ctx.stroke();
       }
 
-      // Draw shapes (emoji + arrows)
+      // Draw shapes (arrows and emojis)
       for (const shape of shapes) {
-        if (shape.type === "emoji") {
-          ctx.save();
-          ctx.globalCompositeOperation = "source-over";
-          ctx.font =
-            `${shape.size}px system-ui, apple color emoji, ` +
-            `segoe ui emoji, sans-serif`;
-          ctx.textBaseline = "middle";
-          ctx.textAlign = "center";
-          ctx.fillText(shape.text, shape.x, shape.y);
-          ctx.restore();
-        } else if (shape.type === "arrow") {
+        if (shape.type === "arrow") {
           ctx.save();
           ctx.globalCompositeOperation = "source-over";
           ctx.strokeStyle = shape.color;
@@ -737,6 +727,14 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
               shape.width
             );
           }
+          ctx.restore();
+        } else if (shape.type === "emoji") {
+          ctx.save();
+          ctx.globalCompositeOperation = "source-over";
+          ctx.font = `${shape.size}px Arial`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(shape.emoji, shape.x, shape.y);
           ctx.restore();
         }
       }

@@ -1,26 +1,26 @@
 import { create } from "zustand";
-import type { PaintStroke, ArrowShape, EmojiShape, Shape } from "../types/types";
+import type { PaintStroke, ArrowShape, Shape, EmojiShape } from "../types/types";
 
 interface PaintStore {
   // Paint state
   paintStrokes: PaintStroke[];
   isPainting: boolean;
-  paintTool: "brush" | "eraser" | "emoji" | "arrow" | "double";
+  paintTool: "brush" | "eraser" | "arrow" | "double" | "emoji";
   brushSize: number;
   brushColor: string;
 
   // Shape state
   shapes: Shape[];
-  currentEmoji: string;
   arrowColor: string;
   arrowWidth: number;
+  currentEmoji: string;
 
   // Paint actions
   addPaintStroke: (stroke: PaintStroke) => void;
   clearPaintStrokes: () => void;
   undoLastPaintStroke: () => void;
   setIsPainting: (painting: boolean) => void;
-  setPaintTool: (tool: "brush" | "eraser" | "emoji" | "arrow" | "double") => void;
+  setPaintTool: (tool: "brush" | "eraser" | "arrow" | "double" | "emoji") => void;
   setBrushSize: (size: number) => void;
   setBrushColor: (color: string) => void;
 
@@ -28,8 +28,8 @@ interface PaintStore {
   addShape: (shape: Shape) => void;
   clearShapes: () => void;
   undoLastShape: () => void;
-  setCurrentEmoji: (emoji: string) => void;
   setArrowStyle: (color: string, width: number) => void;
+  setCurrentEmoji: (emoji: string) => void;
 
   // Utility actions
   clearAll: () => void;
@@ -38,9 +38,9 @@ interface PaintStore {
 const DEFAULT_VALUES = {
   brushSize: 10,
   brushColor: "#ff0000",
-  currentEmoji: "😊",
   arrowColor: "#ff0000",
   arrowWidth: 6,
+  currentEmoji: "😊",
 };
 
 export const usePaintStore = create<PaintStore>((set) => ({
@@ -51,9 +51,9 @@ export const usePaintStore = create<PaintStore>((set) => ({
   brushSize: DEFAULT_VALUES.brushSize,
   brushColor: DEFAULT_VALUES.brushColor,
   shapes: [],
-  currentEmoji: DEFAULT_VALUES.currentEmoji,
   arrowColor: DEFAULT_VALUES.arrowColor,
   arrowWidth: DEFAULT_VALUES.arrowWidth,
+  currentEmoji: DEFAULT_VALUES.currentEmoji,
 
   // Paint actions
   addPaintStroke: (stroke) =>
@@ -98,13 +98,13 @@ export const usePaintStore = create<PaintStore>((set) => ({
       shapes: state.shapes.slice(0, -1),
     })),
 
-  setCurrentEmoji: (emoji) => set({ currentEmoji: emoji }),
-
   setArrowStyle: (color, width) =>
     set({
       arrowColor: color,
       arrowWidth: Math.max(1, Math.min(50, width)),
     }),
+
+  setCurrentEmoji: (emoji) => set({ currentEmoji: emoji }),
 
   // Utility actions
   clearAll: () =>
