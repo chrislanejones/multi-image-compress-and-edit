@@ -1,3 +1,5 @@
+![Image Horse Banner](public/Image-Horse-App.webp)
+
 # ImageHorse - TanStack Start Edition 🐎
 
 ![Image of Photo App](/public/multi-image-compress-and-edit-app.webp)
@@ -146,6 +148,7 @@ bun run type-check  # Type safety
 #### Cache Settings
 
 Users can control image caching through the settings:
+
 - **Image Cache**: Toggle IndexedDB caching on/off
 - **Offline Mode**: Keep images available when offline (requires cache)
 - **Clear Cache**: Manual cache cleanup
@@ -181,7 +184,7 @@ Users can control image caching through the settings:
 
 ## 📄 License
 
-MIT License
+Coming soon
 
 ---
 

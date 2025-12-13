@@ -9,6 +9,7 @@ import { PaintToolbar } from "./toolbars/PaintToolbar";
 import { Lock, Images } from "lucide-react";
 import { EditorState } from "../types/types";
 import { useLocation } from "@tanstack/react-router";
+import { ThemeToggle } from "./ui/theme-toggle";
 
 const PadlockIndicator: React.FC<{
   editorState: EditorState;
@@ -94,6 +95,9 @@ export const ImageEditorToolbar: React.FC<{ padlockAnimation?: boolean }> = ({
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 mb-4 bg-card border border-border p-2 rounded-lg z-10 relative">
       {CurrentToolbar}
+      <div className="ml-auto">
+        <ThemeToggle />
+      </div>
     </div>
   );
 };

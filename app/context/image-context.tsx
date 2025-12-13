@@ -373,6 +373,9 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
           height: resizeDraft.height,
         },
         metadata: {
+          originalSize: selectedImage.metadata?.originalSize ?? selectedImage.size,
+          compressedSize: selectedImage.metadata?.compressedSize ?? blob.size,
+          compressionRatio: selectedImage.metadata?.compressionRatio ?? 0,
           ...selectedImage.metadata,
           isManuallyResized: true, // Flag for manual resize
         },
@@ -495,7 +498,7 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({
         url: croppedUrl,
         width: Math.round(cropWidth),
         height: Math.round(cropHeight),
-        file: new File([blob], img.file.name, { type: blob.type }),
+        file: new File([blob], selectedImage.file.name, { type: blob.type }),
         size: blob.size,
         crop: {
           x: completedCrop.x,

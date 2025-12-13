@@ -1,14 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useAppStateStore } from "../../../stores";
 import { useEffect } from "react";
-import { z } from "zod";
 
-const bulkModeSchema = z.enum(['crop', 'text']);
+type BulkMode = 'crop' | 'text';
 
 export const Route = createFileRoute("/resize-and-optimize/bulk/$mode")({
-  params: {
-    mode: bulkModeSchema,
-  },
+  parseParams: (params) => ({
+    mode: params.mode as BulkMode,
+  }),
   component: BulkModeComponent,
 });
 

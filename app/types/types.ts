@@ -109,6 +109,11 @@ export interface GlobalImage extends ImageFile {
 /**
  * Detailed metadata associated with an image file, including optimization data.
  */
+/**
+ * Codec types for compression
+ */
+export type Codec = "avif" | "webp" | "jpeg" | "png";
+
 export interface ImageMetadata {
   originalSize: number; // in bytes
   compressedSize: number; // in bytes
@@ -119,13 +124,14 @@ export interface ImageMetadata {
   isOptimized?: boolean; // Flag indicating if the image has undergone optimization
   editHistory?: EditAction[]; // A log of edits applied to the image
   coreWebVitalsScore?: CoreWebVitalsScore; // Core Web Vitals performance score
-  codec?: string; // Compression codec used (avif, webp, jpeg)
+  codec?: Codec; // Compression codec used (avif, webp, jpeg)
   bpp?: number; // Bytes per pixel
   width?: number; // Image width after compression
   height?: number; // Image height after compression
   boltTier?: 1 | 2 | 3; // Performance tier
   isCompressionReset?: boolean; // Flag indicating if compression has been reset
   isManuallyResized?: boolean; // Flag indicating if user manually resized and applied changes
+  processingTime?: number; // Time taken for processing in milliseconds
 }
 
 /**

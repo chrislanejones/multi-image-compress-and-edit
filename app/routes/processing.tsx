@@ -24,6 +24,7 @@ import {
 } from "../components/ui/computer-window";
 import { Button } from "../components/ui/button";
 import type { Codec, CoreWebVitalsScore } from "../types/types";
+import { ThemeToggle } from "../components/ui/theme-toggle";
 
 interface DetailedImageStats {
   id: string;
@@ -142,7 +143,7 @@ function ProcessingPage() {
     if (images.length > 0) {
       const imageDetails: DetailedImageStats[] = [];
       let totalProcessingTime = 0;
-      const codecCounts: Record<Codec, number> = { avif: 0, webp: 0, jpeg: 0 };
+      const codecCounts: Record<Codec, number> = { avif: 0, webp: 0, jpeg: 0, png: 0 };
       const qualities: number[] = [];
 
       const stats: EnhancedProcessingStats = {
@@ -304,7 +305,7 @@ function ProcessingPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <ComputerWindow size="xl">
+      <ComputerWindow size="xl" rightElement={<ThemeToggle />}>
         <ComputerWindowHeader>
           <div className="mb-4">
             {!isComplete ? (

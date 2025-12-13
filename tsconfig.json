@@ -21,6 +21,6 @@
       "~/*": ["./app/*"]
     }
   },
-  "include": ["app", "vite.config.ts"],
+  "include": ["app"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

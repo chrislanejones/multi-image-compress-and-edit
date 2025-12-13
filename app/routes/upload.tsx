@@ -6,6 +6,7 @@ import { useImageContext } from "../context/image-context";
 import imageCompression from "browser-image-compression";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useUploadStore } from "../stores";
+import { ThemeToggle } from "../components/ui/theme-toggle";
 
 export const Route = createFileRoute("/upload")({
   component: UploadPage,
@@ -223,10 +224,13 @@ function UploadPage() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       {/* Computer Window Design */}
       <div className="w-full max-w-2xl rounded-xl p-1 text-sm bg-gradient-to-br from-card to-background dark:from-card dark:to-background">
-        <div className="flex gap-2 p-2">
-          <span className="size-3 rounded-full bg-destructive"></span>
-          <span className="size-3 rounded-full bg-secondary"></span>
-          <span className="size-3 rounded-full bg-accent"></span>
+        <div className="flex items-center justify-between p-2">
+          <div className="flex gap-2">
+            <span className="size-3 rounded-full bg-destructive"></span>
+            <span className="size-3 rounded-full bg-secondary"></span>
+            <span className="size-3 rounded-full bg-accent"></span>
+          </div>
+          <ThemeToggle />
         </div>
         <div className="bg-background rounded-lg p-8">
           {/* Header Section */}

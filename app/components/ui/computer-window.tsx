@@ -7,6 +7,7 @@ interface ComputerWindowProps {
   size?: "sm" | "md" | "lg" | "xl";
   title?: string;
   showTitle?: boolean;
+  rightElement?: React.ReactNode;
 }
 
 export function ComputerWindow({
@@ -15,6 +16,7 @@ export function ComputerWindow({
   size = "lg",
   title = "ImageHorse",
   showTitle = false,
+  rightElement,
 }: ComputerWindowProps) {
   const sizeClasses = {
     sm: "max-w-md",
@@ -35,20 +37,22 @@ export function ComputerWindow({
       )}
     >
       {/* Window Controls */}
-      <div className="flex gap-2 p-2">
-        {/* Colours for the faux window controls now derive from the chart palette for consistency */}
-        <span
-          className="size-3 rounded-full"
-          style={{ backgroundColor: `var(--chart-1)` }}
-        ></span>
-        <span
-          className="size-3 rounded-full"
-          style={{ backgroundColor: `var(--chart-4)` }}
-        ></span>
-        <span
-          className="size-3 rounded-full"
-          style={{ backgroundColor: `var(--chart-2)` }}
-        ></span>
+      <div className="flex items-center justify-between p-2">
+        <div className="flex gap-2">
+          {/* Colours for the faux window controls now derive from the chart palette for consistency */}
+          <span
+            className="size-3 rounded-full"
+            style={{ backgroundColor: `var(--chart-1)` }}
+          ></span>
+          <span
+            className="size-3 rounded-full"
+            style={{ backgroundColor: `var(--chart-4)` }}
+          ></span>
+          <span
+            className="size-3 rounded-full"
+            style={{ backgroundColor: `var(--chart-2)` }}
+          ></span>
+        </div>
         {showTitle && (
           <div className="flex-1 text-center">
             <span
@@ -59,6 +63,7 @@ export function ComputerWindow({
             </span>
           </div>
         )}
+        {rightElement && <div>{rightElement}</div>}
       </div>
 
       {/* Window Content */}
